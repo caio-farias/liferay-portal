@@ -1,0 +1,13 @@
+apiDir: ../trash-rest-api/src/main/java
+apiPackagePath: com.liferay.trash.rest
+application:
+    baseURI: /recycle-bin
+    className: RecycleBinRESTApplication
+    name: Liferay.Recycle.Bin.REST
+author: Manuele Castro
+clientDir: ../trash-rest-client/src/main/java
+compatibilityVersion: 9
+forcePredictableOperationId: true
+generateBatch: false
+javaEEPackage: jakarta
+testDir: ../trash-rest-test/src/testIntegration/java

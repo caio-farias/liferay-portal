@@ -1,0 +1,3 @@
+Bundle-Name: Liferay Trash REST Implementation
+Bundle-SymbolicName: com.liferay.trash.rest.impl
+Bundle-Version: 1.0.0
