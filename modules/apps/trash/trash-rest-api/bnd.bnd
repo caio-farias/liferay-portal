@@ -1,0 +1,6 @@
+Bundle-Name: Liferay Trash REST API
+Bundle-SymbolicName: com.liferay.trash.rest.api
+Bundle-Version: 1.0.0
+Export-Package:\
+	com.liferay.trash.rest.dto.v1_0,\
+	com.liferay.trash.rest.resource.v1_0
