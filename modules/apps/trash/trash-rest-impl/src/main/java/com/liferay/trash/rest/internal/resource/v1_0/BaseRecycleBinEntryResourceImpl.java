@@ -48,13 +48,13 @@ public abstract class BaseRecycleBinEntryResourceImpl
 	/**
 	 * Invoke this method with the command line:
 	 *
-	 * curl -X 'GET' 'http://localhost:8080/o/recycle-bin/v1.0/recycle-bin-entries'  -u 'test@liferay.com:test'
+	 * curl -X 'GET' 'http://localhost:8080/o/recycle-bin/v1.0/recycle-bin-entries/{siteGroupId}'  -u 'test@liferay.com:test'
 	 */
 	@io.swagger.v3.oas.annotations.Parameters(
 		value = {
 			@io.swagger.v3.oas.annotations.Parameter(
-				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
-				name = "filter"
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
+				name = "siteGroupId"
 			),
 			@io.swagger.v3.oas.annotations.Parameter(
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
@@ -63,14 +63,6 @@ public abstract class BaseRecycleBinEntryResourceImpl
 			@io.swagger.v3.oas.annotations.Parameter(
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
 				name = "pageSize"
-			),
-			@io.swagger.v3.oas.annotations.Parameter(
-				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
-				name = "search"
-			),
-			@io.swagger.v3.oas.annotations.Parameter(
-				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
-				name = "sort"
 			)
 		}
 	)
@@ -80,18 +72,15 @@ public abstract class BaseRecycleBinEntryResourceImpl
 		}
 	)
 	@jakarta.ws.rs.GET
-	@jakarta.ws.rs.Path("/recycle-bin-entries")
+	@jakarta.ws.rs.Path("/recycle-bin-entries/{siteGroupId}")
 	@jakarta.ws.rs.Produces({"application/json", "application/xml"})
 	@Override
-	public Page<RecycleBinEntry> getRecycleBinEntriesPage(
+	public Page<RecycleBinEntry> getRecycleBinEntriesSiteGroupPage(
 			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
-			@jakarta.ws.rs.QueryParam("search")
-			String search,
-			@jakarta.ws.rs.core.Context
-				com.liferay.portal.kernel.search.filter.Filter filter,
-			@jakarta.ws.rs.core.Context Pagination pagination,
-			@jakarta.ws.rs.core.Context com.liferay.portal.kernel.search.Sort[]
-				sorts)
+			@jakarta.validation.constraints.NotNull
+			@jakarta.ws.rs.PathParam("siteGroupId")
+			Long siteGroupId,
+			@jakarta.ws.rs.core.Context Pagination pagination)
 		throws Exception {
 
 		return Page.of(Collections.emptyList());

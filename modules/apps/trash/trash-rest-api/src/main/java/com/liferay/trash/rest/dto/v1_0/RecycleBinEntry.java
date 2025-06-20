@@ -287,7 +287,7 @@ public class RecycleBinEntry implements Serializable {
 	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "The recycle bin entry's type."
 	)
-	public Integer getType() {
+	public String getType() {
 		if (_typeSupplier != null) {
 			type = _typeSupplier.get();
 
@@ -297,14 +297,14 @@ public class RecycleBinEntry implements Serializable {
 		return type;
 	}
 
-	public void setType(Integer type) {
+	public void setType(String type) {
 		this.type = type;
 
 		_typeSupplier = null;
 	}
 
 	@JsonIgnore
-	public void setType(UnsafeSupplier<Integer, Exception> typeUnsafeSupplier) {
+	public void setType(UnsafeSupplier<String, Exception> typeUnsafeSupplier) {
 		_typeSupplier = () -> {
 			try {
 				return typeUnsafeSupplier.get();
@@ -320,11 +320,11 @@ public class RecycleBinEntry implements Serializable {
 
 	@GraphQLField(description = "The recycle bin entry's type.")
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
-	@NotNull
-	protected Integer type;
+	@NotEmpty
+	protected String type;
 
 	@JsonIgnore
-	private Supplier<Integer> _typeSupplier;
+	private Supplier<String> _typeSupplier;
 
 	@Override
 	public boolean equals(Object object) {
@@ -432,7 +432,7 @@ public class RecycleBinEntry implements Serializable {
 			sb.append("\"");
 		}
 
-		Integer type = getType();
+		String type = getType();
 
 		if (type != null) {
 			if (sb.length() > 1) {
@@ -441,7 +441,11 @@ public class RecycleBinEntry implements Serializable {
 
 			sb.append("\"type\": ");
 
-			sb.append(type);
+			sb.append("\"");
+
+			sb.append(_escape(type));
+
+			sb.append("\"");
 		}
 
 		sb.append("}");

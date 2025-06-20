@@ -43,11 +43,8 @@ import org.osgi.annotation.versioning.ProviderType;
 @ProviderType
 public interface RecycleBinEntryResource {
 
-	public Page<RecycleBinEntry> getRecycleBinEntriesPage(
-			String search,
-			com.liferay.portal.kernel.search.filter.Filter filter,
-			Pagination pagination,
-			com.liferay.portal.kernel.search.Sort[] sorts)
+	public Page<RecycleBinEntry> getRecycleBinEntriesSiteGroupPage(
+			Long siteGroupId, Pagination pagination)
 		throws Exception;
 
 	public RecycleBinEntry getRecycleBinEntryByExternalReferenceCode(

@@ -127,7 +127,11 @@ public class RecycleBinEntrySerDes {
 
 			sb.append("\"type\": ");
 
-			sb.append(recycleBinEntry.getType());
+			sb.append("\"");
+
+			sb.append(_escape(recycleBinEntry.getType()));
+
+			sb.append("\"");
 		}
 
 		sb.append("}");
@@ -279,8 +283,7 @@ public class RecycleBinEntrySerDes {
 			}
 			else if (Objects.equals(jsonParserFieldName, "type")) {
 				if (jsonParserFieldValue != null) {
-					recycleBinEntry.setType(
-						Integer.valueOf((String)jsonParserFieldValue));
+					recycleBinEntry.setType((String)jsonParserFieldValue);
 				}
 			}
 		}

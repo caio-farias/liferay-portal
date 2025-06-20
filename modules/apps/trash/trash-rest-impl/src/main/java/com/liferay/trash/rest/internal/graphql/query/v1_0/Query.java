@@ -47,28 +47,21 @@ public class Query {
 	/**
 	 * Invoke this method with the command line:
 	 *
-	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {recycleBinEntries(filter: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
+	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {recycleBinEntriesGroup(page: ___, pageSize: ___, siteGroupId: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
 	@GraphQLField
-	public RecycleBinEntryPage recycleBinEntries(
-			@GraphQLName("search") String search,
-			@GraphQLName("filter") String filterString,
+	public RecycleBinEntryPage recycleBinEntriesGroup(
+			@GraphQLName("siteGroupId") Long siteGroupId,
 			@GraphQLName("pageSize") int pageSize,
-			@GraphQLName("page") int page,
-			@GraphQLName("sort") String sortsString)
+			@GraphQLName("page") int page)
 		throws Exception {
 
 		return _applyComponentServiceObjects(
 			_recycleBinEntryResourceComponentServiceObjects,
 			this::_populateResourceContext,
 			recycleBinEntryResource -> new RecycleBinEntryPage(
-				recycleBinEntryResource.getRecycleBinEntriesPage(
-					search,
-					_filterBiFunction.apply(
-						recycleBinEntryResource, filterString),
-					Pagination.of(page, pageSize),
-					_sortsBiFunction.apply(
-						recycleBinEntryResource, sortsString))));
+				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+					siteGroupId, Pagination.of(page, pageSize))));
 	}
 
 	/**

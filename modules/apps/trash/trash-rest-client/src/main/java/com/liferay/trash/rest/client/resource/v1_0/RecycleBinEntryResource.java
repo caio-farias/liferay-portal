@@ -34,14 +34,13 @@ public interface RecycleBinEntryResource {
 		return new Builder();
 	}
 
-	public Page<RecycleBinEntry> getRecycleBinEntriesPage(
-			String search, String filterString, Pagination pagination,
-			String sortString)
+	public Page<RecycleBinEntry> getRecycleBinEntriesSiteGroupPage(
+			Long siteGroupId, Pagination pagination)
 		throws Exception;
 
-	public HttpInvoker.HttpResponse getRecycleBinEntriesPageHttpResponse(
-			String search, String filterString, Pagination pagination,
-			String sortString)
+	public HttpInvoker.HttpResponse
+			getRecycleBinEntriesSiteGroupPageHttpResponse(
+				Long siteGroupId, Pagination pagination)
 		throws Exception;
 
 	public RecycleBinEntry getRecycleBinEntryByExternalReferenceCode(
@@ -162,14 +161,13 @@ public interface RecycleBinEntryResource {
 	public static class RecycleBinEntryResourceImpl
 		implements RecycleBinEntryResource {
 
-		public Page<RecycleBinEntry> getRecycleBinEntriesPage(
-				String search, String filterString, Pagination pagination,
-				String sortString)
+		public Page<RecycleBinEntry> getRecycleBinEntriesSiteGroupPage(
+				Long siteGroupId, Pagination pagination)
 			throws Exception {
 
 			HttpInvoker.HttpResponse httpResponse =
-				getRecycleBinEntriesPageHttpResponse(
-					search, filterString, pagination, sortString);
+				getRecycleBinEntriesSiteGroupPageHttpResponse(
+					siteGroupId, pagination);
 
 			String content = httpResponse.getContent();
 
@@ -230,9 +228,9 @@ public interface RecycleBinEntryResource {
 			}
 		}
 
-		public HttpInvoker.HttpResponse getRecycleBinEntriesPageHttpResponse(
-				String search, String filterString, Pagination pagination,
-				String sortString)
+		public HttpInvoker.HttpResponse
+				getRecycleBinEntriesSiteGroupPageHttpResponse(
+					Long siteGroupId, Pagination pagination)
 			throws Exception {
 
 			HttpInvoker httpInvoker = HttpInvoker.newHttpInvoker();
@@ -256,14 +254,6 @@ public interface RecycleBinEntryResource {
 
 			httpInvoker.httpMethod(HttpInvoker.HttpMethod.GET);
 
-			if (search != null) {
-				httpInvoker.parameter("search", String.valueOf(search));
-			}
-
-			if (filterString != null) {
-				httpInvoker.parameter("filter", filterString);
-			}
-
 			if (pagination != null) {
 				httpInvoker.parameter(
 					"page", String.valueOf(pagination.getPage()));
@@ -271,14 +261,12 @@ public interface RecycleBinEntryResource {
 					"pageSize", String.valueOf(pagination.getPageSize()));
 			}
 
-			if (sortString != null) {
-				httpInvoker.parameter("sort", sortString);
-			}
-
 			httpInvoker.path(
 				_builder._scheme + "://" + _builder._host + ":" +
 					_builder._port + _builder._contextPath +
-						"/o/recycle-bin/v1.0/recycle-bin-entries");
+						"/o/recycle-bin/v1.0/recycle-bin-entries/{siteGroupId}");
+
+			httpInvoker.path("siteGroupId", siteGroupId);
 
 			if ((_builder._login != null) && (_builder._password != null)) {
 				httpInvoker.userNameAndPassword(

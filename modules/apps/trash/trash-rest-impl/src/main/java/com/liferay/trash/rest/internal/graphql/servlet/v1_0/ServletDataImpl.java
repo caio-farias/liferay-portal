@@ -73,10 +73,10 @@ public class ServletDataImpl implements ServletData {
 			new HashMap<String, ObjectValuePair<Class<?>, String>>() {
 				{
 					put(
-						"query#recycleBinEntries",
+						"query#recycleBinEntriesGroup",
 						new ObjectValuePair<>(
 							RecycleBinEntryResourceImpl.class,
-							"getRecycleBinEntriesPage"));
+							"getRecycleBinEntriesSiteGroupPage"));
 					put(
 						"query#recycleBinEntryByExternalReferenceCode",
 						new ObjectValuePair<>(
