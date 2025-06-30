@@ -131,15 +131,15 @@ public class RecycleBinEntry implements Cloneable, Serializable {
 
 	protected String title;
 
-	public Integer getType() {
+	public String getType() {
 		return type;
 	}
 
-	public void setType(Integer type) {
+	public void setType(String type) {
 		this.type = type;
 	}
 
-	public void setType(UnsafeSupplier<Integer, Exception> typeUnsafeSupplier) {
+	public void setType(UnsafeSupplier<String, Exception> typeUnsafeSupplier) {
 		try {
 			type = typeUnsafeSupplier.get();
 		}
@@ -148,7 +148,7 @@ public class RecycleBinEntry implements Cloneable, Serializable {
 		}
 	}
 
-	protected Integer type;
+	protected String type;
 
 	@Override
 	public RecycleBinEntry clone() throws CloneNotSupportedException {

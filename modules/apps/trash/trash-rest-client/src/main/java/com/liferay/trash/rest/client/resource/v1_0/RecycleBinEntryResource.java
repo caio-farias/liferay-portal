@@ -34,14 +34,15 @@ public interface RecycleBinEntryResource {
 		return new Builder();
 	}
 
-	public Page<RecycleBinEntry> getRecycleBinEntriesPage(
-			String search, String filterString, Pagination pagination,
-			String sortString)
+	public Page<RecycleBinEntry> getRecycleBinEntriesSiteGroupPage(
+			Long siteGroupId, String assetClassName, String search,
+			Pagination pagination, String sortString)
 		throws Exception;
 
-	public HttpInvoker.HttpResponse getRecycleBinEntriesPageHttpResponse(
-			String search, String filterString, Pagination pagination,
-			String sortString)
+	public HttpInvoker.HttpResponse
+			getRecycleBinEntriesSiteGroupPageHttpResponse(
+				Long siteGroupId, String assetClassName, String search,
+				Pagination pagination, String sortString)
 		throws Exception;
 
 	public RecycleBinEntry getRecycleBinEntryByExternalReferenceCode(
@@ -162,14 +163,15 @@ public interface RecycleBinEntryResource {
 	public static class RecycleBinEntryResourceImpl
 		implements RecycleBinEntryResource {
 
-		public Page<RecycleBinEntry> getRecycleBinEntriesPage(
-				String search, String filterString, Pagination pagination,
-				String sortString)
+		public Page<RecycleBinEntry> getRecycleBinEntriesSiteGroupPage(
+				Long siteGroupId, String assetClassName, String search,
+				Pagination pagination, String sortString)
 			throws Exception {
 
 			HttpInvoker.HttpResponse httpResponse =
-				getRecycleBinEntriesPageHttpResponse(
-					search, filterString, pagination, sortString);
+				getRecycleBinEntriesSiteGroupPageHttpResponse(
+					siteGroupId, assetClassName, search, pagination,
+					sortString);
 
 			String content = httpResponse.getContent();
 
@@ -230,9 +232,10 @@ public interface RecycleBinEntryResource {
 			}
 		}
 
-		public HttpInvoker.HttpResponse getRecycleBinEntriesPageHttpResponse(
-				String search, String filterString, Pagination pagination,
-				String sortString)
+		public HttpInvoker.HttpResponse
+				getRecycleBinEntriesSiteGroupPageHttpResponse(
+					Long siteGroupId, String assetClassName, String search,
+					Pagination pagination, String sortString)
 			throws Exception {
 
 			HttpInvoker httpInvoker = HttpInvoker.newHttpInvoker();
@@ -256,12 +259,13 @@ public interface RecycleBinEntryResource {
 
 			httpInvoker.httpMethod(HttpInvoker.HttpMethod.GET);
 
-			if (search != null) {
-				httpInvoker.parameter("search", String.valueOf(search));
+			if (assetClassName != null) {
+				httpInvoker.parameter(
+					"assetClassName", String.valueOf(assetClassName));
 			}
 
-			if (filterString != null) {
-				httpInvoker.parameter("filter", filterString);
+			if (search != null) {
+				httpInvoker.parameter("search", String.valueOf(search));
 			}
 
 			if (pagination != null) {
@@ -278,7 +282,9 @@ public interface RecycleBinEntryResource {
 			httpInvoker.path(
 				_builder._scheme + "://" + _builder._host + ":" +
 					_builder._port + _builder._contextPath +
-						"/o/recycle-bin/v1.0/recycle-bin-entries");
+						"/o/recycle-bin/v1.0/recycle-bin-entries/{siteGroupId}");
+
+			httpInvoker.path("siteGroupId", siteGroupId);
 
 			if ((_builder._login != null) && (_builder._password != null)) {
 				httpInvoker.userNameAndPassword(

@@ -33,7 +33,6 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.odata.entity.EntityField;
 import com.liferay.portal.odata.entity.EntityModel;
-import com.liferay.portal.search.test.rule.SearchTestRule;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.util.PropsValues;
@@ -173,6 +172,7 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 		recycleBinEntry.setExternalReferenceCode(regex);
 		recycleBinEntry.setSpaceTitle(regex);
 		recycleBinEntry.setTitle(regex);
+		recycleBinEntry.setType(regex);
 
 		String json = RecycleBinEntrySerDes.toJSON(recycleBinEntry);
 
@@ -183,26 +183,53 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 		Assert.assertEquals(regex, recycleBinEntry.getExternalReferenceCode());
 		Assert.assertEquals(regex, recycleBinEntry.getSpaceTitle());
 		Assert.assertEquals(regex, recycleBinEntry.getTitle());
+		Assert.assertEquals(regex, recycleBinEntry.getType());
 	}
 
 	@Test
-	public void testGetRecycleBinEntriesPage() throws Exception {
+	public void testGetRecycleBinEntriesSiteGroupPage() throws Exception {
+		Long siteGroupId =
+			testGetRecycleBinEntriesSiteGroupPage_getSiteGroupId();
+		Long irrelevantSiteGroupId =
+			testGetRecycleBinEntriesSiteGroupPage_getIrrelevantSiteGroupId();
+
 		Page<RecycleBinEntry> page =
-			recycleBinEntryResource.getRecycleBinEntriesPage(
-				null, null, Pagination.of(1, 10), null);
+			recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+				siteGroupId, RandomTestUtil.randomString(), null,
+				Pagination.of(1, 10), null);
 
 		long totalCount = page.getTotalCount();
 
+		if (irrelevantSiteGroupId != null) {
+			RecycleBinEntry irrelevantRecycleBinEntry =
+				testGetRecycleBinEntriesSiteGroupPage_addRecycleBinEntry(
+					irrelevantSiteGroupId, randomIrrelevantRecycleBinEntry());
+
+			page = recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+				irrelevantSiteGroupId, null, null,
+				Pagination.of(1, (int)totalCount + 1), null);
+
+			Assert.assertEquals(totalCount + 1, page.getTotalCount());
+
+			assertContains(
+				irrelevantRecycleBinEntry,
+				(List<RecycleBinEntry>)page.getItems());
+			assertValid(
+				page,
+				testGetRecycleBinEntriesSiteGroupPage_getExpectedActions(
+					irrelevantSiteGroupId));
+		}
+
 		RecycleBinEntry recycleBinEntry1 =
-			testGetRecycleBinEntriesPage_addRecycleBinEntry(
-				randomRecycleBinEntry());
+			testGetRecycleBinEntriesSiteGroupPage_addRecycleBinEntry(
+				siteGroupId, randomRecycleBinEntry());
 
 		RecycleBinEntry recycleBinEntry2 =
-			testGetRecycleBinEntriesPage_addRecycleBinEntry(
-				randomRecycleBinEntry());
+			testGetRecycleBinEntriesSiteGroupPage_addRecycleBinEntry(
+				siteGroupId, randomRecycleBinEntry());
 
-		page = recycleBinEntryResource.getRecycleBinEntriesPage(
-			null, null, Pagination.of(1, 10), null);
+		page = recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+			siteGroupId, null, null, Pagination.of(1, 10), null);
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -210,11 +237,15 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 			recycleBinEntry1, (List<RecycleBinEntry>)page.getItems());
 		assertContains(
 			recycleBinEntry2, (List<RecycleBinEntry>)page.getItems());
-		assertValid(page, testGetRecycleBinEntriesPage_getExpectedActions());
+		assertValid(
+			page,
+			testGetRecycleBinEntriesSiteGroupPage_getExpectedActions(
+				siteGroupId));
 	}
 
 	protected Map<String, Map<String, String>>
-			testGetRecycleBinEntriesPage_getExpectedActions()
+			testGetRecycleBinEntriesSiteGroupPage_getExpectedActions(
+				Long siteGroupId)
 		throws Exception {
 
 		Map<String, Map<String, String>> expectedActions = new HashMap<>();
@@ -223,116 +254,30 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 	}
 
 	@Test
-	public void testGetRecycleBinEntriesPageWithFilterDateTimeEquals()
+	public void testGetRecycleBinEntriesSiteGroupPageWithPagination()
 		throws Exception {
 
-		List<EntityField> entityFields = getEntityFields(
-			EntityField.Type.DATE_TIME);
+		Long siteGroupId =
+			testGetRecycleBinEntriesSiteGroupPage_getSiteGroupId();
 
-		if (entityFields.isEmpty()) {
-			return;
-		}
-
-		RecycleBinEntry recycleBinEntry1 = randomRecycleBinEntry();
-
-		recycleBinEntry1 = testGetRecycleBinEntriesPage_addRecycleBinEntry(
-			recycleBinEntry1);
-
-		for (EntityField entityField : entityFields) {
-			Page<RecycleBinEntry> page =
-				recycleBinEntryResource.getRecycleBinEntriesPage(
-					null,
-					getFilterString(entityField, "between", recycleBinEntry1),
-					Pagination.of(1, 2), null);
-
-			assertEquals(
-				Collections.singletonList(recycleBinEntry1),
-				(List<RecycleBinEntry>)page.getItems());
-		}
-	}
-
-	@Test
-	public void testGetRecycleBinEntriesPageWithFilterDoubleEquals()
-		throws Exception {
-
-		testGetRecycleBinEntriesPageWithFilter("eq", EntityField.Type.DOUBLE);
-	}
-
-	@Test
-	public void testGetRecycleBinEntriesPageWithFilterStringContains()
-		throws Exception {
-
-		testGetRecycleBinEntriesPageWithFilter(
-			"contains", EntityField.Type.STRING);
-	}
-
-	@Test
-	public void testGetRecycleBinEntriesPageWithFilterStringEquals()
-		throws Exception {
-
-		testGetRecycleBinEntriesPageWithFilter("eq", EntityField.Type.STRING);
-	}
-
-	@Test
-	public void testGetRecycleBinEntriesPageWithFilterStringStartsWith()
-		throws Exception {
-
-		testGetRecycleBinEntriesPageWithFilter(
-			"startswith", EntityField.Type.STRING);
-	}
-
-	protected void testGetRecycleBinEntriesPageWithFilter(
-			String operator, EntityField.Type type)
-		throws Exception {
-
-		List<EntityField> entityFields = getEntityFields(type);
-
-		if (entityFields.isEmpty()) {
-			return;
-		}
-
-		RecycleBinEntry recycleBinEntry1 =
-			testGetRecycleBinEntriesPage_addRecycleBinEntry(
-				randomRecycleBinEntry());
-
-		@SuppressWarnings("PMD.UnusedLocalVariable")
-		RecycleBinEntry recycleBinEntry2 =
-			testGetRecycleBinEntriesPage_addRecycleBinEntry(
-				randomRecycleBinEntry());
-
-		for (EntityField entityField : entityFields) {
-			Page<RecycleBinEntry> page =
-				recycleBinEntryResource.getRecycleBinEntriesPage(
-					null,
-					getFilterString(entityField, operator, recycleBinEntry1),
-					Pagination.of(1, 2), null);
-
-			assertEquals(
-				Collections.singletonList(recycleBinEntry1),
-				(List<RecycleBinEntry>)page.getItems());
-		}
-	}
-
-	@Test
-	public void testGetRecycleBinEntriesPageWithPagination() throws Exception {
 		Page<RecycleBinEntry> recycleBinEntriesPage =
-			recycleBinEntryResource.getRecycleBinEntriesPage(
-				null, null, null, null);
+			recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+				siteGroupId, null, null, null, null);
 
 		int totalCount = GetterUtil.getInteger(
 			recycleBinEntriesPage.getTotalCount());
 
 		RecycleBinEntry recycleBinEntry1 =
-			testGetRecycleBinEntriesPage_addRecycleBinEntry(
-				randomRecycleBinEntry());
+			testGetRecycleBinEntriesSiteGroupPage_addRecycleBinEntry(
+				siteGroupId, randomRecycleBinEntry());
 
 		RecycleBinEntry recycleBinEntry2 =
-			testGetRecycleBinEntriesPage_addRecycleBinEntry(
-				randomRecycleBinEntry());
+			testGetRecycleBinEntriesSiteGroupPage_addRecycleBinEntry(
+				siteGroupId, randomRecycleBinEntry());
 
 		RecycleBinEntry recycleBinEntry3 =
-			testGetRecycleBinEntriesPage_addRecycleBinEntry(
-				randomRecycleBinEntry());
+			testGetRecycleBinEntriesSiteGroupPage_addRecycleBinEntry(
+				siteGroupId, randomRecycleBinEntry());
 
 		// See com.liferay.portal.vulcan.internal.configuration.HeadlessAPICompanyConfiguration#pageSizeLimit
 
@@ -340,8 +285,8 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 
 		if (totalCount >= (pageSizeLimit - 2)) {
 			Page<RecycleBinEntry> page1 =
-				recycleBinEntryResource.getRecycleBinEntriesPage(
-					null, null,
+				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+					siteGroupId, null, null,
 					Pagination.of(
 						(int)Math.ceil((totalCount + 1.0) / pageSizeLimit),
 						pageSizeLimit),
@@ -353,8 +298,8 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 				recycleBinEntry1, (List<RecycleBinEntry>)page1.getItems());
 
 			Page<RecycleBinEntry> page2 =
-				recycleBinEntryResource.getRecycleBinEntriesPage(
-					null, null,
+				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+					siteGroupId, null, null,
 					Pagination.of(
 						(int)Math.ceil((totalCount + 2.0) / pageSizeLimit),
 						pageSizeLimit),
@@ -364,8 +309,8 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 				recycleBinEntry2, (List<RecycleBinEntry>)page2.getItems());
 
 			Page<RecycleBinEntry> page3 =
-				recycleBinEntryResource.getRecycleBinEntriesPage(
-					null, null,
+				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+					siteGroupId, null, null,
 					Pagination.of(
 						(int)Math.ceil((totalCount + 3.0) / pageSizeLimit),
 						pageSizeLimit),
@@ -376,8 +321,9 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 		}
 		else {
 			Page<RecycleBinEntry> page1 =
-				recycleBinEntryResource.getRecycleBinEntriesPage(
-					null, null, Pagination.of(1, totalCount + 2), null);
+				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+					siteGroupId, null, null, Pagination.of(1, totalCount + 2),
+					null);
 
 			List<RecycleBinEntry> recycleBinEntries1 =
 				(List<RecycleBinEntry>)page1.getItems();
@@ -387,8 +333,9 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 				recycleBinEntries1.size());
 
 			Page<RecycleBinEntry> page2 =
-				recycleBinEntryResource.getRecycleBinEntriesPage(
-					null, null, Pagination.of(2, totalCount + 2), null);
+				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+					siteGroupId, null, null, Pagination.of(2, totalCount + 2),
+					null);
 
 			Assert.assertEquals(totalCount + 3, page2.getTotalCount());
 
@@ -399,8 +346,9 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 				recycleBinEntries2.toString(), 1, recycleBinEntries2.size());
 
 			Page<RecycleBinEntry> page3 =
-				recycleBinEntryResource.getRecycleBinEntriesPage(
-					null, null, Pagination.of(1, (int)totalCount + 3), null);
+				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+					siteGroupId, null, null,
+					Pagination.of(1, (int)totalCount + 3), null);
 
 			assertContains(
 				recycleBinEntry1, (List<RecycleBinEntry>)page3.getItems());
@@ -412,10 +360,10 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 	}
 
 	@Test
-	public void testGetRecycleBinEntriesPageWithSortDateTime()
+	public void testGetRecycleBinEntriesSiteGroupPageWithSortDateTime()
 		throws Exception {
 
-		testGetRecycleBinEntriesPageWithSort(
+		testGetRecycleBinEntriesSiteGroupPageWithSort(
 			EntityField.Type.DATE_TIME,
 			(entityField, recycleBinEntry1, recycleBinEntry2) -> {
 				BeanTestUtil.setProperty(
@@ -425,8 +373,10 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 	}
 
 	@Test
-	public void testGetRecycleBinEntriesPageWithSortDouble() throws Exception {
-		testGetRecycleBinEntriesPageWithSort(
+	public void testGetRecycleBinEntriesSiteGroupPageWithSortDouble()
+		throws Exception {
+
+		testGetRecycleBinEntriesSiteGroupPageWithSort(
 			EntityField.Type.DOUBLE,
 			(entityField, recycleBinEntry1, recycleBinEntry2) -> {
 				BeanTestUtil.setProperty(
@@ -437,8 +387,10 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 	}
 
 	@Test
-	public void testGetRecycleBinEntriesPageWithSortInteger() throws Exception {
-		testGetRecycleBinEntriesPageWithSort(
+	public void testGetRecycleBinEntriesSiteGroupPageWithSortInteger()
+		throws Exception {
+
+		testGetRecycleBinEntriesSiteGroupPageWithSort(
 			EntityField.Type.INTEGER,
 			(entityField, recycleBinEntry1, recycleBinEntry2) -> {
 				BeanTestUtil.setProperty(
@@ -449,8 +401,10 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 	}
 
 	@Test
-	public void testGetRecycleBinEntriesPageWithSortString() throws Exception {
-		testGetRecycleBinEntriesPageWithSort(
+	public void testGetRecycleBinEntriesSiteGroupPageWithSortString()
+		throws Exception {
+
+		testGetRecycleBinEntriesSiteGroupPageWithSort(
 			EntityField.Type.STRING,
 			(entityField, recycleBinEntry1, recycleBinEntry2) -> {
 				Class<?> clazz = recycleBinEntry1.getClass();
@@ -499,7 +453,7 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 			});
 	}
 
-	protected void testGetRecycleBinEntriesPageWithSort(
+	protected void testGetRecycleBinEntriesSiteGroupPageWithSort(
 			EntityField.Type type,
 			UnsafeTriConsumer
 				<EntityField, RecycleBinEntry, RecycleBinEntry, Exception>
@@ -512,6 +466,9 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 			return;
 		}
 
+		Long siteGroupId =
+			testGetRecycleBinEntriesSiteGroupPage_getSiteGroupId();
+
 		RecycleBinEntry recycleBinEntry1 = randomRecycleBinEntry();
 		RecycleBinEntry recycleBinEntry2 = randomRecycleBinEntry();
 
@@ -520,20 +477,23 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 				entityField, recycleBinEntry1, recycleBinEntry2);
 		}
 
-		recycleBinEntry1 = testGetRecycleBinEntriesPage_addRecycleBinEntry(
-			recycleBinEntry1);
+		recycleBinEntry1 =
+			testGetRecycleBinEntriesSiteGroupPage_addRecycleBinEntry(
+				siteGroupId, recycleBinEntry1);
 
-		recycleBinEntry2 = testGetRecycleBinEntriesPage_addRecycleBinEntry(
-			recycleBinEntry2);
+		recycleBinEntry2 =
+			testGetRecycleBinEntriesSiteGroupPage_addRecycleBinEntry(
+				siteGroupId, recycleBinEntry2);
 
 		Page<RecycleBinEntry> page =
-			recycleBinEntryResource.getRecycleBinEntriesPage(
-				null, null, null, null);
+			recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+				siteGroupId, null, null, null, null);
 
 		for (EntityField entityField : entityFields) {
 			Page<RecycleBinEntry> ascPage =
-				recycleBinEntryResource.getRecycleBinEntriesPage(
-					null, null, Pagination.of(1, (int)page.getTotalCount() + 1),
+				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+					siteGroupId, null, null,
+					Pagination.of(1, (int)page.getTotalCount() + 1),
 					entityField.getName() + ":asc");
 
 			assertContains(
@@ -542,8 +502,9 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 				recycleBinEntry2, (List<RecycleBinEntry>)ascPage.getItems());
 
 			Page<RecycleBinEntry> descPage =
-				recycleBinEntryResource.getRecycleBinEntriesPage(
-					null, null, Pagination.of(1, (int)page.getTotalCount() + 1),
+				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+					siteGroupId, null, null,
+					Pagination.of(1, (int)page.getTotalCount() + 1),
 					entityField.getName() + ":desc");
 
 			assertContains(
@@ -553,8 +514,46 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 		}
 	}
 
-	protected RecycleBinEntry testGetRecycleBinEntriesPage_addRecycleBinEntry(
-			RecycleBinEntry recycleBinEntry)
+	protected RecycleBinEntry
+			testGetRecycleBinEntriesSiteGroupPage_addRecycleBinEntry(
+				Long siteGroupId, RecycleBinEntry recycleBinEntry)
+		throws Exception {
+
+		throw new UnsupportedOperationException(
+			"This method needs to be implemented");
+	}
+
+	protected Long testGetRecycleBinEntriesSiteGroupPage_getSiteGroupId()
+		throws Exception {
+
+		throw new UnsupportedOperationException(
+			"This method needs to be implemented");
+	}
+
+	protected Long
+			testGetRecycleBinEntriesSiteGroupPage_getIrrelevantSiteGroupId()
+		throws Exception {
+
+		return null;
+	}
+
+	@Test
+	public void testGetRecycleBinEntryByExternalReferenceCode()
+		throws Exception {
+
+		RecycleBinEntry postRecycleBinEntry =
+			testGetRecycleBinEntryByExternalReferenceCode_addRecycleBinEntry();
+
+		RecycleBinEntry getRecycleBinEntry =
+			recycleBinEntryResource.getRecycleBinEntryByExternalReferenceCode(
+				postRecycleBinEntry.getExternalReferenceCode());
+
+		assertEquals(postRecycleBinEntry, getRecycleBinEntry);
+		assertValid(getRecycleBinEntry);
+	}
+
+	protected RecycleBinEntry
+			testGetRecycleBinEntryByExternalReferenceCode_addRecycleBinEntry()
 		throws Exception {
 
 		throw new UnsupportedOperationException(
@@ -562,33 +561,9 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 	}
 
 	@Test
-	public void testGraphQLGetRecycleBinEntriesPage() throws Exception {
-		Assert.assertTrue(false);
-	}
-
-	@Test
-	public void testGetRecycleBinEntryByExternalReferenceCode()
-		throws Exception {
-
-		Assert.assertTrue(false);
-	}
-
-	@Test
-	public void testGraphQLGetRecycleBinEntryByExternalReferenceCode()
-		throws Exception {
-
+	public void testBatchEngineDeleteImportTask() throws Exception {
 		Assert.assertTrue(true);
 	}
-
-	@Test
-	public void testGraphQLGetRecycleBinEntryByExternalReferenceCodeNotFound()
-		throws Exception {
-
-		Assert.assertTrue(true);
-	}
-
-	@Rule
-	public SearchTestRule searchTestRule = new SearchTestRule();
 
 	protected void assertContains(
 		RecycleBinEntry recycleBinEntry,
@@ -670,6 +645,10 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 		boolean valid = true;
 
 		if (recycleBinEntry.getDateCreated() == null) {
+			valid = false;
+		}
+
+		if (recycleBinEntry.getExternalReferenceCode() == null) {
 			valid = false;
 		}
 
@@ -1186,7 +1165,47 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 		}
 
 		if (entityFieldName.equals("type")) {
-			sb.append(String.valueOf(recycleBinEntry.getType()));
+			Object object = recycleBinEntry.getType();
+
+			String value = String.valueOf(object);
+
+			if (operator.equals("contains")) {
+				sb = new StringBundler();
+
+				sb.append("contains(");
+				sb.append(entityFieldName);
+				sb.append(",'");
+
+				if ((object != null) && (value.length() > 2)) {
+					sb.append(value.substring(1, value.length() - 1));
+				}
+				else {
+					sb.append(value);
+				}
+
+				sb.append("')");
+			}
+			else if (operator.equals("startswith")) {
+				sb = new StringBundler();
+
+				sb.append("startswith(");
+				sb.append(entityFieldName);
+				sb.append(",'");
+
+				if ((object != null) && (value.length() > 1)) {
+					sb.append(value.substring(0, value.length() - 1));
+				}
+				else {
+					sb.append(value);
+				}
+
+				sb.append("')");
+			}
+			else {
+				sb.append("'");
+				sb.append(value);
+				sb.append("'");
+			}
 
 			return sb.toString();
 		}
@@ -1242,7 +1261,7 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 				spaceTitle = StringUtil.toLowerCase(
 					RandomTestUtil.randomString());
 				title = StringUtil.toLowerCase(RandomTestUtil.randomString());
-				type = RandomTestUtil.randomInt();
+				type = StringUtil.toLowerCase(RandomTestUtil.randomString());
 			}
 		};
 	}
