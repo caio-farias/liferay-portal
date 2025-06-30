@@ -8,7 +8,7 @@ author: Manuele Castro
 clientDir: ../trash-rest-client/src/main/java
 compatibilityVersion: 9
 forcePredictableOperationId: true
-generateBatch: false
+generateBatch: true
 generateGraphQL: false
 javaEEPackage: jakarta
 testDir: ../trash-rest-test/src/testIntegration/java

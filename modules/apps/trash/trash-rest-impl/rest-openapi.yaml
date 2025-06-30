@@ -82,6 +82,10 @@ paths:
                         format: int64
                         type: integer
                 -   in: query
+                    name: assetClassName
+                    schema:
+                        type: string
+                -   in: query
                     name: page
                     schema:
                         type: integer
@@ -89,6 +93,18 @@ paths:
                     name: pageSize
                     schema:
                         type: integer
+                -   in: query
+                    name: search
+                    schema:
+                        type: string
+                -   in: query
+                    name: sort
+                    schema:
+                        type: string
+                -   in: header
+                    name: Accept-Language
+                    schema:
+                        type: string
             responses:
                 200:
                     content:
