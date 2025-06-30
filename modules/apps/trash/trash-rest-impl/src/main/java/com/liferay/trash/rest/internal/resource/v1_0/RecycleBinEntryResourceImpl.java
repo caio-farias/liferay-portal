@@ -5,17 +5,25 @@
 
 package com.liferay.trash.rest.internal.resource.v1_0;
 
-import com.liferay.asset.kernel.model.AssetEntry;
-import com.liferay.asset.kernel.service.AssetEntryService;
 import com.liferay.depot.model.DepotEntry;
 import com.liferay.headless.delivery.dto.v1_0.util.CreatorUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.search.BooleanClauseOccur;
 import com.liferay.portal.kernel.search.Field;
+import com.liferay.portal.kernel.search.QueryConfig;
+import com.liferay.portal.kernel.search.Sort;
+import com.liferay.portal.kernel.search.filter.BooleanFilter;
+import com.liferay.portal.kernel.search.generic.MultiMatchQuery;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.service.GroupService;
+import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
 import com.liferay.portal.kernel.service.UserService;
+import com.liferay.portal.kernel.trash.TrashHandler;
+import com.liferay.portal.kernel.trash.TrashHandlerRegistryUtil;
+import com.liferay.portal.kernel.trash.TrashRenderer;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LinkedHashMapBuilder;
@@ -32,6 +40,7 @@ import com.liferay.trash.service.TrashEntryLocalService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -39,6 +48,7 @@ import org.osgi.service.component.annotations.ServiceScope;
 
 /**
  * @author Manuele Castro
+ * @author Caio Farias
  */
 @Component(
 	properties = "OSGI-INF/liferay/rest/v1_0/recycle-bin-entry.properties",
@@ -49,7 +59,8 @@ public class RecycleBinEntryResourceImpl
 
 	@Override
 	public Page<RecycleBinEntry> getRecycleBinEntriesSiteGroupPage(
-			Long siteGroupId, Pagination pagination)
+			Long siteGroupId, String assetClassName, String search,
+			Pagination pagination, Sort[] sorts)
 		throws Exception {
 
 		Group group = _groupService.getGroup(siteGroupId);
@@ -77,22 +88,69 @@ public class RecycleBinEntryResourceImpl
 			groupIds.add(siteGroupId);
 		}
 
+		if (sorts != null) {
+			for (Sort sort : sorts) {
+				if (Objects.equals(sort.getFieldName(), "removedDate")) {
+					sort.setType(Sort.LONG_TYPE);
+
+					continue;
+				}
+
+				sort.setType(Sort.SCORE_TYPE);
+			}
+		}
+
 		return SearchUtil.search(
 			null,
 			booleanQuery -> {
+				BooleanFilter preBooleanFilter =
+					booleanQuery.getPreBooleanFilter();
+
+				preBooleanFilter.addRequiredTerm(
+					"isTrashEntryRoot", Boolean.TRUE);
+
+				if (assetClassName != null) {
+					MultiMatchQuery multiMatchQuery = new MultiMatchQuery(
+						assetClassName);
+
+					multiMatchQuery.addFields(
+						Field.ENTRY_CLASS_NAME, Field.ROOT_ENTRY_CLASS_NAME);
+
+					multiMatchQuery.setType(MultiMatchQuery.Type.CROSS_FIELDS);
+
+					booleanQuery.add(
+						multiMatchQuery, BooleanClauseOccur.SHOULD);
+				}
 			},
-			null, TrashEntry.class.getName(), null, pagination,
+			null, TrashEntry.class.getName(), search, pagination,
 			queryConfig -> queryConfig.setSelectedFieldNames(
-				Field.ENTRY_CLASS_PK),
+				Field.ENTRY_CLASS_PK, Field.ENTRY_CLASS_NAME,
+				Field.ROOT_ENTRY_CLASS_PK, Field.ROOT_ENTRY_CLASS_NAME),
 			searchContext -> {
+				QueryConfig queryConfig = searchContext.getQueryConfig();
+
+				queryConfig.setHighlightEnabled(false);
+				queryConfig.setScoreEnabled(false);
+
 				searchContext.setCompanyId(contextCompany.getCompanyId());
 				searchContext.setGroupIds(ArrayUtil.toLongArray(groupIds));
 			},
-			null,
-			document -> _toRecycleBinEntry(
-				_trashEntryLocalService.fetchEntry(
+			sorts,
+			document -> {
+				TrashEntry trashEntry = _trashEntryLocalService.fetchEntry(
 					GetterUtil.getString(document.get(Field.ENTRY_CLASS_NAME)),
-					GetterUtil.getLong(document.get(Field.ENTRY_CLASS_PK)))));
+					GetterUtil.getLong(document.get(Field.ENTRY_CLASS_PK)));
+
+				if (trashEntry == null) {
+					trashEntry = _trashEntryLocalService.fetchEntry(
+						GetterUtil.getString(
+							document.get(Field.ROOT_ENTRY_CLASS_NAME)),
+						GetterUtil.getLong(
+							document.get(Field.ROOT_ENTRY_CLASS_PK)));
+				}
+
+				return _toRecycleBinEntry(trashEntry);
+			});
 	}
 
 	@Override
@@ -105,11 +163,19 @@ public class RecycleBinEntryResourceImpl
 				externalReferenceCode, contextCompany.getCompanyId()));
 	}
 
+	private ServiceContext _getServiceContext(long groupId) {
+		ServiceContext serviceContext = new ServiceContext();
+
+		serviceContext.setCompanyId(contextCompany.getCompanyId());
+		serviceContext.setRequest(contextHttpServletRequest);
+		serviceContext.setScopeGroupId(groupId);
+		serviceContext.setUserId(contextUser.getUserId());
+
+		return serviceContext;
+	}
+
 	private RecycleBinEntry _toRecycleBinEntry(TrashEntry trashEntry)
 		throws PortalException {
-
-		AssetEntry assetEntry = _assetEntryService.getEntry(
-			trashEntry.getClassName(), trashEntry.getClassPK());
 
 		Group group = _groupService.getGroup(trashEntry.getGroupId());
 
@@ -124,14 +190,31 @@ public class RecycleBinEntryResourceImpl
 				setDateCreated(trashEntry::getCreateDate);
 				setExternalReferenceCode(trashEntry::getExternalReferenceCode);
 				setSpaceTitle(group::getGroupKey);
-				setTitle(assetEntry::getTitle);
+				setTitle(
+					() -> {
+						ServiceContextThreadLocal.pushServiceContext(
+							_getServiceContext(trashEntry.getGroupId()));
+
+						try {
+							TrashHandler trashHandler =
+								TrashHandlerRegistryUtil.getTrashHandler(
+									trashEntry.getClassName());
+
+							TrashRenderer trashRenderer =
+								trashHandler.getTrashRenderer(
+									trashEntry.getClassPK());
+
+							return trashRenderer.getTitle(
+								contextAcceptLanguage.getPreferredLocale());
+						}
+						finally {
+							ServiceContextThreadLocal.popServiceContext();
+						}
+					});
 				setType(trashEntry::getClassName);
 			}
 		};
 	}
-
-	@Reference
-	private AssetEntryService _assetEntryService;
 
 	@Reference
 	private GroupService _groupService;

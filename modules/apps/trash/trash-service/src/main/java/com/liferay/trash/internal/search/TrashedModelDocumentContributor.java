@@ -55,12 +55,16 @@ public class TrashedModelDocumentContributor
 			trashEntry = _trashHelper.getTrashEntry(trashedModel);
 		}
 		catch (PortalException portalException) {
+			document.addKeyword("isTrashEntryRoot", Boolean.FALSE);
+
 			if (_log.isDebugEnabled()) {
 				_log.debug(
 					"Unable to get trash entry for " + trashedModel,
 					portalException);
 			}
 		}
+
+		document.addKeyword("isTrashEntryRoot", trashEntry != null);
 
 		if (trashEntry == null) {
 			document.addDate(Field.REMOVED_DATE, new Date());
@@ -117,6 +121,7 @@ public class TrashedModelDocumentContributor
 			}
 		}
 		catch (PortalException portalException) {
+			document.addKeyword("isTrashEntryRoot", Boolean.FALSE);
 			if (_log.isDebugEnabled()) {
 				_log.debug(
 					"Unable to get trash renderer for " +
