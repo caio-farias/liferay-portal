@@ -32,7 +32,7 @@ components:
                     description:
                         The recycle bin entry's type.
                     readOnly: true
-                    type: integer
+                    type: string
             required:
                 -   creator
                 -   dateCreated
@@ -51,12 +51,38 @@ info:
     version: v1.0
 openapi: 3.0.1
 paths:
-    "/recycle-bin-entries":
+    "/recycle-bin-entries/by-external-reference-code/{externalReferenceCode}":
         get:
-            operationId: getRecycleBinEntriesPage
+            operationId: getRecycleBinEntryByExternalReferenceCode
             parameters:
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RecycleBinEntry"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/RecycleBinEntry"
+            summary: Gets a recycle bin entry by external reference code.
+            tags: ["RecycleBinEntry"]
+    "/recycle-bin-entries/{siteGroupId}":
+        get:
+            operationId: getRecycleBinEntriesSiteGroupPage
+            parameters:
+                -   in: path
+                    name: siteGroupId
+                    required: true
+                    schema:
+                        format: int64
+                        type: integer
                 -   in: query
-                    name: filter
+                    name: assetClassName
                     schema:
                         type: string
                 -   in: query
@@ -93,24 +119,4 @@ paths:
                                     $ref: "#/components/schemas/RecycleBinEntry"
                                 type: array
             summary: Gets a list of recycle bin entries.
-            tags: ["RecycleBinEntry"]
-    "/recycle-bin-entries/by-external-reference-code/{externalReferenceCode}":
-        get:
-            operationId: getRecycleBinEntryByExternalReferenceCode
-            parameters:
-                -   in: path
-                    name: externalReferenceCode
-                    required: true
-                    schema:
-                        type: string
-            responses:
-                200:
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/RecycleBinEntry"
-                        application/xml:
-                            schema:
-                                $ref: "#/components/schemas/RecycleBinEntry"
-            summary: Gets a recycle bin entry by external reference code.
             tags: ["RecycleBinEntry"]
