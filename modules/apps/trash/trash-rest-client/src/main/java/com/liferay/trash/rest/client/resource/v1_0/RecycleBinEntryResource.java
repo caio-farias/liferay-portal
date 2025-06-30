@@ -35,12 +35,14 @@ public interface RecycleBinEntryResource {
 	}
 
 	public Page<RecycleBinEntry> getRecycleBinEntriesSiteGroupPage(
-			Long siteGroupId, Pagination pagination)
+			Long siteGroupId, String assetClassName, String search,
+			Pagination pagination, String sortString)
 		throws Exception;
 
 	public HttpInvoker.HttpResponse
 			getRecycleBinEntriesSiteGroupPageHttpResponse(
-				Long siteGroupId, Pagination pagination)
+				Long siteGroupId, String assetClassName, String search,
+				Pagination pagination, String sortString)
 		throws Exception;
 
 	public RecycleBinEntry getRecycleBinEntryByExternalReferenceCode(
@@ -162,12 +164,14 @@ public interface RecycleBinEntryResource {
 		implements RecycleBinEntryResource {
 
 		public Page<RecycleBinEntry> getRecycleBinEntriesSiteGroupPage(
-				Long siteGroupId, Pagination pagination)
+				Long siteGroupId, String assetClassName, String search,
+				Pagination pagination, String sortString)
 			throws Exception {
 
 			HttpInvoker.HttpResponse httpResponse =
 				getRecycleBinEntriesSiteGroupPageHttpResponse(
-					siteGroupId, pagination);
+					siteGroupId, assetClassName, search, pagination,
+					sortString);
 
 			String content = httpResponse.getContent();
 
@@ -230,7 +234,8 @@ public interface RecycleBinEntryResource {
 
 		public HttpInvoker.HttpResponse
 				getRecycleBinEntriesSiteGroupPageHttpResponse(
-					Long siteGroupId, Pagination pagination)
+					Long siteGroupId, String assetClassName, String search,
+					Pagination pagination, String sortString)
 			throws Exception {
 
 			HttpInvoker httpInvoker = HttpInvoker.newHttpInvoker();
@@ -254,11 +259,24 @@ public interface RecycleBinEntryResource {
 
 			httpInvoker.httpMethod(HttpInvoker.HttpMethod.GET);
 
+			if (assetClassName != null) {
+				httpInvoker.parameter(
+					"assetClassName", String.valueOf(assetClassName));
+			}
+
+			if (search != null) {
+				httpInvoker.parameter("search", String.valueOf(search));
+			}
+
 			if (pagination != null) {
 				httpInvoker.parameter(
 					"page", String.valueOf(pagination.getPage()));
 				httpInvoker.parameter(
 					"pageSize", String.valueOf(pagination.getPageSize()));
+			}
+
+			if (sortString != null) {
+				httpInvoker.parameter("sort", sortString);
 			}
 
 			httpInvoker.path(

@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
 
+import com.liferay.petra.function.UnsafeTriConsumer;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.petra.string.StringBundler;
@@ -194,7 +195,8 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 
 		Page<RecycleBinEntry> page =
 			recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
-				siteGroupId, Pagination.of(1, 10));
+				siteGroupId, RandomTestUtil.randomString(), null,
+				Pagination.of(1, 10), null);
 
 		long totalCount = page.getTotalCount();
 
@@ -204,7 +206,8 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 					irrelevantSiteGroupId, randomIrrelevantRecycleBinEntry());
 
 			page = recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
-				irrelevantSiteGroupId, Pagination.of(1, (int)totalCount + 1));
+				irrelevantSiteGroupId, null, null,
+				Pagination.of(1, (int)totalCount + 1), null);
 
 			Assert.assertEquals(totalCount + 1, page.getTotalCount());
 
@@ -226,7 +229,7 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 				siteGroupId, randomRecycleBinEntry());
 
 		page = recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
-			siteGroupId, Pagination.of(1, 10));
+			siteGroupId, null, null, Pagination.of(1, 10), null);
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -259,7 +262,7 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 
 		Page<RecycleBinEntry> recycleBinEntriesPage =
 			recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
-				siteGroupId, null);
+				siteGroupId, null, null, null, null);
 
 		int totalCount = GetterUtil.getInteger(
 			recycleBinEntriesPage.getTotalCount());
@@ -283,10 +286,11 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 		if (totalCount >= (pageSizeLimit - 2)) {
 			Page<RecycleBinEntry> page1 =
 				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
-					siteGroupId,
+					siteGroupId, null, null,
 					Pagination.of(
 						(int)Math.ceil((totalCount + 1.0) / pageSizeLimit),
-						pageSizeLimit));
+						pageSizeLimit),
+					null);
 
 			Assert.assertEquals(totalCount + 3, page1.getTotalCount());
 
@@ -295,20 +299,22 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 
 			Page<RecycleBinEntry> page2 =
 				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
-					siteGroupId,
+					siteGroupId, null, null,
 					Pagination.of(
 						(int)Math.ceil((totalCount + 2.0) / pageSizeLimit),
-						pageSizeLimit));
+						pageSizeLimit),
+					null);
 
 			assertContains(
 				recycleBinEntry2, (List<RecycleBinEntry>)page2.getItems());
 
 			Page<RecycleBinEntry> page3 =
 				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
-					siteGroupId,
+					siteGroupId, null, null,
 					Pagination.of(
 						(int)Math.ceil((totalCount + 3.0) / pageSizeLimit),
-						pageSizeLimit));
+						pageSizeLimit),
+					null);
 
 			assertContains(
 				recycleBinEntry3, (List<RecycleBinEntry>)page3.getItems());
@@ -316,7 +322,8 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 		else {
 			Page<RecycleBinEntry> page1 =
 				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
-					siteGroupId, Pagination.of(1, totalCount + 2));
+					siteGroupId, null, null, Pagination.of(1, totalCount + 2),
+					null);
 
 			List<RecycleBinEntry> recycleBinEntries1 =
 				(List<RecycleBinEntry>)page1.getItems();
@@ -327,7 +334,8 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 
 			Page<RecycleBinEntry> page2 =
 				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
-					siteGroupId, Pagination.of(2, totalCount + 2));
+					siteGroupId, null, null, Pagination.of(2, totalCount + 2),
+					null);
 
 			Assert.assertEquals(totalCount + 3, page2.getTotalCount());
 
@@ -339,7 +347,8 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 
 			Page<RecycleBinEntry> page3 =
 				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
-					siteGroupId, Pagination.of(1, (int)totalCount + 3));
+					siteGroupId, null, null,
+					Pagination.of(1, (int)totalCount + 3), null);
 
 			assertContains(
 				recycleBinEntry1, (List<RecycleBinEntry>)page3.getItems());
@@ -347,6 +356,161 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 				recycleBinEntry2, (List<RecycleBinEntry>)page3.getItems());
 			assertContains(
 				recycleBinEntry3, (List<RecycleBinEntry>)page3.getItems());
+		}
+	}
+
+	@Test
+	public void testGetRecycleBinEntriesSiteGroupPageWithSortDateTime()
+		throws Exception {
+
+		testGetRecycleBinEntriesSiteGroupPageWithSort(
+			EntityField.Type.DATE_TIME,
+			(entityField, recycleBinEntry1, recycleBinEntry2) -> {
+				BeanTestUtil.setProperty(
+					recycleBinEntry1, entityField.getName(),
+					new Date(System.currentTimeMillis() - (2 * Time.MINUTE)));
+			});
+	}
+
+	@Test
+	public void testGetRecycleBinEntriesSiteGroupPageWithSortDouble()
+		throws Exception {
+
+		testGetRecycleBinEntriesSiteGroupPageWithSort(
+			EntityField.Type.DOUBLE,
+			(entityField, recycleBinEntry1, recycleBinEntry2) -> {
+				BeanTestUtil.setProperty(
+					recycleBinEntry1, entityField.getName(), 0.1);
+				BeanTestUtil.setProperty(
+					recycleBinEntry2, entityField.getName(), 0.5);
+			});
+	}
+
+	@Test
+	public void testGetRecycleBinEntriesSiteGroupPageWithSortInteger()
+		throws Exception {
+
+		testGetRecycleBinEntriesSiteGroupPageWithSort(
+			EntityField.Type.INTEGER,
+			(entityField, recycleBinEntry1, recycleBinEntry2) -> {
+				BeanTestUtil.setProperty(
+					recycleBinEntry1, entityField.getName(), 0);
+				BeanTestUtil.setProperty(
+					recycleBinEntry2, entityField.getName(), 1);
+			});
+	}
+
+	@Test
+	public void testGetRecycleBinEntriesSiteGroupPageWithSortString()
+		throws Exception {
+
+		testGetRecycleBinEntriesSiteGroupPageWithSort(
+			EntityField.Type.STRING,
+			(entityField, recycleBinEntry1, recycleBinEntry2) -> {
+				Class<?> clazz = recycleBinEntry1.getClass();
+
+				String entityFieldName = entityField.getName();
+
+				Method method = clazz.getMethod(
+					"get" + StringUtil.upperCaseFirstLetter(entityFieldName));
+
+				Class<?> returnType = method.getReturnType();
+
+				if (returnType.isAssignableFrom(Map.class)) {
+					BeanTestUtil.setProperty(
+						recycleBinEntry1, entityFieldName,
+						Collections.singletonMap("Aaa", "Aaa"));
+					BeanTestUtil.setProperty(
+						recycleBinEntry2, entityFieldName,
+						Collections.singletonMap("Bbb", "Bbb"));
+				}
+				else if (entityFieldName.contains("email")) {
+					BeanTestUtil.setProperty(
+						recycleBinEntry1, entityFieldName,
+						"aaa" +
+							StringUtil.toLowerCase(
+								RandomTestUtil.randomString()) +
+									"@liferay.com");
+					BeanTestUtil.setProperty(
+						recycleBinEntry2, entityFieldName,
+						"bbb" +
+							StringUtil.toLowerCase(
+								RandomTestUtil.randomString()) +
+									"@liferay.com");
+				}
+				else {
+					BeanTestUtil.setProperty(
+						recycleBinEntry1, entityFieldName,
+						"aaa" +
+							StringUtil.toLowerCase(
+								RandomTestUtil.randomString()));
+					BeanTestUtil.setProperty(
+						recycleBinEntry2, entityFieldName,
+						"bbb" +
+							StringUtil.toLowerCase(
+								RandomTestUtil.randomString()));
+				}
+			});
+	}
+
+	protected void testGetRecycleBinEntriesSiteGroupPageWithSort(
+			EntityField.Type type,
+			UnsafeTriConsumer
+				<EntityField, RecycleBinEntry, RecycleBinEntry, Exception>
+					unsafeTriConsumer)
+		throws Exception {
+
+		List<EntityField> entityFields = getEntityFields(type);
+
+		if (entityFields.isEmpty()) {
+			return;
+		}
+
+		Long siteGroupId =
+			testGetRecycleBinEntriesSiteGroupPage_getSiteGroupId();
+
+		RecycleBinEntry recycleBinEntry1 = randomRecycleBinEntry();
+		RecycleBinEntry recycleBinEntry2 = randomRecycleBinEntry();
+
+		for (EntityField entityField : entityFields) {
+			unsafeTriConsumer.accept(
+				entityField, recycleBinEntry1, recycleBinEntry2);
+		}
+
+		recycleBinEntry1 =
+			testGetRecycleBinEntriesSiteGroupPage_addRecycleBinEntry(
+				siteGroupId, recycleBinEntry1);
+
+		recycleBinEntry2 =
+			testGetRecycleBinEntriesSiteGroupPage_addRecycleBinEntry(
+				siteGroupId, recycleBinEntry2);
+
+		Page<RecycleBinEntry> page =
+			recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+				siteGroupId, null, null, null, null);
+
+		for (EntityField entityField : entityFields) {
+			Page<RecycleBinEntry> ascPage =
+				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+					siteGroupId, null, null,
+					Pagination.of(1, (int)page.getTotalCount() + 1),
+					entityField.getName() + ":asc");
+
+			assertContains(
+				recycleBinEntry1, (List<RecycleBinEntry>)ascPage.getItems());
+			assertContains(
+				recycleBinEntry2, (List<RecycleBinEntry>)ascPage.getItems());
+
+			Page<RecycleBinEntry> descPage =
+				recycleBinEntryResource.getRecycleBinEntriesSiteGroupPage(
+					siteGroupId, null, null,
+					Pagination.of(1, (int)page.getTotalCount() + 1),
+					entityField.getName() + ":desc");
+
+			assertContains(
+				recycleBinEntry2, (List<RecycleBinEntry>)descPage.getItems());
+			assertContains(
+				recycleBinEntry1, (List<RecycleBinEntry>)descPage.getItems());
 		}
 	}
 
@@ -397,123 +561,8 @@ public abstract class BaseRecycleBinEntryResourceTestCase {
 	}
 
 	@Test
-	public void testGraphQLGetRecycleBinEntryByExternalReferenceCode()
-		throws Exception {
-
-		RecycleBinEntry recycleBinEntry =
-			testGraphQLGetRecycleBinEntryByExternalReferenceCode_addRecycleBinEntry();
-
-		// No namespace
-
-		Assert.assertTrue(
-			equals(
-				recycleBinEntry,
-				RecycleBinEntrySerDes.toDTO(
-					JSONUtil.getValueAsString(
-						invokeGraphQLQuery(
-							new GraphQLField(
-								"recycleBinEntryByExternalReferenceCode",
-								new HashMap<String, Object>() {
-									{
-										put(
-											"externalReferenceCode",
-											"\"" +
-												recycleBinEntry.
-													getExternalReferenceCode() +
-														"\"");
-									}
-								},
-								getGraphQLFields())),
-						"JSONObject/data",
-						"Object/recycleBinEntryByExternalReferenceCode"))));
-
-		// Using the namespace recycleBin_v1_0
-
-		Assert.assertTrue(
-			equals(
-				recycleBinEntry,
-				RecycleBinEntrySerDes.toDTO(
-					JSONUtil.getValueAsString(
-						invokeGraphQLQuery(
-							new GraphQLField(
-								"recycleBin_v1_0",
-								new GraphQLField(
-									"recycleBinEntryByExternalReferenceCode",
-									new HashMap<String, Object>() {
-										{
-											put(
-												"externalReferenceCode",
-												"\"" +
-													recycleBinEntry.
-														getExternalReferenceCode() +
-															"\"");
-										}
-									},
-									getGraphQLFields()))),
-						"JSONObject/data", "JSONObject/recycleBin_v1_0",
-						"Object/recycleBinEntryByExternalReferenceCode"))));
-	}
-
-	@Test
-	public void testGraphQLGetRecycleBinEntryByExternalReferenceCodeNotFound()
-		throws Exception {
-
-		String irrelevantExternalReferenceCode =
-			"\"" + RandomTestUtil.randomString() + "\"";
-
-		// No namespace
-
-		Assert.assertEquals(
-			"Not Found",
-			JSONUtil.getValueAsString(
-				invokeGraphQLQuery(
-					new GraphQLField(
-						"recycleBinEntryByExternalReferenceCode",
-						new HashMap<String, Object>() {
-							{
-								put(
-									"externalReferenceCode",
-									irrelevantExternalReferenceCode);
-							}
-						},
-						getGraphQLFields())),
-				"JSONArray/errors", "Object/0", "JSONObject/extensions",
-				"Object/code"));
-
-		// Using the namespace recycleBin_v1_0
-
-		Assert.assertEquals(
-			"Not Found",
-			JSONUtil.getValueAsString(
-				invokeGraphQLQuery(
-					new GraphQLField(
-						"recycleBin_v1_0",
-						new GraphQLField(
-							"recycleBinEntryByExternalReferenceCode",
-							new HashMap<String, Object>() {
-								{
-									put(
-										"externalReferenceCode",
-										irrelevantExternalReferenceCode);
-								}
-							},
-							getGraphQLFields()))),
-				"JSONArray/errors", "Object/0", "JSONObject/extensions",
-				"Object/code"));
-	}
-
-	protected RecycleBinEntry
-			testGraphQLGetRecycleBinEntryByExternalReferenceCode_addRecycleBinEntry()
-		throws Exception {
-
-		return testGraphQLRecycleBinEntry_addRecycleBinEntry();
-	}
-
-	protected RecycleBinEntry testGraphQLRecycleBinEntry_addRecycleBinEntry()
-		throws Exception {
-
-		throw new UnsupportedOperationException(
-			"This method needs to be implemented");
+	public void testBatchEngineDeleteImportTask() throws Exception {
+		Assert.assertTrue(true);
 	}
 
 	protected void assertContains(

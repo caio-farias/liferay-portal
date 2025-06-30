@@ -13,6 +13,8 @@ import com.liferay.portal.odata.filter.ExpressionConvert;
 import com.liferay.portal.odata.filter.FilterParserProvider;
 import com.liferay.portal.odata.sort.SortParserProvider;
 import com.liferay.portal.vulcan.accept.language.AcceptLanguage;
+import com.liferay.portal.vulcan.batch.engine.resource.VulcanBatchEngineExportTaskResource;
+import com.liferay.portal.vulcan.batch.engine.resource.VulcanBatchEngineImportTaskResource;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
 import com.liferay.trash.rest.dto.v1_0.RecycleBinEntry;
@@ -44,7 +46,9 @@ import org.osgi.annotation.versioning.ProviderType;
 public interface RecycleBinEntryResource {
 
 	public Page<RecycleBinEntry> getRecycleBinEntriesSiteGroupPage(
-			Long siteGroupId, Pagination pagination)
+			Long siteGroupId, String assetClassName, String search,
+			Pagination pagination,
+			com.liferay.portal.kernel.search.Sort[] sorts)
 		throws Exception;
 
 	public RecycleBinEntry getRecycleBinEntryByExternalReferenceCode(
@@ -90,6 +94,14 @@ public interface RecycleBinEntryResource {
 	public void setRoleLocalService(RoleLocalService roleLocalService);
 
 	public void setSortParserProvider(SortParserProvider sortParserProvider);
+
+	public void setVulcanBatchEngineExportTaskResource(
+		VulcanBatchEngineExportTaskResource
+			vulcanBatchEngineExportTaskResource);
+
+	public void setVulcanBatchEngineImportTaskResource(
+		VulcanBatchEngineImportTaskResource
+			vulcanBatchEngineImportTaskResource);
 
 	public default com.liferay.portal.kernel.search.filter.Filter toFilter(
 		String filterString) {
