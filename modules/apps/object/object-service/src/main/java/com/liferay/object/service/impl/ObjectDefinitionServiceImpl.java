@@ -272,8 +272,8 @@ public class ObjectDefinitionServiceImpl
 
 	@Override
 	public ObjectDefinition updateCustomObjectDefinition(
-			String externalReferenceCode, long objectDefinitionId,
-			long accountEntryRestrictedObjectFieldId,
+			boolean accumulateError, String externalReferenceCode,
+			long objectDefinitionId, long accountEntryRestrictedObjectFieldId,
 			long descriptionObjectFieldId, long objectFolderId,
 			long titleObjectFieldId, boolean accountEntryRestricted,
 			boolean active, String className, boolean enableCategorization,
@@ -287,6 +287,7 @@ public class ObjectDefinitionServiceImpl
 			String panelCategoryKey, boolean portlet,
 			Map<Locale, String> pluralLabelMap, String scope, int status,
 			List<ObjectDefinitionSetting> objectDefinitionSettings,
+			List<ObjectField> objectFields,
 			List<WorkflowDefinitionLink> workflowDefinitionLinks)
 		throws PortalException {
 
@@ -298,7 +299,7 @@ public class ObjectDefinitionServiceImpl
 			ObjectActionKeys.ADD_OBJECT_DEFINITION);
 
 		return objectDefinitionLocalService.updateCustomObjectDefinition(
-			externalReferenceCode, objectDefinitionId,
+			accumulateError, externalReferenceCode, objectDefinitionId,
 			accountEntryRestrictedObjectFieldId, descriptionObjectFieldId,
 			objectFolderId, titleObjectFieldId, accountEntryRestricted, active,
 			className, enableCategorization, enableComments,
@@ -308,7 +309,7 @@ public class ObjectDefinitionServiceImpl
 			enableObjectEntrySubscription, enableObjectEntryVersioning,
 			friendlyURLSeparator, labelMap, name, panelAppOrder,
 			panelCategoryKey, portlet, pluralLabelMap, scope, status,
-			objectDefinitionSettings, workflowDefinitionLinks);
+			objectDefinitionSettings, objectFields, workflowDefinitionLinks);
 	}
 
 	@Override
@@ -325,9 +326,11 @@ public class ObjectDefinitionServiceImpl
 
 	@Override
 	public ObjectDefinition updateSystemObjectDefinition(
-			String externalReferenceCode, long objectDefinitionId,
-			long objectFolderId, long titleObjectFieldId,
+			boolean accumulateError, String externalReferenceCode,
+			long objectDefinitionId, long objectFolderId,
+			long titleObjectFieldId,
 			List<ObjectDefinitionSetting> objectDefinitionSettings,
+			List<ObjectField> objectFields,
 			List<WorkflowDefinitionLink> workflowDefinitionLinks)
 		throws PortalException {
 
@@ -339,9 +342,9 @@ public class ObjectDefinitionServiceImpl
 			ObjectActionKeys.ADD_OBJECT_DEFINITION);
 
 		return objectDefinitionLocalService.updateSystemObjectDefinition(
-			externalReferenceCode, objectDefinitionId, objectFolderId,
-			titleObjectFieldId, objectDefinitionSettings,
-			workflowDefinitionLinks);
+			accumulateError, externalReferenceCode, objectDefinitionId,
+			objectFolderId, titleObjectFieldId, objectDefinitionSettings,
+			objectFields, workflowDefinitionLinks);
 	}
 
 	@Override
