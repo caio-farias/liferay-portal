@@ -589,8 +589,8 @@ public class ObjectDefinitionLocalServiceUtil {
 	}
 
 	public static ObjectDefinition updateCustomObjectDefinition(
-			String externalReferenceCode, long objectDefinitionId,
-			long accountEntryRestrictedObjectFieldId,
+			boolean accumulateError, String externalReferenceCode,
+			long objectDefinitionId, long accountEntryRestrictedObjectFieldId,
 			long descriptionObjectFieldId, long objectFolderId,
 			long titleObjectFieldId, boolean accountEntryRestricted,
 			boolean active, String className, boolean enableCategorization,
@@ -606,12 +606,13 @@ public class ObjectDefinitionLocalServiceUtil {
 			int status,
 			List<com.liferay.object.model.ObjectDefinitionSetting>
 				objectDefinitionSettings,
+			List<com.liferay.object.model.ObjectField> objectFields,
 			List<com.liferay.portal.kernel.model.WorkflowDefinitionLink>
 				workflowDefinitionLinks)
 		throws PortalException {
 
 		return getService().updateCustomObjectDefinition(
-			externalReferenceCode, objectDefinitionId,
+			accumulateError, externalReferenceCode, objectDefinitionId,
 			accountEntryRestrictedObjectFieldId, descriptionObjectFieldId,
 			objectFolderId, titleObjectFieldId, accountEntryRestricted, active,
 			className, enableCategorization, enableComments,
@@ -621,7 +622,7 @@ public class ObjectDefinitionLocalServiceUtil {
 			enableObjectEntrySubscription, enableObjectEntryVersioning,
 			friendlyURLSeparator, labelMap, name, panelAppOrder,
 			panelCategoryKey, portlet, pluralLabelMap, scope, status,
-			objectDefinitionSettings, workflowDefinitionLinks);
+			objectDefinitionSettings, objectFields, workflowDefinitionLinks);
 	}
 
 	public static ObjectDefinition updateExternalReferenceCode(
@@ -657,18 +658,20 @@ public class ObjectDefinitionLocalServiceUtil {
 	}
 
 	public static ObjectDefinition updateSystemObjectDefinition(
-			String externalReferenceCode, long objectDefinitionId,
-			long objectFolderId, long titleObjectFieldId,
+			boolean accumulateError, String externalReferenceCode,
+			long objectDefinitionId, long objectFolderId,
+			long titleObjectFieldId,
 			List<com.liferay.object.model.ObjectDefinitionSetting>
 				objectDefinitionSettings,
+			List<com.liferay.object.model.ObjectField> objectFields,
 			List<com.liferay.portal.kernel.model.WorkflowDefinitionLink>
 				workflowDefinitionLinks)
 		throws PortalException {
 
 		return getService().updateSystemObjectDefinition(
-			externalReferenceCode, objectDefinitionId, objectFolderId,
-			titleObjectFieldId, objectDefinitionSettings,
-			workflowDefinitionLinks);
+			accumulateError, externalReferenceCode, objectDefinitionId,
+			objectFolderId, titleObjectFieldId, objectDefinitionSettings,
+			objectFields, workflowDefinitionLinks);
 	}
 
 	public static ObjectDefinition updateTitleObjectFieldId(
