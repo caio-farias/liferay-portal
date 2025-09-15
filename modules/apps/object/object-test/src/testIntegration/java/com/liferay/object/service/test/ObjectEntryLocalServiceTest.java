@@ -3968,7 +3968,7 @@ public class ObjectEntryLocalServiceTest {
 			).build());
 
 		_objectDefinitionLocalService.updateCustomObjectDefinition(
-			_objectDefinition.getExternalReferenceCode(),
+			false, _objectDefinition.getExternalReferenceCode(),
 			_objectDefinition.getObjectDefinitionId(),
 			_objectDefinition.getAccountEntryRestrictedObjectFieldId(),
 			_objectDefinition.getDescriptionObjectFieldId(), 0,
@@ -3993,7 +3993,7 @@ public class ObjectEntryLocalServiceTest {
 			_objectDefinition.isPortlet(),
 			_objectDefinition.getPluralLabelMap(), _objectDefinition.getScope(),
 			_objectDefinition.getStatus(), Collections.emptyList(),
-			Collections.emptyList());
+			Collections.emptyList(), Collections.emptyList());
 
 		_objectEntryLocalService.deleteObjectEntry(objectEntry4);
 
