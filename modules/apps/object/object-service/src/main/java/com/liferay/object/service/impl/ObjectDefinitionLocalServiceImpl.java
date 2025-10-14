@@ -1597,6 +1597,39 @@ public class ObjectDefinitionLocalServiceImpl
 		objectDefinition.setVersion(version);
 		objectDefinition.setStatus(status);
 
+		if (ObjectDefinitionValidationThreadLocal.isAccumulateError()) {
+			String objectDefinitionExternalReferenceCode =
+				ObjectDefinitionValidationThreadLocal.
+					getObjectDefinitionExternalReferenceCode();
+
+			ObjectDefinition existentObjectDefinition =
+				objectDefinitionPersistence.fetchByERC_C(
+					objectDefinitionExternalReferenceCode, user.getCompanyId());
+
+			_validateExternalReferenceCode(
+				objectDefinitionExternalReferenceCode, system);
+
+			if (existentObjectDefinition != null) {
+				ObjectDefinitionValidationThreadLocal.handleException(
+					ObjectDefinition.class.getName(),
+					new DuplicateObjectDefinitionExternalReferenceCodeException(
+						StringBundler.concat(
+							"Duplicate object definition with external ",
+							"reference code ",
+							objectDefinitionExternalReferenceCode,
+							" and company ", objectDefinition.getCompanyId())),
+					"externalReferenceCode",
+					objectDefinitionExternalReferenceCode);
+			}
+
+			_objectFieldLocalService.validateObjectFields(
+				objectDefinition, objectFields);
+
+			if (ObjectDefinitionValidationThreadLocal.hasValidationErrors()) {
+				_throwObjectDefinitionValidationException();
+			}
+		}
+
 		objectDefinition = objectDefinitionPersistence.update(objectDefinition);
 
 		_resourceLocalService.addResources(
