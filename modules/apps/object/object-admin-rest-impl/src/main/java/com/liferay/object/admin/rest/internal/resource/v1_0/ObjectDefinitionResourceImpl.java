@@ -477,6 +477,12 @@ public class ObjectDefinitionResourceImpl
 			Long objectDefinitionId, ObjectDefinition objectDefinition)
 		throws Exception {
 
+		return _putObjectDefinition(objectDefinitionId, objectDefinition);
+	}
+
+	private ObjectDefinition _putObjectDefinition(
+		Long objectDefinitionId, ObjectDefinition objectDefinition)
+		throws Exception {
 		// TODO Move logic to service
 
 		if (!Validator.isBlank(objectDefinition.getStorageType()) &&
