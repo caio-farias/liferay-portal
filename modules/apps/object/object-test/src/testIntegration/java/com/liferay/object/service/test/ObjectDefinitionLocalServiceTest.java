@@ -990,7 +990,7 @@ public class ObjectDefinitionLocalServiceTest {
 
 		objectDefinition1 =
 			_objectDefinitionLocalService.updateCustomObjectDefinition(
-				null, objectDefinition1.getObjectDefinitionId(), 0, 0,
+				false, null, objectDefinition1.getObjectDefinitionId(), 0, 0,
 				objectDefinition1.getObjectFolderId(), 0, false,
 				objectDefinition1.isActive(), objectDefinition1.getClassName(),
 				true, false, true, true, false, false, false, false, false,
@@ -1005,7 +1005,7 @@ public class ObjectDefinitionLocalServiceTest {
 					).value(
 						String.valueOf(depotEntry2.getGroupId())
 					).build()),
-				Collections.emptyList());
+				Collections.emptyList(), Collections.emptyList());
 
 		_assertObjectDefinitionSettingsValues(
 			objectDefinition1.getObjectDefinitionSettings(),
@@ -1025,7 +1025,7 @@ public class ObjectDefinitionLocalServiceTest {
 
 		objectDefinition1 =
 			_objectDefinitionLocalService.updateCustomObjectDefinition(
-				null, objectDefinition1.getObjectDefinitionId(), 0, 0,
+				false, null, objectDefinition1.getObjectDefinitionId(), 0, 0,
 				objectDefinition1.getObjectFolderId(), 0, false,
 				objectDefinition1.isActive(), objectDefinition1.getClassName(),
 				true, false, true, true, false, false, false, false, false,
@@ -1040,7 +1040,7 @@ public class ObjectDefinitionLocalServiceTest {
 					).value(
 						String.valueOf(depotEntry1.getGroupId())
 					).build()),
-				Collections.emptyList());
+				Collections.emptyList(), Collections.emptyList());
 
 		_assertObjectDefinitionSettingsValues(
 			objectDefinition1.getObjectDefinitionSettings(),
@@ -2972,7 +2972,7 @@ public class ObjectDefinitionLocalServiceTest {
 
 			objectDefinition =
 				_objectDefinitionLocalService.updateCustomObjectDefinition(
-					null, objectDefinition.getObjectDefinitionId(), 0,
+					false, null, objectDefinition.getObjectDefinitionId(), 0,
 					objectField.getObjectFieldId(), 0,
 					objectField.getObjectFieldId(), false,
 					objectDefinition.isActive(),
@@ -2990,7 +2990,8 @@ public class ObjectDefinitionLocalServiceTest {
 						LocaleUtil.BRAZIL, RandomTestUtil.randomString()
 					).build(),
 					objectDefinition.getScope(), objectDefinition.getStatus(),
-					Collections.emptyList(), Collections.emptyList());
+					Collections.emptyList(), Collections.emptyList(),
+					Collections.emptyList());
 
 			Assert.assertEquals(
 				objectField.getObjectFieldId(),
@@ -3012,15 +3013,17 @@ public class ObjectDefinitionLocalServiceTest {
 
 		objectDefinition =
 			_objectDefinitionLocalService.updateCustomObjectDefinition(
-				externalReferenceCode, objectDefinition.getObjectDefinitionId(),
-				0, 0, objectFolder.getObjectFolderId(), 0, false,
+				false, externalReferenceCode,
+				objectDefinition.getObjectDefinitionId(), 0, 0,
+				objectFolder.getObjectFolderId(), 0, false,
 				objectDefinition.isActive(), objectDefinition.getClassName(),
 				true, false, false, true, false, false, false, false, false,
 				false, false, "test", LocalizedMapUtil.getLocalizedMap("Able"),
 				"Able", null, null, false,
 				LocalizedMapUtil.getLocalizedMap("Ables"),
 				objectDefinition.getScope(), objectDefinition.getStatus(),
-				Collections.emptyList(), Collections.emptyList());
+				Collections.emptyList(), Collections.emptyList(),
+				Collections.emptyList());
 
 		Assert.assertEquals(
 			externalReferenceCode, objectDefinition.getExternalReferenceCode());
@@ -3048,14 +3051,15 @@ public class ObjectDefinitionLocalServiceTest {
 
 		objectDefinition =
 			_objectDefinitionLocalService.updateCustomObjectDefinition(
-				null, objectDefinition.getObjectDefinitionId(), 0, 0, 0, 0,
-				false, objectDefinition.isActive(), null, true, false, true,
+				false, null, objectDefinition.getObjectDefinitionId(), 0, 0, 0,
+				0, false, objectDefinition.isActive(), null, true, false, true,
 				false, true, false, false, true, true, true, true,
 				FriendlyURLResolverConstants.URL_SEPARATOR_Y_OBJECT_ENTRY,
 				LocalizedMapUtil.getLocalizedMap("Baker"), "Baker", null, null,
 				false, LocalizedMapUtil.getLocalizedMap("Bakers"),
 				objectDefinition.getScope(), objectDefinition.getStatus(),
-				Collections.emptyList(), Collections.emptyList());
+				Collections.emptyList(), Collections.emptyList(),
+				Collections.emptyList());
 
 		_assertLabelAndPluralLabel(objectDefinition, "Baker", "Bakers");
 
@@ -3105,13 +3109,14 @@ public class ObjectDefinitionLocalServiceTest {
 
 		objectDefinition =
 			_objectDefinitionLocalService.updateCustomObjectDefinition(
-				null, objectDefinition.getObjectDefinitionId(), 0, 0, 0, 0,
-				false, true, objectDefinition.getClassName(), true, false, true,
-				true, false, false, false, true, true, true, true, null,
+				false, null, objectDefinition.getObjectDefinitionId(), 0, 0, 0,
+				0, false, true, objectDefinition.getClassName(), true, false,
+				true, true, false, false, false, true, true, true, true, null,
 				LocalizedMapUtil.getLocalizedMap("Charlie"), "Charlie", null,
 				null, false, LocalizedMapUtil.getLocalizedMap("Charlies"),
 				objectDefinition.getScope(), objectDefinition.getStatus(),
-				Collections.emptyList(), Collections.emptyList());
+				Collections.emptyList(), Collections.emptyList(),
+				Collections.emptyList());
 
 		_assertLabelAndPluralLabel(objectDefinition, "Charlie", "Charlies");
 
@@ -3212,7 +3217,7 @@ public class ObjectDefinitionLocalServiceTest {
 
 		objectDefinitionAA =
 			_objectDefinitionLocalService.updateCustomObjectDefinition(
-				objectDefinitionAA.getExternalReferenceCode(),
+				false, objectDefinitionAA.getExternalReferenceCode(),
 				objectDefinitionAA.getObjectDefinitionId(),
 				objectDefinitionAA.getAccountEntryRestrictedObjectFieldId(),
 				objectDefinitionAA.getDescriptionObjectFieldId(),
@@ -3238,7 +3243,8 @@ public class ObjectDefinitionLocalServiceTest {
 				objectDefinitionAA.isPortlet(),
 				objectDefinitionAA.getPluralLabelMap(),
 				objectDefinitionAA.getScope(), objectDefinitionAA.getStatus(),
-				Collections.emptyList(), Collections.emptyList());
+				Collections.emptyList(), Collections.emptyList(),
+				Collections.emptyList());
 
 		Assert.assertEquals(
 			panelCategoryKey, objectDefinitionAA.getPanelCategoryKey());
@@ -3270,8 +3276,8 @@ public class ObjectDefinitionLocalServiceTest {
 			"Enable localization must be true for modifiable object " +
 				"definitions",
 			() -> _objectDefinitionLocalService.updateCustomObjectDefinition(
-				null, objectDefinition1.getObjectDefinitionId(), 0, 0, 0, 0,
-				false, false, objectDefinition1.getClassName(), false, true,
+				false, null, objectDefinition1.getObjectDefinitionId(), 0, 0, 0,
+				0, false, false, objectDefinition1.getClassName(), false, true,
 				true, false, true, false, false, false, false, false, false,
 				null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
@@ -3279,7 +3285,7 @@ public class ObjectDefinitionLocalServiceTest {
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 				ObjectDefinitionConstants.SCOPE_SITE,
 				objectDefinition1.getStatus(), Collections.emptyList(),
-				Collections.emptyList()));
+				Collections.emptyList(), Collections.emptyList()));
 
 		// Object folder does not exist
 
@@ -3289,7 +3295,7 @@ public class ObjectDefinitionLocalServiceTest {
 			NoSuchObjectFolderException.class,
 			"No ObjectFolder exists with the primary key " + objectFolderId,
 			() -> _objectDefinitionLocalService.updateCustomObjectDefinition(
-				null, objectDefinition1.getObjectDefinitionId(), 0, 0,
+				false, null, objectDefinition1.getObjectDefinitionId(), 0, 0,
 				objectFolderId, 0, false, false,
 				objectDefinition1.getClassName(), false, true, true, false,
 				true, true, false, false, false, false, false, null,
@@ -3297,7 +3303,7 @@ public class ObjectDefinitionLocalServiceTest {
 				null, false, LocalizedMapUtil.getLocalizedMap("Charlie"),
 				ObjectDefinitionConstants.SCOPE_SITE,
 				objectDefinition1.getStatus(), Collections.emptyList(),
-				Collections.emptyList()));
+				Collections.emptyList(), Collections.emptyList()));
 
 		// Modifiable system object definition must be published to be actived
 
@@ -3305,14 +3311,14 @@ public class ObjectDefinitionLocalServiceTest {
 			ObjectDefinitionActiveException.class,
 			"Object definitions must be published before being activated",
 			() -> _objectDefinitionLocalService.updateCustomObjectDefinition(
-				null, objectDefinition1.getObjectDefinitionId(), 0, 0, 0, 0,
-				false, true, objectDefinition1.getClassName(), false, true,
+				false, null, objectDefinition1.getObjectDefinitionId(), 0, 0, 0,
+				0, false, true, objectDefinition1.getClassName(), false, true,
 				true, false, true, true, false, false, false, false, false,
 				null, LocalizedMapUtil.getLocalizedMap("Charlie"), "Charlie",
 				null, null, false, LocalizedMapUtil.getLocalizedMap("Charlies"),
 				ObjectDefinitionConstants.SCOPE_SITE,
 				objectDefinition1.getStatus(), Collections.emptyList(),
-				Collections.emptyList()));
+				Collections.emptyList(), Collections.emptyList()));
 
 		// Label is null
 
@@ -3320,14 +3326,14 @@ public class ObjectDefinitionLocalServiceTest {
 			ObjectDefinitionLabelException.class,
 			"Label is null for locale " + LocaleUtil.US.getDisplayName(),
 			() -> _objectDefinitionLocalService.updateCustomObjectDefinition(
-				null, objectDefinition1.getObjectDefinitionId(), 0, 0, 0, 0,
-				false, false, objectDefinition1.getClassName(), false, true,
+				false, null, objectDefinition1.getObjectDefinitionId(), 0, 0, 0,
+				0, false, false, objectDefinition1.getClassName(), false, true,
 				true, false, true, true, false, false, false, false, false,
 				null, null, "Charlie", null, null, false,
 				LocalizedMapUtil.getLocalizedMap("Charlie"),
 				ObjectDefinitionConstants.SCOPE_SITE,
 				objectDefinition1.getStatus(), Collections.emptyList(),
-				Collections.emptyList()));
+				Collections.emptyList(), Collections.emptyList()));
 
 		// Plural label is null
 
@@ -3335,13 +3341,13 @@ public class ObjectDefinitionLocalServiceTest {
 			ObjectDefinitionPluralLabelException.class,
 			"Plural label is null for locale " + LocaleUtil.US.getDisplayName(),
 			() -> _objectDefinitionLocalService.updateCustomObjectDefinition(
-				null, objectDefinition1.getObjectDefinitionId(), 0, 0, 0, 0,
-				false, false, objectDefinition1.getClassName(), false, true,
+				false, null, objectDefinition1.getObjectDefinitionId(), 0, 0, 0,
+				0, false, false, objectDefinition1.getClassName(), false, true,
 				true, false, true, true, false, false, false, false, false,
 				null, LocalizedMapUtil.getLocalizedMap("Charlie"), "Charlie",
 				null, null, false, null, ObjectDefinitionConstants.SCOPE_SITE,
 				objectDefinition1.getStatus(), Collections.emptyList(),
-				Collections.emptyList()));
+				Collections.emptyList(), Collections.emptyList()));
 
 		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition1);
 
@@ -3372,14 +3378,15 @@ public class ObjectDefinitionLocalServiceTest {
 
 		objectDefinition2 =
 			_objectDefinitionLocalService.updateCustomObjectDefinition(
-				null, objectDefinition2.getObjectDefinitionId(), 0, 0,
+				false, null, objectDefinition2.getObjectDefinitionId(), 0, 0,
 				objectFolder.getObjectFolderId(), 0, false, true,
 				objectDefinition2.getClassName(), false, true, true, false,
 				true, true, false, false, false, false, false, null,
 				LocalizedMapUtil.getLocalizedMap("Charlie"), "Charlie", null,
 				null, false, LocalizedMapUtil.getLocalizedMap("Charlies"),
 				objectDefinition2.getScope(), objectDefinition2.getStatus(),
-				Collections.emptyList(), Collections.emptyList());
+				Collections.emptyList(), Collections.emptyList(),
+				Collections.emptyList());
 
 		_assertLabelAndPluralLabel(objectDefinition2, "Charlie", "Charlies");
 
@@ -3424,11 +3431,11 @@ public class ObjectDefinitionLocalServiceTest {
 
 		objectDefinition2 =
 			_objectDefinitionLocalService.updateSystemObjectDefinition(
-				externalReferenceCode,
+				false, externalReferenceCode,
 				objectDefinition2.getObjectDefinitionId(),
 				objectFolder.getObjectFolderId(),
 				objectField.getObjectFieldId(), Collections.emptyList(),
-				Collections.emptyList());
+				Collections.emptyList(), Collections.emptyList());
 
 		Assert.assertEquals(
 			externalReferenceCode,
@@ -4133,7 +4140,7 @@ public class ObjectDefinitionLocalServiceTest {
 		try {
 			objectDefinition2 =
 				_objectDefinitionLocalService.updateCustomObjectDefinition(
-					null, objectDefinition2.getObjectDefinitionId(), 0,
+					false, null, objectDefinition2.getObjectDefinitionId(), 0,
 					objectRelationship.getObjectFieldId2(), 0, 0, false,
 					objectDefinition2.isActive(),
 					objectDefinition2.getClassName(), true, false, true, false,
@@ -4141,7 +4148,8 @@ public class ObjectDefinitionLocalServiceTest {
 					LocalizedMapUtil.getLocalizedMap("Able"), "Able", null,
 					null, false, LocalizedMapUtil.getLocalizedMap("Ables"),
 					objectDefinition2.getScope(), objectDefinition2.getStatus(),
-					Collections.emptyList(), Collections.emptyList());
+					Collections.emptyList(), Collections.emptyList(),
+					Collections.emptyList());
 
 			Assert.fail();
 		}
@@ -4177,13 +4185,14 @@ public class ObjectDefinitionLocalServiceTest {
 		throws PortalException {
 
 		return _objectDefinitionLocalService.updateCustomObjectDefinition(
-			externalReferenceCode, objectDefinitionId, 0,
+			false, externalReferenceCode, objectDefinitionId, 0,
 			descriptionObjectFieldId, 0, titleObjectFieldId, false, false, null,
 			false, false, true, enableFriendlyURLCustomization, true, false,
 			false, enableObjectEntryHistory, enableObjectEntrySchedule, false,
 			enableObjectEntryVersioning, friendlyURLSeparator, labelMap, name,
 			null, null, false, pluralLabelMap, scope, status,
-			Collections.emptyList(), Collections.emptyList());
+			Collections.emptyList(), Collections.emptyList(),
+			Collections.emptyList());
 	}
 
 	private ObjectDefinition _updateCustomObjectDefinition(
@@ -4191,7 +4200,7 @@ public class ObjectDefinitionLocalServiceTest {
 		throws Exception {
 
 		return _objectDefinitionLocalService.updateCustomObjectDefinition(
-			objectDefinition.getExternalReferenceCode(),
+			false, objectDefinition.getExternalReferenceCode(),
 			objectDefinition.getObjectDefinitionId(),
 			objectDefinition.getAccountEntryRestrictedObjectFieldId(),
 			objectDefinition.getDescriptionObjectFieldId(),
@@ -4216,7 +4225,8 @@ public class ObjectDefinitionLocalServiceTest {
 			objectDefinition.getPanelCategoryKey(),
 			objectDefinition.isPortlet(), objectDefinition.getPluralLabelMap(),
 			objectDefinition.getScope(), objectDefinition.getStatus(),
-			Collections.emptyList(), Collections.emptyList());
+			Collections.emptyList(), Collections.emptyList(),
+			Collections.emptyList());
 	}
 
 	private static ObjectFolder _defaultObjectFolder;
