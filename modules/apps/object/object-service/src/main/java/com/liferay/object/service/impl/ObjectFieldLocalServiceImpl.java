@@ -1125,8 +1125,15 @@ public class ObjectFieldLocalServiceImpl
 			return;
 		}
 
-		objectFieldBusinessType.validateObjectFieldSettings(
-			newObjectField, objectFieldSettings);
+		try {
+			objectFieldBusinessType.validateObjectFieldSettings(
+				newObjectField, objectFieldSettings);
+		}
+		catch (PortalException portalException) {
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(), portalException,
+				"objectFieldSettings", objectFieldSettings);
+		}
 
 		Set<String> unmodifiableObjectFieldSettingsNames =
 			objectFieldBusinessType.getUnmodifiableObjectFieldSettingsNames();
