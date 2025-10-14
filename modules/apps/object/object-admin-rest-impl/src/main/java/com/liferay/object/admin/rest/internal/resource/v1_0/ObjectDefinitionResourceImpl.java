@@ -477,10 +477,11 @@ public class ObjectDefinitionResourceImpl
 			Long objectDefinitionId, ObjectDefinition objectDefinition)
 		throws Exception {
 
-		return _putObjectDefinition(objectDefinitionId, objectDefinition);
+		return _putObjectDefinition(false, objectDefinitionId, objectDefinition);
 	}
 
 	private ObjectDefinition _putObjectDefinition(
+		boolean accumulateError,
 		Long objectDefinitionId, ObjectDefinition objectDefinition)
 		throws Exception {
 		// TODO Move logic to service
@@ -534,9 +535,19 @@ public class ObjectDefinitionResourceImpl
 			statusInt = objectDefinitionStatus.getCode();
 		}
 
+		List<com.liferay.object.model.ObjectField> serviceBuilderObjectFields =
+			transformToList(
+				objectDefinition.getObjectFields(),
+				objectField -> ObjectFieldUtil.toObjectField(
+					objectDefinition.getDefaultLanguageId(),
+					_listTypeDefinitionLocalService, objectField,
+					_objectFieldLocalService, _objectFieldSettingLocalService,
+					_objectFilterLocalService));
+
 		if (serviceBuilderObjectDefinition.isUnmodifiableSystemObject()) {
 			serviceBuilderObjectDefinition =
 				_objectDefinitionService.updateSystemObjectDefinition(
+					accumulateError,
 					objectDefinition.getExternalReferenceCode(),
 					objectDefinitionId,
 					_getObjectFolderId(
@@ -547,6 +558,7 @@ public class ObjectDefinitionResourceImpl
 						contextUser.getCompanyId(), _groupLocalService,
 						objectDefinition.getObjectDefinitionSettings(),
 						_objectDefinitionSettingLocalService),
+					serviceBuilderObjectFields,
 					WorkflowDefinitionLinkUtil.toWorkflowDefinitionLinks(
 						contextUser.getCompanyId(), _groupLocalService,
 						contextUser.getUserId(),
@@ -556,6 +568,7 @@ public class ObjectDefinitionResourceImpl
 		else {
 			serviceBuilderObjectDefinition =
 				_objectDefinitionService.updateCustomObjectDefinition(
+					accumulateError,
 					objectDefinition.getExternalReferenceCode(),
 					objectDefinitionId,
 					GetterUtil.getLong(accountEntryRestrictedObjectFieldId), 0,
@@ -612,6 +625,7 @@ public class ObjectDefinitionResourceImpl
 						contextUser.getCompanyId(), _groupLocalService,
 						objectDefinition.getObjectDefinitionSettings(),
 						_objectDefinitionSettingLocalService),
+					serviceBuilderObjectFields,
 					WorkflowDefinitionLinkUtil.toWorkflowDefinitionLinks(
 						contextUser.getCompanyId(), _groupLocalService,
 						contextUser.getUserId(),
@@ -631,7 +645,7 @@ public class ObjectDefinitionResourceImpl
 		List<com.liferay.object.model.ObjectAction>
 			serviceBuilderObjectActions = new ArrayList<>(
 				_objectActionLocalService.getObjectActions(objectDefinitionId));
-		List<com.liferay.object.model.ObjectField> serviceBuilderObjectFields =
+		serviceBuilderObjectFields =
 			new ArrayList<>(
 				_objectFieldLocalService.getObjectFields(objectDefinitionId));
 		List<com.liferay.object.model.ObjectRelationship>
@@ -890,12 +904,13 @@ public class ObjectDefinitionResourceImpl
 		objectDefinition.setExternalReferenceCode(() -> externalReferenceCode);
 
 		if (serviceBuilderObjectDefinition != null) {
-			return putObjectDefinition(
+			return _putObjectDefinition(
+				accumulateError,
 				serviceBuilderObjectDefinition.getObjectDefinitionId(),
 				objectDefinition);
 		}
 
-		return postObjectDefinition(objectDefinition);
+		return postObjectDefinition(accumulateError, objectDefinition);
 	}
 
 	@Override
