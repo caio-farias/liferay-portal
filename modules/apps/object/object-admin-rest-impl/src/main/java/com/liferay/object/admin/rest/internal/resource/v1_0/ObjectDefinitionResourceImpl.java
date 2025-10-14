@@ -36,6 +36,7 @@ import com.liferay.object.constants.ObjectDefinitionConstants;
 import com.liferay.object.constants.ObjectFieldConstants;
 import com.liferay.object.constants.ObjectRelationshipConstants;
 import com.liferay.object.definition.util.ObjectDefinitionUtil;
+import com.liferay.object.definition.util.ObjectDefinitionValidationThreadLocal;
 import com.liferay.object.exception.ObjectDefinitionStatusException;
 import com.liferay.object.exception.ObjectDefinitionStorageTypeException;
 import com.liferay.object.model.ObjectActionModel;
@@ -232,6 +233,7 @@ public class ObjectDefinitionResourceImpl
 
 	@Override
 	public ObjectDefinition postObjectDefinition(
+			Boolean accumulateError,
 			ObjectDefinition objectDefinition)
 		throws Exception {
 
@@ -262,6 +264,14 @@ public class ObjectDefinitionResourceImpl
 					_listTypeDefinitionLocalService, objectField,
 					_objectFieldLocalService, _objectFieldSettingLocalService,
 					_objectFilterLocalService));
+
+		if (FeatureFlagManagerUtil.isEnabled(
+			contextCompany.getCompanyId(), "LPD-51345")) {
+
+			ObjectDefinitionValidationThreadLocal.setAccumulateError(accumulateError);
+			ObjectDefinitionValidationThreadLocal.setObjectDefinitionExternalReferenceCode(objectDefinition.getExternalReferenceCode());
+			ObjectDefinitionValidationThreadLocal.setValidationErrors(new ArrayList<>());
+		}
 
 		if (GetterUtil.getBoolean(objectDefinition.getSystem())) {
 			serviceBuilderObjectDefinition =
@@ -861,8 +871,9 @@ public class ObjectDefinitionResourceImpl
 
 	@Override
 	public ObjectDefinition putObjectDefinitionByExternalReferenceCode(
-			String externalReferenceCode, ObjectDefinition objectDefinition)
-		throws Exception {
+		String externalReferenceCode, Boolean accumulateError,
+		ObjectDefinition objectDefinition)
+	throws Exception {
 
 		com.liferay.object.model.ObjectDefinition
 			serviceBuilderObjectDefinition =
