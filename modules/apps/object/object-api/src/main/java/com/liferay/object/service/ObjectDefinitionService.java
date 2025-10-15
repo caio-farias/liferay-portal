@@ -133,8 +133,8 @@ public interface ObjectDefinitionService extends BaseService {
 		throws PortalException;
 
 	public ObjectDefinition updateCustomObjectDefinition(
-			String externalReferenceCode, long objectDefinitionId,
-			long accountEntryRestrictedObjectFieldId,
+			boolean accumulateError, String externalReferenceCode,
+			long objectDefinitionId, long accountEntryRestrictedObjectFieldId,
 			long descriptionObjectFieldId, long objectFolderId,
 			long titleObjectFieldId, boolean accountEntryRestricted,
 			boolean active, String className, boolean enableCategorization,
@@ -148,6 +148,7 @@ public interface ObjectDefinitionService extends BaseService {
 			String panelCategoryKey, boolean portlet,
 			Map<Locale, String> pluralLabelMap, String scope, int status,
 			List<ObjectDefinitionSetting> objectDefinitionSettings,
+			List<ObjectField> objectFields,
 			List<WorkflowDefinitionLink> workflowDefinitionLinks)
 		throws PortalException;
 
@@ -156,9 +157,11 @@ public interface ObjectDefinitionService extends BaseService {
 		throws PortalException;
 
 	public ObjectDefinition updateSystemObjectDefinition(
-			String externalReferenceCode, long objectDefinitionId,
-			long objectFolderId, long titleObjectFieldId,
+			boolean accumulateError, String externalReferenceCode,
+			long objectDefinitionId, long objectFolderId,
+			long titleObjectFieldId,
 			List<ObjectDefinitionSetting> objectDefinitionSettings,
+			List<ObjectField> objectFields,
 			List<WorkflowDefinitionLink> workflowDefinitionLinks)
 		throws PortalException;
 
