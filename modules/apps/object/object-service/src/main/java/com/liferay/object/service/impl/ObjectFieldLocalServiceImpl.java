@@ -14,6 +14,7 @@ import com.liferay.object.constants.ObjectFieldSettingConstants;
 import com.liferay.object.constants.ObjectRelationshipConstants;
 import com.liferay.object.constants.ObjectValidationRuleSettingConstants;
 import com.liferay.object.definition.util.ObjectDefinitionUtil;
+import com.liferay.object.definition.util.ObjectDefinitionValidationThreadLocal;
 import com.liferay.object.exception.DuplicateObjectFieldExternalReferenceCodeException;
 import com.liferay.object.exception.ObjectDefinitionEnableLocalizationException;
 import com.liferay.object.exception.ObjectFieldBusinessTypeException;
@@ -102,6 +103,7 @@ import java.sql.Connection;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -704,7 +706,125 @@ public class ObjectFieldLocalServiceImpl
 		if ((objectField != null) &&
 			(objectField.getObjectFieldId() != objectFieldId)) {
 
-			throw new DuplicateObjectFieldExternalReferenceCodeException();
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new DuplicateObjectFieldExternalReferenceCodeException(
+					externalReferenceCode),
+				"externalReferenceCode", externalReferenceCode);
+		}
+	}
+
+	@Override
+	public void validateObjectFields(
+			ObjectDefinition objectDefinition, List<ObjectField> objectFields)
+		throws PortalException {
+
+		Set<String> externalReferenceCodes = new HashSet<>();
+		Set<String> names = new HashSet<>();
+
+		for (ObjectField objectField : objectFields) {
+			if (!externalReferenceCodes.add(
+					objectField.getExternalReferenceCode())) {
+
+				ObjectDefinitionValidationThreadLocal.handleException(
+					ObjectField.class.getName(),
+					new DuplicateObjectFieldExternalReferenceCodeException(
+						objectField.getExternalReferenceCode()),
+					"externalReferenceCode",
+					objectField.getExternalReferenceCode());
+			}
+
+			if (!names.add(objectField.getName())) {
+				ObjectDefinitionValidationThreadLocal.handleException(
+					ObjectField.class.getName(),
+					new ObjectFieldNameException.MustNotBeDuplicate(
+						objectField.getName()),
+					"name", objectField.getName());
+			}
+
+			ObjectField oldObjectField =
+				objectFieldPersistence.fetchByPrimaryKey(
+					objectField.getObjectFieldId());
+
+			if (oldObjectField == null) {
+				oldObjectField = objectFieldPersistence.fetchByERC_C_ODI(
+					objectField.getExternalReferenceCode(),
+					objectField.getCompanyId(),
+					objectDefinition.getObjectDefinitionId());
+			}
+
+			long oldObjectFieldId = 0L;
+			long companyId = objectDefinition.getCompanyId();
+			long objectDefinitionId =
+				objectDefinition.getRootObjectDefinitionId();
+			String dbType = null;
+			ObjectField objectDefinitionRef = oldObjectField;
+
+			if (oldObjectField != null) {
+				oldObjectFieldId = objectField.getObjectFieldId();
+				dbType = objectField.getDBType();
+				objectDefinitionRef = oldObjectField;
+				companyId = oldObjectField.getCompanyId();
+				objectDefinitionId = oldObjectField.getObjectDefinitionId();
+			}
+
+			validateExternalReferenceCode(
+				objectField.getExternalReferenceCode(), oldObjectFieldId,
+				companyId, objectDefinitionId);
+
+			_validateListTypeDefinitionId(
+				objectField.getListTypeDefinitionId(),
+				objectField.getBusinessType());
+
+			_validateBusinessType(
+				objectDefinition, objectField.getBusinessType());
+
+			_validateIndexed(
+				objectField.getBusinessType(), dbType, objectField.isIndexed(),
+				objectField.isIndexedAsKeyword(),
+				objectField.getIndexedLanguageId());
+
+			_validateLabel(objectDefinition.getLabelMap(), objectDefinitionRef);
+
+			_validateName(
+				oldObjectFieldId, objectDefinition, objectField.getName(),
+				objectField.isSystem());
+
+			validateRequired(
+				objectField.getBusinessType(), objectDefinition.isApproved(),
+				oldObjectField, objectField.isRequired());
+
+			_validateState(objectField.isRequired(), objectField.isState());
+
+			validateReadOnlyAndReadOnlyConditionExpression(
+				objectField.getBusinessType(), objectField.getReadOnly(),
+				objectField.getReadOnlyConditionExpression(),
+				objectField.isRequired());
+
+			if (oldObjectField == null) {
+				continue;
+			}
+
+			_validateBusinessTypeEncrypted(
+				oldObjectField.getObjectDefinitionId(),
+				objectField.getBusinessType());
+
+			_validateLocalized(
+				objectField.isLocalized(), oldObjectField.getObjectDefinition(),
+				oldObjectField,
+				_objectFieldBusinessTypeRegistry.getObjectFieldBusinessType(
+					objectField.getBusinessType()),
+				objectField.isRequired());
+
+			_validateReadOnly(oldObjectField, objectField.getReadOnly());
+
+			_validateReadOnlySetting(
+				objectField.getBusinessType(), objectDefinition, oldObjectField,
+				objectField.getReadOnly());
+
+			_validateRelationshipAndDBType(
+				objectField.getDBType(), objectField.getName(), oldObjectField,
+				oldObjectFieldId, objectDefinition, objectField.isSystem());
 		}
 	}
 
@@ -728,7 +848,9 @@ public class ObjectFieldLocalServiceImpl
 				ObjectFieldConstants.BUSINESS_TYPE_AUTO_INCREMENT) &&
 			!Objects.equals(readOnly, ObjectFieldConstants.READ_ONLY_FALSE)) {
 
-			throw new ObjectFieldReadOnlyException();
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(), new ObjectFieldReadOnlyException(),
+				null, null);
 		}
 
 		if (!(Objects.equals(
@@ -736,16 +858,22 @@ public class ObjectFieldLocalServiceImpl
 			  Objects.equals(readOnly, ObjectFieldConstants.READ_ONLY_FALSE) ||
 			  Objects.equals(readOnly, ObjectFieldConstants.READ_ONLY_TRUE))) {
 
-			throw new ObjectFieldReadOnlyException(
-				"Unknown read only: " + readOnly);
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldReadOnlyException(
+					"Unknown read only: " + readOnly),
+				"readOnly", readOnly);
 		}
 
 		if (Objects.equals(
 				readOnly, ObjectFieldConstants.READ_ONLY_CONDITIONAL)) {
 
 			if (Validator.isNull(readOnlyConditionExpression)) {
-				throw new ObjectFieldReadOnlyConditionExpressionException(
-					"Read only condition expression is required");
+				ObjectDefinitionValidationThreadLocal.handleException(
+					ObjectField.class.getName(),
+					new ObjectFieldReadOnlyConditionExpressionException(
+						"Read only condition expression is required"),
+					"readOnly", readOnly);
 			}
 
 			try {
@@ -759,16 +887,22 @@ public class ObjectFieldLocalServiceImpl
 					_log.debug(exception);
 				}
 
-				throw new ObjectFieldReadOnlyConditionExpressionException(
-					"Syntax error in: " + readOnlyConditionExpression);
+				ObjectDefinitionValidationThreadLocal.handleException(
+					ObjectField.class.getName(),
+					new ObjectFieldReadOnlyConditionExpressionException(
+						"Syntax error in: " + readOnlyConditionExpression),
+					"readOnly", readOnly);
 			}
 		}
 
 		if (required &&
 			!Objects.equals(readOnly, ObjectFieldConstants.READ_ONLY_FALSE)) {
 
-			throw new ObjectFieldReadOnlyException(
-				"Required object field cannot be read only");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldReadOnlyException(
+					"Required object field cannot be read only"),
+				"readOnly", readOnly);
 		}
 	}
 
@@ -783,7 +917,9 @@ public class ObjectFieldLocalServiceImpl
 				ObjectFieldConstants.BUSINESS_TYPE_AUTO_INCREMENT) &&
 			required) {
 
-			throw new ObjectFieldRequiredException();
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(), new ObjectFieldRequiredException(),
+				"businessType", businessType);
 		}
 
 		if (oldObjectField == null) {
@@ -800,7 +936,9 @@ public class ObjectFieldLocalServiceImpl
 		else if (objectDefinitionApproved && !oldObjectField.isRequired() &&
 				 required) {
 
-			throw new ObjectFieldRequiredException();
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(), new ObjectFieldRequiredException(),
+				"businessType", businessType);
 		}
 	}
 
@@ -1447,22 +1585,12 @@ public class ObjectFieldLocalServiceImpl
 
 		_validateReadOnly(oldObjectField, readOnly);
 
-		if (Validator.isNotNull(newObjectField.getRelationshipType())) {
-			if (!Objects.equals(newObjectField.getDBType(), dbType) ||
-				!Objects.equals(newObjectField.getName(), name)) {
-
-				throw new ObjectFieldRelationshipTypeException(
-					"Object field relationship name and DB type cannot be " +
-						"changed");
-			}
-		}
-		else {
-			_validateName(objectFieldId, objectDefinition, name, false);
-		}
+		_validateRelationshipAndDBType(
+			dbType, name, newObjectField, objectFieldId, objectDefinition,
+			false);
 
 		validateReadOnlyAndReadOnlyConditionExpression(
 			businessType, readOnly, readOnlyConditionExpression, required);
-
 		_validateState(required, state);
 
 		newObjectField.setExternalReferenceCode(externalReferenceCode);
@@ -1531,9 +1659,12 @@ public class ObjectFieldLocalServiceImpl
 			 businessType.equals(
 				 ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT))) {
 
-			throw new ObjectFieldBusinessTypeException(
-				"Salesforce storage type does not support aggregation and " +
-					"attachment business types");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldBusinessTypeException(
+					"Salesforce storage type does not support aggregation " +
+						"and attachment business types"),
+				"businessType", businessType);
 		}
 
 		_validateBusinessTypeAssignee(
@@ -1578,27 +1709,40 @@ public class ObjectFieldLocalServiceImpl
 		}
 
 		if (!PropsValues.OBJECT_ENCRYPTION_ENABLED) {
-			throw new ObjectFieldBusinessTypeException(
-				"Business type encrypted is disabled");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldBusinessTypeException(
+					"Business type encrypted is disabled"),
+				"businessType", businessType);
 		}
 
 		if (Validator.isNull(PropsValues.OBJECT_ENCRYPTION_ALGORITHM)) {
-			throw new ObjectFieldBusinessTypeException(
-				"Encryption algorithm is required for business type encrypted");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldBusinessTypeException(
+					"Encryption algorithm is required for business type " +
+						"encrypted"),
+				"businessType", businessType);
 		}
 
 		if (Validator.isNull(PropsValues.OBJECT_ENCRYPTION_KEY)) {
-			throw new ObjectFieldBusinessTypeException(
-				"Encryption key is required for business type encrypted");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldBusinessTypeException(
+					"Encryption key is required for business type encrypted"),
+				"businessType", businessType);
 		}
 
 		ObjectDefinition objectDefinition =
 			_objectDefinitionPersistence.findByPrimaryKey(objectDefinitionId);
 
 		if (!objectDefinition.isDefaultStorageType()) {
-			throw new ObjectFieldBusinessTypeException(
-				"Business type encrypted can only be used in object " +
-					"definitions with a default storage type");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldBusinessTypeException(
+					"Business type encrypted can only be used in object " +
+						"definitions with a default storage type"),
+				"businessType", businessType);
 		}
 
 		try {
@@ -1619,7 +1763,10 @@ public class ObjectFieldLocalServiceImpl
 		if (indexed &&
 			Objects.equals(dbType, ObjectFieldConstants.DB_TYPE_BLOB)) {
 
-			throw new ObjectFieldDBTypeException("Blob type is not indexable");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldDBTypeException("Blob type is not indexable"),
+				"indexed", indexed);
 		}
 
 		if (((!Objects.equals(
@@ -1629,9 +1776,13 @@ public class ObjectFieldLocalServiceImpl
 			 indexedAsKeyword) &&
 			!Validator.isBlank(indexedLanguageId)) {
 
-			throw new ObjectFieldDBTypeException(
-				"Indexed language ID can only be applied with type \"Clob\" " +
-					"or \"String\" that is not indexed as a keyword");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldDBTypeException(
+					"Indexed language ID can only be applied with type " +
+						"\"Clob\" or \"String\" that is not indexed as a " +
+							"keyword"),
+				"indexedLanguageId", indexedLanguageId);
 		}
 
 		if ((Objects.equals(
@@ -1642,8 +1793,11 @@ public class ObjectFieldLocalServiceImpl
 				 businessType, ObjectFieldConstants.BUSINESS_TYPE_FORMULA)) &&
 			indexed) {
 
-			throw new ObjectFieldBusinessTypeException(
-				businessType + " business type is not indexable");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldBusinessTypeException(
+					businessType + " business type is not indexable"),
+				"businessType", businessType);
 		}
 	}
 
@@ -1673,8 +1827,11 @@ public class ObjectFieldLocalServiceImpl
 		throws PortalException {
 
 		if ((labelMap == null) || Validator.isNull(labelMap.get(locale))) {
-			throw new ObjectFieldLabelException(
-				"Label is null for locale " + locale.getDisplayName());
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldLabelException(
+					"Label is null for locale " + locale.getDisplayName()),
+				"label", labelMap);
 		}
 	}
 
@@ -1689,8 +1846,11 @@ public class ObjectFieldLocalServiceImpl
 			 StringUtil.equals(
 				 businessType, ObjectFieldConstants.BUSINESS_TYPE_PICKLIST))) {
 
-			throw new ObjectFieldListTypeDefinitionIdException(
-				"List type definition ID is 0");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldListTypeDefinitionIdException(
+					"List type definition ID is 0"),
+				"listTypeDefinitionId", listTypeDefinitionId);
 		}
 	}
 
@@ -1721,56 +1881,71 @@ public class ObjectFieldLocalServiceImpl
 			if (FeatureFlagManagerUtil.isEnabled(
 					objectDefinition.getCompanyId(), "LPD-32050")) {
 
-				throw new ObjectFieldLocalizedException(
+				ObjectDefinitionValidationThreadLocal.handleException(
+					ObjectField.class.getName(),
+					new ObjectFieldLocalizedException(
+						StringBundler.concat(
+							"Only ",
+							ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
+							StringPool.COMMA,
+							ObjectFieldConstants.BUSINESS_TYPE_BOOLEAN,
+							StringPool.COMMA,
+							ObjectFieldConstants.BUSINESS_TYPE_DATE,
+							StringPool.COMMA,
+							ObjectFieldConstants.BUSINESS_TYPE_DATE_TIME,
+							StringPool.COMMA,
+							ObjectFieldConstants.BUSINESS_TYPE_DECIMAL,
+							StringPool.COMMA,
+							ObjectFieldConstants.BUSINESS_TYPE_INTEGER,
+							StringPool.COMMA,
+							ObjectFieldConstants.BUSINESS_TYPE_LONG_INTEGER,
+							StringPool.COMMA,
+							ObjectFieldConstants.BUSINESS_TYPE_LONG_TEXT,
+							StringPool.COMMA,
+							ObjectFieldConstants.
+								BUSINESS_TYPE_MULTISELECT_PICKLIST,
+							StringPool.COMMA,
+							ObjectFieldConstants.BUSINESS_TYPE_PICKLIST,
+							StringPool.COMMA,
+							ObjectFieldConstants.
+								BUSINESS_TYPE_PRECISION_DECIMAL,
+							StringPool.COMMA,
+							ObjectFieldConstants.BUSINESS_TYPE_RICH_TEXT,
+							" and ", ObjectFieldConstants.BUSINESS_TYPE_TEXT,
+							" business types support localization")),
+					"objectFieldBusinessTypeName", objectFieldBusinessTypeName);
+			}
+
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldLocalizedException(
 					StringBundler.concat(
-						"Only ", ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
-						StringPool.COMMA,
-						ObjectFieldConstants.BUSINESS_TYPE_BOOLEAN,
-						StringPool.COMMA,
-						ObjectFieldConstants.BUSINESS_TYPE_DATE,
-						StringPool.COMMA,
-						ObjectFieldConstants.BUSINESS_TYPE_DATE_TIME,
-						StringPool.COMMA,
-						ObjectFieldConstants.BUSINESS_TYPE_DECIMAL,
-						StringPool.COMMA,
-						ObjectFieldConstants.BUSINESS_TYPE_INTEGER,
-						StringPool.COMMA,
-						ObjectFieldConstants.BUSINESS_TYPE_LONG_INTEGER,
-						StringPool.COMMA,
-						ObjectFieldConstants.BUSINESS_TYPE_LONG_TEXT,
-						StringPool.COMMA,
-						ObjectFieldConstants.BUSINESS_TYPE_MULTISELECT_PICKLIST,
-						StringPool.COMMA,
-						ObjectFieldConstants.BUSINESS_TYPE_PICKLIST,
-						StringPool.COMMA,
-						ObjectFieldConstants.BUSINESS_TYPE_PRECISION_DECIMAL,
+						"Only ", ObjectFieldConstants.BUSINESS_TYPE_LONG_TEXT,
 						StringPool.COMMA,
 						ObjectFieldConstants.BUSINESS_TYPE_RICH_TEXT, " and ",
 						ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-						" business types support localization"));
-			}
-
-			throw new ObjectFieldLocalizedException(
-				StringBundler.concat(
-					"Only ", ObjectFieldConstants.BUSINESS_TYPE_LONG_TEXT,
-					StringPool.COMMA,
-					ObjectFieldConstants.BUSINESS_TYPE_RICH_TEXT, " and ",
-					ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-					" business types support localization"));
+						" business types support localization")),
+				"objectFieldBusinessTypeName", objectFieldBusinessTypeName);
 		}
 
-		if (!objectDefinition.isEnableLocalization() &&
-			objectDefinition.isApproved()) {
+		boolean enableLocalization = objectDefinition.isEnableLocalization();
 
-			throw new ObjectDefinitionEnableLocalizationException();
+		if (!enableLocalization && objectDefinition.isApproved()) {
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectDefinition.class.getName(),
+				new ObjectDefinitionEnableLocalizationException(),
+				"enableLocalization", enableLocalization);
 		}
 
 		if (!FeatureFlagManagerUtil.isEnabled(
 				objectDefinition.getCompanyId(), "LPD-32050") &&
 			!objectDefinition.isUnmodifiableSystemObject() && required) {
 
-			throw new ObjectFieldLocalizedException(
-				"Localized object fields must not be required");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldLocalizedException(
+					"Localized object fields must not be required"),
+				null, null);
 		}
 	}
 
@@ -1780,24 +1955,35 @@ public class ObjectFieldLocalServiceImpl
 		throws PortalException {
 
 		if (Validator.isNull(name)) {
-			throw new ObjectFieldNameException.MustNotBeNull();
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldNameException.MustNotBeNull(), "name", name);
 		}
 
 		char[] nameCharArray = name.toCharArray();
 
 		for (char c : nameCharArray) {
 			if (!Validator.isChar(c) && !Validator.isDigit(c)) {
-				throw new ObjectFieldNameException.
-					MustOnlyContainLettersAndDigits();
+				ObjectDefinitionValidationThreadLocal.handleException(
+					ObjectField.class.getName(),
+					new ObjectFieldNameException.
+						MustOnlyContainLettersAndDigits(),
+					"name", name);
 			}
 		}
 
 		if (!Character.isLowerCase(nameCharArray[0])) {
-			throw new ObjectFieldNameException.MustBeginWithLowerCaseLetter();
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldNameException.MustBeginWithLowerCaseLetter(),
+				"name", name);
 		}
 
 		if (nameCharArray.length > 41) {
-			throw new ObjectFieldNameException.MustBeLessThan41Characters();
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldNameException.MustBeLessThan41Characters(),
+				"name", name);
 		}
 
 		if ((!system &&
@@ -1805,7 +1991,10 @@ public class ObjectFieldLocalServiceImpl
 			StringUtil.equalsIgnoreCase(
 				objectDefinition.getPKObjectFieldName(), name)) {
 
-			throw new ObjectFieldNameException.MustNotBeReserved(name);
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldNameException.MustNotBeReserved(name), "name",
+				name);
 		}
 
 		ObjectField objectField = objectFieldPersistence.fetchByODI_N(
@@ -1814,7 +2003,10 @@ public class ObjectFieldLocalServiceImpl
 		if ((objectField != null) &&
 			(objectField.getObjectFieldId() != objectFieldId)) {
 
-			throw new ObjectFieldNameException.MustNotBeDuplicate(name);
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldNameException.MustNotBeDuplicate(name), "name",
+				name);
 		}
 
 		ObjectRelationshipLocalService objectRelationshipLocalService =
@@ -1832,18 +2024,23 @@ public class ObjectFieldLocalServiceImpl
 		if (objectRelationship.getObjectDefinitionId1() ==
 				objectDefinition.getObjectDefinitionId()) {
 
-			throw new ObjectFieldNameException.
-				MustNotBeEqualToObjectRelationshipName(
-					objectDefinition.getShortName());
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldNameException.
+					MustNotBeEqualToObjectRelationshipName(
+						objectDefinition.getShortName()),
+				"name", name);
 		}
 
 		ObjectDefinition objectDefinition1 =
 			_objectDefinitionPersistence.findByPrimaryKey(
 				objectRelationship.getObjectDefinitionId1());
 
-		throw new ObjectFieldNameException.
-			MustNotBeEqualToObjectRelationshipName(
-				objectDefinition1.getShortName());
+		ObjectDefinitionValidationThreadLocal.handleException(
+			ObjectField.class.getName(),
+			new ObjectFieldNameException.MustNotBeEqualToObjectRelationshipName(
+				objectDefinition1.getShortName()),
+			"name", name);
 	}
 
 	private void _validateObjectRelationshipDeletionType(
@@ -1858,9 +2055,12 @@ public class ObjectFieldLocalServiceImpl
 				ObjectRelationshipConstants.DELETION_TYPE_DISASSOCIATE) &&
 			required) {
 
-			throw new ObjectFieldRelationshipTypeException(
-				"Object field cannot be required because the relationship " +
-					"deletion type is disassociate");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldRelationshipTypeException(
+					"Object field cannot be required because the " +
+						"relationship deletion type is disassociate"),
+				"objectFieldId", objectFieldId);
 		}
 	}
 
@@ -1884,12 +2084,58 @@ public class ObjectFieldLocalServiceImpl
 		}
 	}
 
+	private void _validateReadOnlySetting(
+			String businessType, ObjectDefinition objectDefinition,
+			ObjectField oldObjectField, String readOnly)
+		throws PortalException {
+
+		if (Objects.equals(
+				businessType,
+				ObjectFieldConstants.BUSINESS_TYPE_RELATIONSHIP) &&
+			objectDefinition.isRootDescendantNode() &&
+			!Objects.equals(oldObjectField.getReadOnly(), readOnly)) {
+
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldReadOnlyException(
+					"An object field's read only setting is defined by the " +
+						"root object definition and cannot be changed"),
+				null, null);
+		}
+	}
+
+	private void _validateRelationshipAndDBType(
+			String dbType, String name, ObjectField newObjectField,
+			long objectFieldId, ObjectDefinition objectDefinition,
+			boolean system)
+		throws PortalException {
+
+		if (Validator.isNotNull(newObjectField.getRelationshipType())) {
+			if (!Objects.equals(newObjectField.getDBType(), dbType) ||
+				!Objects.equals(newObjectField.getName(), name)) {
+
+				ObjectDefinitionValidationThreadLocal.handleException(
+					ObjectField.class.getName(),
+					new ObjectFieldRelationshipTypeException(
+						"Object field relationship name and DB type cannot " +
+							"be changed"),
+					null, null);
+			}
+		}
+		else {
+			_validateName(objectFieldId, objectDefinition, name, system);
+		}
+	}
+
 	private void _validateState(boolean required, boolean state)
 		throws PortalException {
 
 		if (state && !required) {
-			throw new ObjectFieldStateException(
-				"Object field must be required when the state is true");
+			ObjectDefinitionValidationThreadLocal.handleException(
+				ObjectField.class.getName(),
+				new ObjectFieldStateException(
+					"Object field must be required when the state is true"),
+				"state", state);
 		}
 	}
 
