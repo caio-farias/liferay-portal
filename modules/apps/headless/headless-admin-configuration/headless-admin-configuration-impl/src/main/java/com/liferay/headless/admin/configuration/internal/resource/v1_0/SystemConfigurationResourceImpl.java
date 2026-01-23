@@ -8,6 +8,7 @@ package com.liferay.headless.admin.configuration.internal.resource.v1_0;
 import com.liferay.configuration.admin.display.ConfigurationScreen;
 import com.liferay.configuration.admin.exportimport.ConfigurationExportImportProcessor;
 import com.liferay.configuration.admin.util.ConfigurationFilterStringUtil;
+import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate;
 import com.liferay.headless.admin.configuration.dto.v1_0.SystemConfiguration;
 import com.liferay.headless.admin.configuration.internal.util.ConfigurationScreenUtil;
 import com.liferay.headless.admin.configuration.internal.util.ConfigurationUtil;
@@ -19,6 +20,7 @@ import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClass
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.settings.SettingsLocatorHelper;
@@ -26,6 +28,7 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.Portal;
+import com.liferay.portal.vulcan.fields.NestedFieldsContext;
 import com.liferay.portal.vulcan.pagination.Page;
 
 import jakarta.validation.ValidationException;
@@ -54,10 +57,44 @@ import org.osgi.service.component.annotations.ServiceScope;
  */
 @Component(
 	properties = "OSGI-INF/liferay/rest/v1_0/system-configuration.properties",
+	property = "export.import.vulcan.batch.engine.task.item.delegate=true",
 	scope = ServiceScope.PROTOTYPE, service = SystemConfigurationResource.class
 )
 public class SystemConfigurationResourceImpl
-	extends BaseSystemConfigurationResourceImpl {
+	extends BaseSystemConfigurationResourceImpl implements
+	ExportImportVulcanBatchEngineTaskItemDelegate<SystemConfiguration> {
+
+	@Override
+	public ExportImportDescriptor getExportImportDescriptor() {
+		return new ExportImportDescriptor() {
+
+			@Override
+			public String getLabelLanguageKey() {
+				return "TODO";
+			}
+
+			@Override
+			public String getModelClassName() {
+				return SystemConfiguration.class.getName();
+			}
+
+			@Override
+			public String getPortletId() {
+				return "TODO-SYSTEM-CONFIG-PORTLET-ID";
+			}
+
+			@Override
+			public String getResourceClassName() {
+				return this.getClass().getName();
+			}
+
+			@Override
+			public Scope getScope() {
+				return Scope.COMPANY;
+			}
+
+		};
+	}
 
 	@Override
 	public SystemConfiguration getSystemConfiguration(

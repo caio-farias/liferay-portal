@@ -8,7 +8,9 @@ package com.liferay.headless.admin.configuration.internal.resource.v1_0;
 import com.liferay.configuration.admin.display.ConfigurationScreen;
 import com.liferay.configuration.admin.exportimport.ConfigurationExportImportProcessor;
 import com.liferay.configuration.admin.util.ConfigurationFilterStringUtil;
+import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate;
 import com.liferay.headless.admin.configuration.dto.v1_0.SiteConfiguration;
+import com.liferay.headless.admin.configuration.dto.v1_0.SystemConfiguration;
 import com.liferay.headless.admin.configuration.internal.util.ConfigurationScreenUtil;
 import com.liferay.headless.admin.configuration.internal.util.ConfigurationUtil;
 import com.liferay.headless.admin.configuration.resource.v1_0.SiteConfigurationResource;
@@ -57,10 +59,44 @@ import org.osgi.service.component.annotations.ServiceScope;
  */
 @Component(
 	properties = "OSGI-INF/liferay/rest/v1_0/site-configuration.properties",
+	property = "export.import.vulcan.batch.engine.task.item.delegate=true",
 	scope = ServiceScope.PROTOTYPE, service = SiteConfigurationResource.class
 )
 public class SiteConfigurationResourceImpl
-	extends BaseSiteConfigurationResourceImpl {
+	extends BaseSiteConfigurationResourceImpl implements
+	ExportImportVulcanBatchEngineTaskItemDelegate<SiteConfiguration> {
+
+	@Override
+	public ExportImportDescriptor getExportImportDescriptor() {
+		return new ExportImportDescriptor() {
+
+			@Override
+			public String getLabelLanguageKey() {
+				return "TODO";
+			}
+
+			@Override
+			public String getModelClassName() {
+				return SiteConfiguration.class.getName();
+			}
+
+			@Override
+			public String getPortletId() {
+				return "TODO-SITE-CONFIG-PORTLET-ID";
+			}
+
+			@Override
+			public String getResourceClassName() {
+				return this.getClass().getName();
+			}
+
+			@Override
+			public Scope getScope() {
+				return Scope.SITE;
+			}
+
+		};
+	}
 
 	@Override
 	public SiteConfiguration getSiteSiteConfiguration(
