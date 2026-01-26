@@ -5,6 +5,7 @@
 
 package com.liferay.headless.admin.configuration.internal.resource.v1_0;
 
+import com.liferay.configuration.admin.constants.ConfigurationAdminPortletKeys;
 import com.liferay.configuration.admin.display.ConfigurationScreen;
 import com.liferay.configuration.admin.exportimport.ConfigurationExportImportProcessor;
 import com.liferay.configuration.admin.util.ConfigurationFilterStringUtil;
@@ -80,12 +81,12 @@ public class SystemConfigurationResourceImpl
 
 			@Override
 			public String getPortletId() {
-				return "TODO-SYSTEM-CONFIG-PORTLET-ID";
+				return ConfigurationAdminPortletKeys.SYSTEM_SETTINGS;
 			}
 
 			@Override
 			public String getResourceClassName() {
-				return this.getClass().getName();
+				return SystemConfigurationResourceImpl.class.getName();
 			}
 
 			@Override

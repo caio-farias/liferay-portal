@@ -5,10 +5,13 @@
 
 package com.liferay.headless.admin.configuration.internal.resource.v1_0;
 
+import com.liferay.configuration.admin.constants.ConfigurationAdminPortletKeys;
 import com.liferay.configuration.admin.display.ConfigurationScreen;
 import com.liferay.configuration.admin.exportimport.ConfigurationExportImportProcessor;
 import com.liferay.configuration.admin.util.ConfigurationFilterStringUtil;
+import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate;
 import com.liferay.headless.admin.configuration.dto.v1_0.InstanceConfiguration;
+import com.liferay.headless.admin.configuration.dto.v1_0.SiteConfiguration;
 import com.liferay.headless.admin.configuration.internal.util.ConfigurationScreenUtil;
 import com.liferay.headless.admin.configuration.internal.util.ConfigurationUtil;
 import com.liferay.headless.admin.configuration.resource.v1_0.InstanceConfigurationResource;
@@ -53,11 +56,45 @@ import org.osgi.service.component.annotations.ServiceScope;
  */
 @Component(
 	properties = "OSGI-INF/liferay/rest/v1_0/instance-configuration.properties",
+	property = "export.import.vulcan.batch.engine.task.item.delegate=true",
 	scope = ServiceScope.PROTOTYPE,
 	service = InstanceConfigurationResource.class
 )
 public class InstanceConfigurationResourceImpl
-	extends BaseInstanceConfigurationResourceImpl {
+	extends BaseInstanceConfigurationResourceImpl implements
+	ExportImportVulcanBatchEngineTaskItemDelegate<InstanceConfiguration> {
+
+	@Override
+	public ExportImportVulcanBatchEngineTaskItemDelegate.ExportImportDescriptor getExportImportDescriptor() {
+		return new ExportImportVulcanBatchEngineTaskItemDelegate.ExportImportDescriptor() {
+
+			@Override
+			public String getLabelLanguageKey() {
+				return "TODO";
+			}
+
+			@Override
+			public String getModelClassName() {
+				return InstanceConfiguration.class.getName();
+			}
+
+			@Override
+			public String getPortletId() {
+				return ConfigurationAdminPortletKeys.INSTANCE_SETTINGS;
+			}
+
+			@Override
+			public String getResourceClassName() {
+				return InstanceConfigurationResourceImpl.class.getName();
+			}
+
+			@Override
+			public ExportImportVulcanBatchEngineTaskItemDelegate.Scope getScope() {
+				return Scope.COMPANY;
+			}
+
+		};
+	}
 
 	@Override
 	public InstanceConfiguration getInstanceConfiguration(

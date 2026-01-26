@@ -5,9 +5,11 @@
 
 package com.liferay.headless.admin.configuration.internal.resource.v1_0;
 
+import com.liferay.configuration.admin.constants.ConfigurationAdminPortletKeys;
 import com.liferay.configuration.admin.display.ConfigurationScreen;
 import com.liferay.configuration.admin.exportimport.ConfigurationExportImportProcessor;
 import com.liferay.configuration.admin.util.ConfigurationFilterStringUtil;
+import com.liferay.exportimport.kernel.lar.PortletDataContext;
 import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate;
 import com.liferay.headless.admin.configuration.dto.v1_0.SiteConfiguration;
 import com.liferay.headless.admin.configuration.dto.v1_0.SystemConfiguration;
@@ -41,6 +43,7 @@ import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.ServerErrorException;
 import jakarta.ws.rs.core.Response;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -82,12 +85,12 @@ public class SiteConfigurationResourceImpl
 
 			@Override
 			public String getPortletId() {
-				return "TODO-SITE-CONFIG-PORTLET-ID";
+				return ConfigurationAdminPortletKeys.SITE_SETTINGS;
 			}
 
 			@Override
 			public String getResourceClassName() {
-				return this.getClass().getName();
+				return SiteConfigurationResourceImpl.class.getName();
 			}
 
 			@Override
