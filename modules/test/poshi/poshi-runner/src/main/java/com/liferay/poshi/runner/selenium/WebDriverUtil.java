@@ -210,6 +210,7 @@ public class WebDriverUtil {
 		}
 
 		chromeOptions.addArguments("--remote-allow-origins=*");
+		chromeOptions.addArguments("--ignore-certificate-errors");
 
 		return chromeOptions;
 	}
