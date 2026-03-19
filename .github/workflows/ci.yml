@@ -11,11 +11,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  run-linux-commands:
+  run-test:
     runs-on: self-hosted
     defaults:
       run:
-        working-directory: $LIFERAY_HOME
+        working-directory: ${{ env.LIFERAY_HOME }}
     steps:
       - name: Print OS info
         run: uname -a
