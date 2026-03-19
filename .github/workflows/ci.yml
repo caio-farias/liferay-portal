@@ -1,0 +1,28 @@
+name: CI for running application tests (self-hosted)
+
+environments:
+  LIFERAY_HOME: /opt/liferay
+
+on:
+  push:
+    branches: [ "self-hosted-ci" ]
+  pull_request:
+    branches: [ "self-hosted-ci" ]
+  workflow_dispatch:
+
+jobs:
+  run-linux-commands:
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: $LIFERAY_HOME
+    steps:
+      - name: Print OS info
+        run: uname -a
+
+      - name: Explore the environment
+        run: |
+          echo "Starting environment check..."
+          which gw
+          cd $LIFERAY_HOME
+          ls ./
