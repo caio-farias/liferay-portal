@@ -11,15 +11,17 @@
 PasswordPolicy passwordPolicy = userDisplayContext.getPasswordPolicy();
 User selUser = userDisplayContext.getSelectedUser();
 
-boolean passwordReset = false;
-boolean passwordResetDisabled = false;
+boolean passwordResetDisabled = GetterUtil.get(passwordPolicy.isChangeRequired(), false);
+boolean passwordReset = GetterUtil.get(passwordResetDisabled, false);
 
 if (((selUser == null) || (selUser.getLastLoginDate() == null)) && passwordPolicy.isChangeable() && passwordPolicy.isChangeRequired()) {
 	passwordReset = true;
 	passwordResetDisabled = true;
 }
 else {
-	passwordReset = BeanParamUtil.getBoolean(selUser, request, "passwordReset");
+	if (selUser == null || selUser.getLastLoginDate() == null){
+		passwordReset = BeanParamUtil.getBoolean(selUser, request, "passwordReset");
+	}
 
 	if (!passwordPolicy.isChangeable()) {
 		passwordResetDisabled = true;
