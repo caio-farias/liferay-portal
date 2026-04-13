@@ -12,7 +12,9 @@ import {passwordPoliciesAdminPageTest} from '../../../fixtures/passwordPoliciesA
 import {TPasswordPolicy} from '../../../helpers/PasswordPolicyApiHelper';
 import {PasswordPoliciesAdminPage} from '../../../pages/password-policies-admin-web/PasswordPoliciesAdminPage';
 import getRandomString from '../../../utils/getRandomString';
-import performLoginViaApi from '../../../utils/performLogin';
+import { performLogout, performLoginViaApi } from '../../../utils/performLogin';
+import { usersAndOrganizationsPagesTest } from '../../../fixtures/usersAndOrganizationsPagesTest';
+import performLogin from '../../../utils/performLogin';
 
 export const test = mergeTests(
 	captchaConfigPageTest,
@@ -20,8 +22,11 @@ export const test = mergeTests(
 		'LPD-36105': {enabled: true},
 	}),
 	loginTest(),
-	passwordPoliciesAdminPageTest
+	passwordPoliciesAdminPageTest,
+	usersAndOrganizationsPagesTest
 );
+
+let passwordPolicyHasBeenCreated = false;
 
 test.afterEach(
 	'Reset CAPTCHA configuration',
@@ -29,7 +34,7 @@ test.afterEach(
 		await page.goto('/');
 
 		if (await page.getByRole('button', {name: 'Sign In'}).isVisible()) {
-			await performLoginViaApi(page, 'test');
+			await performLogin(page, 'test');
 		}
 
 		await captchaConfigPage.goTo();
@@ -41,6 +46,10 @@ test.afterEach(
 		await passwordPoliciesAdminConfigPage.goTo();
 
 		await passwordPoliciesAdminConfigPage.resetDefaultPasswordPolicy();
+		
+		if (passwordPolicyHasBeenCreated){
+			await passwordPoliciesAdminConfigPage.deleteAllPasswordPolicies();
+		}
 	}
 );
 
@@ -50,7 +59,7 @@ test.beforeEach(
 		await page.goto('/');
 
 		if (await page.getByRole('button', {name: 'Sign In'}).isVisible()) {
-			await performLoginViaApi(page, 'test');
+			await performLogin(page, 'test');
 		}
 
 		await captchaConfigPage.goTo();
@@ -196,6 +205,54 @@ test(
 		);
 	}
 );
+
+test(
+	'Create new password policy assign to recently added user that recenlty logged in and check if Password Policy is properly loaded at Edit Password page.',
+	{tag: '@LPP-63539'},
+	async ({browser,  editUserPage, userLoginPage, page, passwordPoliciesAdminConfigPage, usersAndOrganizationsPage}) => {
+		const screenName = 'demo.unprivileged';
+
+		await performLogout(page);
+		
+		await performLoginViaApi({ page, screenName, rememberMe: false });
+
+		const passwordPolicy: TPasswordPolicy = {
+			changeableToggle: true,
+			changeRequiredToggle: true,
+			name: getRandomString(),
+		}
+
+		await performLoginViaApi({ page, screenName: 'test' });
+
+		await passwordPoliciesAdminConfigPage.goTo();
+		
+		await passwordPoliciesAdminConfigPage.createPasswordPolicy(passwordPolicy);
+
+		passwordPolicyHasBeenCreated = true;
+
+		await passwordPoliciesAdminConfigPage.goTo();
+
+
+		await passwordPoliciesAdminConfigPage.assignUser(
+			passwordPolicy.name,
+			screenName
+		);
+		await usersAndOrganizationsPage.goToUsers();
+
+		await usersAndOrganizationsPage.goToUser(screenName);
+		
+		await editUserPage.passwordLink.click();
+
+		const requiredPasswordResetCheckbox = editUserPage.requiredPasswordResetCheckbox;
+
+		await expect(editUserPage.passwordInput).toBeEnabled();
+		
+		expect(await requiredPasswordResetCheckbox.isDisabled())
+		.toBe(passwordPolicy.changeRequiredToggle);
+
+		expect(await requiredPasswordResetCheckbox.isChecked())
+			.toBe(passwordPolicy.changeRequiredToggle);
+	});
 
 async function testPasswordPolicySyntaxCheck(
 	browser,

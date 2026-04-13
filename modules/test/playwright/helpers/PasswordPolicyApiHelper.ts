@@ -5,7 +5,9 @@
 
 export type TPasswordPolicy = {
 	allowDictionaryWordsToggle?: boolean;
+	assigneeScreenNames?: string[];
 	changeableToggle?: boolean;
+	changeRequiredToggle?: true;
 	checkSyntaxToggle?: boolean;
 	description?: string;
 	expireableToggle?: boolean;
