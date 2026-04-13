@@ -112,6 +112,18 @@ export class PasswordPoliciesAdminPage {
 			);
 		}
 
+		await this.page
+			.getByRole('button', {name: 'Password Changes'})
+			.click({timeout: 500});
+
+		await this.changeableToggle.setChecked(
+			!!passwordPolicy.changeableToggle || !!passwordPolicy.changeRequiredToggle
+		);
+
+		await this.changeRequiredToggle.setChecked(
+			!!passwordPolicy.changeRequiredToggle
+		);
+
 		if (passwordPolicy.allowDictionaryWordsToggle !== undefined) {
 			await this.allowDictionaryWordsToggle.setChecked(
 				passwordPolicy.allowDictionaryWordsToggle
