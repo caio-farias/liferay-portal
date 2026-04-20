@@ -1,0 +1,4 @@
+Bundle-Name: Liferay Portal Security Crypto
+Bundle-SymbolicName: com.liferay.portal.security.crypto
+Bundle-Version: 1.0.0
+Export-Package: com.liferay.portal.security.crypto.manager
