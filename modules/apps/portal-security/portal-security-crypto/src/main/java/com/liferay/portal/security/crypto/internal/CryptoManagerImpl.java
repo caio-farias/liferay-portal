@@ -80,6 +80,10 @@ public class CryptoManagerImpl implements CryptoManager {
 		String operation, CryptoUseCase cryptoUseCase, String algorithm,
 		int keySize, String feature) {
 
+		if (!FIPSModeUtil.isFIPSModeEnabled()) {
+			return;
+		}
+
 		if (_cryptoPolicyManager.isKeySizeAllowed(
 				cryptoUseCase, algorithm, keySize)) {
 
