@@ -605,10 +605,9 @@ public class TypeScriptClientUtil {
 			context = Collections.singletonMap("configYAML", configYAML);
 		}
 
-		FileUtil.write(
-			file,
-			FreeMarkerUtil.processTemplate(
-				copyrightFile, FileUtil.getCopyrightYear(file), name, context));
+		FreeMarkerUtil.processTemplate(
+			copyrightFile, FileUtil.getCopyrightYear(file), name, context,
+			file);
 	}
 
 	private static void _createNodeScriptsConfigFile(
@@ -619,10 +618,8 @@ public class TypeScriptClientUtil {
 
 		files.add(file);
 
-		FileUtil.write(
-			file,
-			FreeMarkerUtil.processTemplate(
-				null, null, "typescript/node_scripts_config_js", null));
+		FreeMarkerUtil.processTemplate(
+			null, null, "typescript/node_scripts_config_js", null, file);
 	}
 
 	private static void _createPackageJSONFile(File basePath, List<File> files)
@@ -632,13 +629,12 @@ public class TypeScriptClientUtil {
 
 		files.add(file);
 
-		FileUtil.write(
-			file,
-			FreeMarkerUtil.processTemplate(
-				null, null, "typescript/package_json",
-				HashMapBuilder.<String, Object>put(
-					"clientName", basePath.getName()
-				).build()));
+		FreeMarkerUtil.processTemplate(
+			null, null, "typescript/package_json",
+			HashMapBuilder.<String, Object>put(
+				"clientName", basePath.getName()
+			).build(),
+			file);
 	}
 
 	private static void _createRelatedSchemaModels(
@@ -698,12 +694,15 @@ public class TypeScriptClientUtil {
 					referencedYAMLFile = new File(parentYAMLPath);
 				}
 				else {
-					String referencedYAMLFileName = parentYAMLPath.substring(
-						0, parentYAMLPath.lastIndexOf("/") + 1);
+					String parentDir = configYAML.getBaseDir();
 
-					referencedYAMLFileName += reference.split("#")[0];
+					if (Validator.isNotNull(parentYAMLPath)) {
+						parentDir = parentYAMLPath.substring(
+							0, parentYAMLPath.lastIndexOf("/") + 1);
+					}
 
-					referencedYAMLFile = new File(referencedYAMLFileName);
+					referencedYAMLFile = new File(
+						parentDir, reference.split("#")[0]);
 				}
 
 				files.add(referencedYAMLFile);

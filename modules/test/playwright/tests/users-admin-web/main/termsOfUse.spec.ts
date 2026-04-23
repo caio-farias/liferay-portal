@@ -6,7 +6,6 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
-import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {instanceSettingsPagesTest} from '../../../fixtures/instanceSettingsPagesTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {usersAndOrganizationsPagesTest} from '../../../fixtures/usersAndOrganizationsPagesTest';
@@ -21,9 +20,6 @@ import {waitForAlert} from '../../../utils/waitForAlert';
 
 const test = mergeTests(
 	dataApiHelpersTest,
-	featureFlagsTest({
-		'LPD-36105': {enabled: true},
-	}),
 	instanceSettingsPagesTest,
 	loginTest(),
 	usersAndOrganizationsPagesTest
@@ -33,12 +29,17 @@ test.afterEach(
 	async ({page, termsOfUseInstanceSettingsPage, userLoginPage}) => {
 		await performLoginViaApi({page, screenName: 'test'});
 
-		await page.waitForLoadState('networkidle');
+		await page.goto('/');
 
-		if (await userLoginPage.iAgreeButton.isVisible()) {
-			await userLoginPage.iAgreeButton.click();
-			await page.waitForLoadState('networkidle');
-		}
+		await expect(async () => {
+			if (await userLoginPage.iAgreeButton.isVisible()) {
+				await userLoginPage.iAgreeButton.click();
+			}
+
+			await expect(page.getByTitle('User Profile Menu')).toBeVisible({
+				timeout: 3000,
+			});
+		}).toPass({timeout: 30000});
 
 		await termsOfUseInstanceSettingsPage.goto();
 
@@ -63,7 +64,10 @@ test(
 		await test.step('Enable terms of use', async () => {
 			if (await userLoginPage.iAgreeButton.isVisible()) {
 				await userLoginPage.iAgreeButton.click();
-				await page.waitForLoadState('networkidle');
+
+				await expect(page.getByTitle('User Profile Menu')).toBeVisible({
+					timeout: 30000,
+				});
 			}
 
 			await termsOfUseInstanceSettingsPage.goto();
@@ -75,7 +79,10 @@ test(
 
 			if (await userLoginPage.iAgreeButton.isVisible()) {
 				await userLoginPage.iAgreeButton.click();
-				await page.waitForLoadState('networkidle');
+
+				await expect(page.getByTitle('User Profile Menu')).toBeVisible({
+					timeout: 30000,
+				});
 			}
 
 			await termsOfUseInstanceSettingsPage.goto();
@@ -188,5 +195,22 @@ test(
 		finally {
 			await apiHelpers.headlessSite.deleteSite(site.id);
 		}
+	}
+);
+
+test(
+	'Reset terms of use consent displays the in-progress alert',
+	{tag: '@LPD-81612'},
+	async ({page, termsOfUseInstanceSettingsPage}) => {
+		await termsOfUseInstanceSettingsPage.goto();
+
+		page.once('dialog', (dialog) => dialog.accept());
+
+		await termsOfUseInstanceSettingsPage.resetConsentButton.click();
+
+		await waitForAlert(
+			page,
+			'Success:Terms of use consent reset is in progress.'
+		);
 	}
 );

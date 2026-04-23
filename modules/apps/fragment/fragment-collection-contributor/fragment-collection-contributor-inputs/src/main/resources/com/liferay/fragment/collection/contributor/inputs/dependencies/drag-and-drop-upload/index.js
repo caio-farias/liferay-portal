@@ -196,7 +196,7 @@ else {
 		selectFileEvent = onSelectFile;
 	}
 
-	const defaultLanguageId = themeDisplay.getDefaultLanguageId();
+	const defaultLanguageId = input.attributes.defaultLanguageId;
 	const inputElement = fileInput;
 
 	let currentLanguageId = defaultLanguageId;
@@ -261,6 +261,7 @@ else {
 				}
 
 				const {onChange} = registerLocalizedInput({
+					availableLanguageIds: input.attributes.availableLanguageIds,
 					changeTextDirection: false,
 					customLocaleChangeHandler: true,
 					defaultLanguageId,

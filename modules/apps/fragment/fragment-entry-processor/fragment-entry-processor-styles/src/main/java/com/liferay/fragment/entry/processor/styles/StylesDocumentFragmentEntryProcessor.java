@@ -13,6 +13,7 @@ import com.liferay.layout.page.template.model.LayoutPageTemplateStructure;
 import com.liferay.layout.page.template.service.LayoutPageTemplateStructureLocalService;
 import com.liferay.layout.util.structure.FragmentStyledLayoutStructureItem;
 import com.liferay.layout.util.structure.LayoutStructure;
+import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 
@@ -37,7 +38,18 @@ public class StylesDocumentFragmentEntryProcessor
 
 	@Override
 	public void processFragmentEntryLinkHTML(
-		FragmentEntryLink fragmentEntryLink, Document document,
+		Document document, FragmentEntryLink fragmentEntryLink,
+		FragmentEntryProcessorContext fragmentEntryProcessorContext) {
+
+		processFragmentEntryLinkHTML(
+			document, fragmentEntryLink.getEditableValuesJSONObject(),
+			fragmentEntryLink, fragmentEntryProcessorContext);
+	}
+
+	@Override
+	public void processFragmentEntryLinkHTML(
+		Document document, JSONObject editableValuesJSONObject,
+		FragmentEntryLink fragmentEntryLink,
 		FragmentEntryProcessorContext fragmentEntryProcessorContext) {
 
 		String html = fragmentEntryLink.getHtml();

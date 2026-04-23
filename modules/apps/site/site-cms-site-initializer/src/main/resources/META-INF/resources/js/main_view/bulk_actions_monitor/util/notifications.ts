@@ -21,6 +21,7 @@ import {
 	BULK_ACTION_DOWNLOAD,
 	BULK_ACTION_DUE_DATE,
 	BULK_ACTION_EXPIRE,
+	BULK_ACTION_EXPORT_TRANSLATION,
 	BULK_ACTION_MOVE,
 	BULK_ACTION_PERMISSIONS,
 	BULK_ACTION_RESET_PERMISSIONS,
@@ -246,11 +247,22 @@ const BULK_ACTION_MESSAGES: BulkActionMessage = {
 			singular: Liferay.Language.get('x-was-successfully-expired'),
 		},
 	},
+	[BULK_ACTION_EXPORT_TRANSLATION]: {
+		info: {
+			all: Liferay.Language.get('download-action-started-for-all-assets'),
+			plural: Liferay.Language.get(
+				'download-action-started-for-x-assets'
+			),
+			singular: Liferay.Language.get(
+				'download-action-started-for-one-asset'
+			),
+		},
+	},
 	[BULK_ACTION_MOVE]: {
 		info: {
-			all: Liferay.Language.get('move-action-started-for-all-assets'),
-			plural: Liferay.Language.get('move-action-started-for-x-assets'),
-			singular: Liferay.Language.get('move-action-started-for-one-asset'),
+			all: Liferay.Language.get('moving-all-assets-to-x'),
+			plural: Liferay.Language.get('moving-x-assets-to-x'),
+			singular: Liferay.Language.get('moving-x-to-x'),
 		},
 		success: {
 			all: Liferay.Language.get('all-items-were-successfully-moved-to-x'),

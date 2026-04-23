@@ -29,7 +29,7 @@ test(
 		let user;
 
 		await test.step('Create a new Site', async () => {
-			siteOne = await apiHelpers.headlessSite.createSite({
+			siteOne = await apiHelpers.headlessAdminSite.postSite({
 				name: siteOneName,
 			});
 		});
@@ -65,7 +65,7 @@ test(
 		});
 
 		await test.step('Create a new second Site', async () => {
-			siteTwo = await apiHelpers.headlessSite.createSite({
+			siteTwo = await apiHelpers.headlessAdminSite.postSite({
 				name: siteTwoName,
 			});
 		});
@@ -101,26 +101,6 @@ test(
 			await expect(
 				page.getByText('You do not have the required permissions')
 			).toBeVisible();
-		});
-
-		await test.step('Clean up', async () => {
-			const promises = [];
-
-			if (siteOne?.id) {
-				promises.push(apiHelpers.headlessSite.deleteSite(siteOne.id));
-			}
-
-			if (siteTwo?.id) {
-				promises.push(apiHelpers.headlessSite.deleteSite(siteTwo.id));
-			}
-
-			if (user?.id) {
-				promises.push(
-					apiHelpers.headlessAdminUser.deleteUserAccount(user.id)
-				);
-			}
-
-			await Promise.allSettled(promises);
 		});
 	}
 );

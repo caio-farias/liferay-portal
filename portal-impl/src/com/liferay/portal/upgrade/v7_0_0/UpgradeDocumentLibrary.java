@@ -127,7 +127,7 @@ public class UpgradeDocumentLibrary extends UpgradeProcess {
 
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				while (resultSet.next()) {
-					if (resultSet.getInt("count") > 0) {
+					if (resultSet.getLong("count") > 0) {
 						return true;
 					}
 				}
@@ -163,8 +163,10 @@ public class UpgradeDocumentLibrary extends UpgradeProcess {
 
 	protected void updateFileEntryTypeDDMStructureLinks() throws Exception {
 		try (LoggingTimer loggingTimer = new LoggingTimer();
+
 			PreparedStatement preparedStatement = connection.prepareStatement(
 				"select * from DLFileEntryTypes_DDMStructures");
+
 			ResultSet resultSet = preparedStatement.executeQuery()) {
 
 			long classNameId = PortalUtil.getClassNameId(DLFileEntryType.class);

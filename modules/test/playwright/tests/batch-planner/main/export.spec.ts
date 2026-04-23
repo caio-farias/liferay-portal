@@ -20,7 +20,6 @@ export const test = mergeTests(
 	dataMigrationCenterPagesTest,
 	featureFlagsTest({
 		'COMMERCE-8087': {enabled: true},
-		'LPD-36105': {enabled: true},
 	}),
 	loginTest()
 );
@@ -462,6 +461,10 @@ test('can export as JSONL with excluded fields', async ({
 			update: {
 				href: expect.stringContaining('/o/c/stocks/'),
 				method: 'PATCH',
+			},
+			versions: {
+				href: expect.stringContaining('/o/c/stocks/'),
+				method: 'GET',
 			},
 		});
 	});

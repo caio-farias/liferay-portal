@@ -35,7 +35,7 @@ test(
 			await test.step(`Assert "View All" link visibility after creating 6 more sites`, async () => {
 				for (let index = 1; index < 7; index++) {
 					sites.push(
-						await apiHelpers.headlessSite.createSite({
+						await apiHelpers.headlessAdminSite.postSite({
 							name: getRandomString(),
 						})
 					);
@@ -72,7 +72,9 @@ test(
 			await test.step('Cleanup sites', async () => {
 				await Promise.all(
 					sites.map((site) =>
-						apiHelpers.headlessSite.deleteSite(site.id)
+						apiHelpers.headlessAdminSite.deleteSite(
+							site.externalReferenceCode
+						)
 					)
 				);
 			});
@@ -204,7 +206,7 @@ test(
 				.getByRole('navigation', {name: 'Applications Menu'})
 				.locator('img')
 				.first()
-		).toHaveAttribute('src', /liferay_instance_logo/);
+		).toHaveAttribute('src', /liferay_logo/);
 
 		await expect(
 			page.getByRole('dialog').getByText('Liferay DXP', {exact: true})
@@ -215,6 +217,6 @@ test(
 				.getByRole('navigation', {name: 'Applications Menu'})
 				.locator('img')
 				.last()
-		).toHaveAttribute('src', /liferay_logo/);
+		).toHaveAttribute('src', /default_logo/);
 	}
 );

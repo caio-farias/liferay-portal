@@ -39,8 +39,8 @@ const test = mergeTests(
 const STYLES = [
 	{defaultValue: 'Align Left', label: 'Text Align', type: 'button'},
 
-	{defaultValue: '#00000000', label: 'Background Color', type: 'color'},
-	{defaultValue: '#1C1C24', label: 'Border Color', type: 'color'},
+	{defaultValue: '00000000', label: 'Background Color', type: 'color'},
+	{defaultValue: '1C1C24', label: 'Border Color', type: 'color'},
 
 	{defaultValue: 'Inherited', label: 'Font Family', type: 'select'},
 	{defaultValue: 'Inherited', label: 'Font Size', type: 'select'},
@@ -411,7 +411,10 @@ test.describe('Advanced Configuration', () => {
 		pageEditorPage,
 		site,
 	}) => {
-		const layouts = {fragment: null, searchBar: null};
+		const layouts: {fragment: Layout | null; searchBar: Layout | null} = {
+			fragment: null,
+			searchBar: null,
+		};
 
 		// Create a page with the Search Bar widget
 
@@ -1475,6 +1478,7 @@ test.describe('Styles Configuration', () => {
 			'5',
 			'px'
 		);
+
 		expect(
 			await pageEditorPage.getFragmentStyle({
 				fragmentId: headingId,
@@ -1571,13 +1575,16 @@ test.describe('Styles Configuration', () => {
 					await expect(
 						page
 							.getByLabel(label, {exact: true})
-							.getByLabel('Color', {exact: true})
+							.getByRole('textbox', {
+								name: `Color selection is ${defaultValue}.`,
+							})
 					).toHaveValue(defaultValue);
 				}
 				else if (type === 'select') {
 					expect(
 						await page
-							.getByLabel(label, {exact: true})
+							.locator('select')
+							.and(page.getByLabel(label, {exact: true}))
 							.evaluate(
 								(node: HTMLSelectElement) =>
 									node.options[node.selectedIndex].text
@@ -1586,7 +1593,9 @@ test.describe('Styles Configuration', () => {
 				}
 				else {
 					await expect(
-						page.getByLabel(label, {exact: true})
+						page
+							.locator('input')
+							.and(page.getByLabel(label, {exact: true}))
 					).toHaveValue(defaultValue);
 				}
 			}
@@ -1623,25 +1632,22 @@ test.describe('Styles Configuration', () => {
 			await pageEditorPage.goToConfigurationTab('Styles');
 
 			await page
-				.locator('.layout__dropdown-color-picker__selector')
+				.locator('.layout__color-picker__token-button')
+				.first()
 				.click();
+
+			const colorPalette = page.locator(
+				'.show .layout__color-picker__color-palette'
+			);
 
 			for (const palette of COLOR_PICKER_PALETTES) {
 				await expect(
-					page
-						.locator(
-							'.layout__dropdown-color-picker__color-palette'
-						)
-						.getByText(palette.title)
+					colorPalette.getByText(palette.title)
 				).toBeAttached();
 
 				for (const section of palette.sections) {
 					await expect(
-						page
-							.locator(
-								'.layout__dropdown-color-picker__color-palette'
-							)
-							.getByText(section)
+						colorPalette.getByText(section)
 					).toBeAttached();
 				}
 			}
@@ -1681,7 +1687,9 @@ test.describe('Styles Configuration', () => {
 
 		const backgroundColorInput = page
 			.getByLabel('Background Color')
-			.locator('.layout__color-picker__input');
+			.getByRole('textbox', {
+				name: /Color selection is/,
+			});
 
 		await fillAndClickOutside(page, backgroundColorInput, '#AAA');
 
@@ -1693,6 +1701,6 @@ test.describe('Styles Configuration', () => {
 
 		await fillAndClickOutside(page, backgroundColorInput, '#000');
 
-		await expect(backgroundColorInput).toHaveValue('#000000');
+		await expect(backgroundColorInput).toHaveValue('000000');
 	});
 });

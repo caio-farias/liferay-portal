@@ -8,6 +8,8 @@ package com.liferay.object.rest.internal.deployer;
 import com.liferay.headless.delivery.dto.v1_0.Comment;
 import com.liferay.headless.object.dto.v1_0.Collaborator;
 import com.liferay.object.deployer.ObjectDefinitionDeployer;
+import com.liferay.object.entry.scope.provider.ObjectEntryScopeProvider;
+import com.liferay.object.entry.scope.provider.ObjectEntryScopeProviderRegistry;
 import com.liferay.object.exception.NoSuchObjectDefinitionException;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectField;
@@ -327,6 +329,18 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 				excludedOperationIds,
 				BaseObjectEntryResourceImpl.class.getMethods(),
 				objectScopeProvider);
+
+			if (objectDefinition.isModifiableAndSystem()) {
+				ObjectEntryScopeProvider objectEntryScopeProvider =
+					_objectEntryScopeProviderRegistry.
+						getObjectEntryScopeProvider(
+							objectDefinition.getExternalReferenceCode());
+
+				if (objectEntryScopeProvider != null) {
+					excludedOperationIds.add("postScopeScopeKey");
+					excludedOperationIds.remove("postObjectEntry");
+				}
+			}
 
 			Collections.sort(excludedOperationIds);
 
@@ -1221,6 +1235,9 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		_objectEntryResourcePropertiesMap = new HashMap<>();
 	private final Map<String, ServiceRegistration<ObjectEntryResource>>
 		_objectEntryResourceServiceRegistrationsMap = new HashMap<>();
+
+	@Reference
+	private ObjectEntryScopeProviderRegistry _objectEntryScopeProviderRegistry;
 
 	@Reference
 	private ObjectEntryService _objectEntryService;

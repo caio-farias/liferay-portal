@@ -66,6 +66,18 @@ public abstract class BaseContentsSectionDisplayContext
 			).setHref(
 				"#"
 			).setIcon(
+				"move-folder"
+			).setLabel(
+				LanguageUtil.get(httpServletRequest, "move-to")
+			).build(
+				"move-to"
+			));
+		fdsBulkActionDropdownItems.add(
+			FDSActionDropdownItemBuilder.setHighlighted(
+				true
+			).setHref(
+				"#"
+			).setIcon(
 				"copy"
 			).setLabel(
 				LanguageUtil.get(httpServletRequest, "copy-to")
@@ -83,6 +95,18 @@ public abstract class BaseContentsSectionDisplayContext
 				LanguageUtil.get(httpServletRequest, "expire")
 			).build(
 				"expire"
+			));
+		fdsBulkActionDropdownItems.add(
+			FDSActionDropdownItemBuilder.setHighlighted(
+				true
+			).setHref(
+				"#"
+			).setIcon(
+				"upload"
+			).setLabel(
+				LanguageUtil.get(httpServletRequest, "export-for-translation")
+			).build(
+				"export-for-translation"
 			));
 		fdsBulkActionDropdownItems.add(
 			new FDSActionDropdownItem(

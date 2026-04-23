@@ -48,8 +48,8 @@ export const test = mergeTests(
 	exportImportPagesTest,
 	featureFlagsTest({
 		'LPD-17564': {enabled: true},
+		'LPD-35013': {enabled: true},
 		'LPD-35443': {enabled: false},
-		'LPD-36105': {enabled: true},
 		'LPD-44307': {enabled: true},
 		'LPD-44771': {enabled: true},
 		'LPD-45276': {enabled: true},
@@ -73,7 +73,6 @@ const testWithDeprecationFFDisabled = mergeTests(
 	dataApiHelpersTest,
 	featureFlagsTest({
 		'LPD-35443': {enabled: false},
-		'LPD-36105': {enabled: true},
 		'LPD-44307': {enabled: false},
 		'LPD-44771': {enabled: false},
 	}),
@@ -86,7 +85,6 @@ const testWithDeprecationFF = mergeTests(
 	dataApiHelpersTest,
 	featureFlagsTest({
 		'LPD-35443': {enabled: false},
-		'LPD-36105': {enabled: true},
 		'LPD-44307': {enabled: true},
 		'LPD-44771': {enabled: true},
 	}),

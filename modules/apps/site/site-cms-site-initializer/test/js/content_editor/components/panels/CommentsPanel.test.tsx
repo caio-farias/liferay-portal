@@ -12,17 +12,43 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 
 import CommentsPanel from '../../../../../src/main/resources/META-INF/resources/js/content_editor/components/panels/CommentsPanel';
-import {Comment} from '../../../../../src/main/resources/META-INF/resources/js/content_editor/services/CommentService';
+import CommentService, {
+	Comment,
+} from '../../../../../src/main/resources/META-INF/resources/js/content_editor/services/CommentService';
 import {mockFetch} from '../../../__mocks__/frontend-js-web';
 
+jest.mock(
+	'../../../../../src/main/resources/META-INF/resources/js/content_editor/services/CommentService',
+	() => ({
+		__esModule: true,
+		default: {
+			addComment: jest.fn(),
+			deleteComment: jest.fn(),
+			editComment: jest.fn(),
+			getComments: jest.fn(),
+		},
+	})
+);
+
 jest.mock('@ckeditor/ckeditor5-react', () => ({
-	CKEditor: ({onReady}: any) => {
+	CKEditor: ({onChange, onReady}: any) => {
 		const mockEditor = {
 			getData: jest.fn().mockReturnValue('mocked data'),
+			on: jest.fn(),
+			setData: jest.fn(),
 		};
 		onReady(mockEditor);
 
-		return <input aria-label="Mocked CKEditor" />;
+		return (
+			<input
+				aria-label="Mocked CKEditor"
+				onChange={(event) => {
+					if (onChange) {
+						onChange(event, mockEditor);
+					}
+				}}
+			/>
+		);
 	},
 }));
 
@@ -62,10 +88,10 @@ const initialComments = [
 	},
 ] as Comment[];
 
-const renderComponent = () => {
+const renderComponent = (addCommentURL = 'addCommentURL') => {
 	return render(
 		<CommentsPanel
-			addCommentURL="addCommentURL"
+			addCommentURL={addCommentURL}
 			comments={initialComments}
 			deleteCommentURL="deleteCommentURL"
 			editCommentURL="editCommentURL"
@@ -91,6 +117,10 @@ describe('CommentsPanel', () => {
 	});
 
 	it('deletes the child comment', async () => {
+		(CommentService.deleteComment as jest.Mock).mockResolvedValue({
+			data: {},
+		});
+
 		renderComponent();
 
 		expect(screen.getByText('Parent comment')).toBeInTheDocument;
@@ -99,13 +129,10 @@ describe('CommentsPanel', () => {
 		await userEvent.click(screen.getAllByText('delete')[1]);
 
 		await waitFor(() => {
-			expect(mockFetch).toBeCalledWith(
-				'deleteCommentURL',
+			expect(CommentService.deleteComment).toBeCalledWith(
 				expect.objectContaining({
-					body: {
-						commentId: '2',
-					},
-					method: 'POST',
+					commentId: '2',
+					url: 'deleteCommentURL',
 				})
 			);
 
@@ -121,6 +148,10 @@ describe('CommentsPanel', () => {
 	});
 
 	it('deletes the parent comment', async () => {
+		(CommentService.deleteComment as jest.Mock).mockResolvedValue({
+			data: {},
+		});
+
 		renderComponent();
 
 		expect(screen.getByText('Parent comment')).toBeInTheDocument;
@@ -129,13 +160,10 @@ describe('CommentsPanel', () => {
 		await userEvent.click(screen.getAllByText('delete')[0]);
 
 		await waitFor(() => {
-			expect(mockFetch).toBeCalledWith(
-				'deleteCommentURL',
+			expect(CommentService.deleteComment).toBeCalledWith(
 				expect.objectContaining({
-					body: {
-						commentId: '1',
-					},
-					method: 'POST',
+					commentId: '1',
+					url: 'deleteCommentURL',
 				})
 			);
 
@@ -153,20 +181,19 @@ describe('CommentsPanel', () => {
 	it('shows a toast with the error when the request to delete a comment fails', async () => {
 		const error = 'Unexpected error deleting a comment';
 
-		(mockFetch as jest.Mock).mockRejectedValueOnce(new Error(error));
+		(CommentService.deleteComment as jest.Mock).mockResolvedValue({
+			error,
+		});
 
 		renderComponent();
 
 		await userEvent.click(screen.getAllByText('delete')[0]);
 
 		await waitFor(() => {
-			expect(mockFetch).toBeCalledWith(
-				'deleteCommentURL',
+			expect(CommentService.deleteComment).toBeCalledWith(
 				expect.objectContaining({
-					body: {
-						commentId: '1',
-					},
-					method: 'POST',
+					commentId: '1',
+					url: 'deleteCommentURL',
 				})
 			);
 
@@ -200,5 +227,83 @@ describe('CommentsPanel', () => {
 			body: expect.objectContaining({score: 0}),
 			method: 'POST',
 		});
+	});
+
+	it('Adds a new comment and fires the messagePosted event', async () => {
+		const addCommentSpy = jest
+			.spyOn(CommentService, 'addComment')
+			.mockResolvedValue({
+				data: {
+					author: {
+						fullName: 'Test User',
+						portraitURL: '',
+						userId: '1',
+					},
+					body: 'mocked data',
+					children: [],
+					className: 'com.liferay.portal.kernel.model.Comment',
+					commentId: '345',
+					dateDescription: 'Just now',
+					edited: false,
+					negativeVotes: 0,
+					positiveVotes: 0,
+					rootComment: true,
+				},
+				error: null,
+			});
+		const addCommentURL = 'http://addCommentURL?classPK=123';
+		const liferayFireSpy = jest.spyOn(Liferay, 'fire');
+
+		renderComponent(addCommentURL);
+
+		await userEvent.type(
+			screen.getByLabelText('Mocked CKEditor'),
+			'Test comment'
+		);
+
+		await userEvent.click(screen.getByRole('button', {name: /save/i}));
+
+		await waitFor(() => {
+			expect(addCommentSpy).toBeCalledWith(
+				expect.objectContaining({
+					content: 'mocked data',
+					url: addCommentURL,
+				})
+			);
+
+			expect(liferayFireSpy).toHaveBeenCalledWith(
+				'messagePosted',
+				expect.objectContaining({
+					classPK: '123',
+					commentId: 345,
+					text: 'mocked data',
+				})
+			);
+		});
+	});
+
+	it('fetches comments if they are not provided as props', async () => {
+		(CommentService.getComments as jest.Mock).mockResolvedValue({
+			data: initialComments,
+		});
+
+		render(
+			<CommentsPanel
+				addCommentURL="addCommentURL"
+				deleteCommentURL="deleteCommentURL"
+				editCommentURL="editCommentURL"
+				editorConfig={{}}
+				getCommentsURL="getCommentsURL"
+			/>
+		);
+
+		await waitFor(() => {
+			expect(CommentService.getComments).toHaveBeenCalledWith({
+				url: 'getCommentsURL',
+			});
+		});
+
+		expect(screen.getByText('Parent comment')).toBeInTheDocument();
+		expect(screen.getByText('Child comment')).toBeInTheDocument();
 	});
 });

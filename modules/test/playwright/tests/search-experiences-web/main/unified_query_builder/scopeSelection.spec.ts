@@ -23,7 +23,6 @@ export const test = mergeTests(
 	dataApiHelpersTest,
 	featureFlagsTest({
 		'LPD-17564': {enabled: true}, // CMS 2.0
-		'LPD-36105': {enabled: true},
 		'LPS-178052': {enabled: true}, // Headless Site Page API
 	}),
 	isolatedSiteTest,
@@ -247,7 +246,11 @@ test.describe('Site Scope', () => {
 		});
 
 		await test.step('Remove first site from blueprint scope', async () => {
+			await editSXPBlueprintPage.closePreviewSidebar();
+
 			await editSXPBlueprintPage.removeScope({label: site1.name});
+
+			await editSXPBlueprintPage.openPreviewSidebar();
 		});
 
 		await test.step('Verify web content is no longer shown in blueprint preview', async () => {

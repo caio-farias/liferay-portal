@@ -87,7 +87,7 @@ else {
 		}
 	}
 
-	const defaultLanguageId = themeDisplay.getDefaultLanguageId();
+	const defaultLanguageId = input.attributes.defaultLanguageId;
 
 	import('@liferay/fragment-impl/api').then(
 		({
@@ -119,6 +119,7 @@ else {
 				);
 
 				const {onChange} = registerLocalizedInput({
+					availableLanguageIds: input.attributes.availableLanguageIds,
 					customLocaleChangeHandler: true,
 					defaultLanguageId,
 					initialValues: input.valueI18n,

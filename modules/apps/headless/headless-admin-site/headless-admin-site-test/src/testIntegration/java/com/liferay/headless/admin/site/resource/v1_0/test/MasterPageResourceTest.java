@@ -8,6 +8,8 @@ package com.liferay.headless.admin.site.resource.v1_0.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.exportimport.kernel.service.StagingLocalService;
 import com.liferay.exportimport.kernel.staging.MergeLayoutPrototypesThreadLocal;
+import com.liferay.fragment.model.FragmentEntryLink;
+import com.liferay.fragment.service.FragmentEntryLinkLocalService;
 import com.liferay.headless.admin.site.client.custom.field.CustomField;
 import com.liferay.headless.admin.site.client.dto.v1_0.ContentPageSpecification;
 import com.liferay.headless.admin.site.client.dto.v1_0.MasterPage;
@@ -25,6 +27,7 @@ import com.liferay.headless.admin.site.resource.v1_0.test.util.PageExperiencesTe
 import com.liferay.headless.admin.site.resource.v1_0.test.util.PageSpecificationsTestUtil;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.layout.page.template.service.LayoutPageTemplateEntryLocalService;
+import com.liferay.layout.test.util.ContentLayoutTestUtil;
 import com.liferay.layout.test.util.LayoutTestUtil;
 import com.liferay.petra.function.UnsafeRunnable;
 import com.liferay.petra.function.transform.TransformUtil;
@@ -38,6 +41,7 @@ import com.liferay.portal.kernel.portletfilerepository.PortletFileRepository;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
@@ -50,17 +54,23 @@ import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
+import com.liferay.portal.test.log.LogCapture;
+import com.liferay.portal.test.log.LogEntry;
+import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
+import com.liferay.segments.service.SegmentsExperienceLocalService;
 import com.liferay.sites.kernel.util.Sites;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -134,12 +144,15 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 
 	@Override
 	@Test
+	@TestInfo("LPD-84480")
 	public void testGetSiteMasterPage() throws Exception {
 		MasterPage masterPage = testPostSiteMasterPage_addMasterPage(
 			randomMasterPage());
 
 		_testGetSiteMasterPage(masterPage);
 		_testGetSiteMasterPageWithNestedFields(masterPage);
+
+		_testGetSiteMasterPageWithNestedFieldsAndMissingFragmentEntryLink();
 
 		_assertProblemException(
 			"NOT_FOUND", null,
@@ -475,6 +488,23 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 			RandomTestUtil.randomString(), ContentTypes.IMAGE_PNG, false);
 	}
 
+	private void _assertContentPageSpecificationPageElements(
+		ContentPageSpecification contentPageSpecification, int count) {
+
+		PageExperience[] pageExperiences =
+			contentPageSpecification.getPageExperiences();
+
+		Assert.assertEquals(
+			Arrays.toString(pageExperiences), 1, pageExperiences.length);
+
+		PageExperience pageExperience = pageExperiences[0];
+
+		PageElement[] pageElements = pageExperience.getPageElements();
+
+		Assert.assertEquals(
+			Arrays.toString(pageElements), count, pageElements.length);
+	}
+
 	private void _assertPageElements(
 		PageElement[] expectedPageElements, MasterPage masterPage) {
 
@@ -491,6 +521,22 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 					expectedPageElements, pageExperience.getPageElements());
 			}
 		}
+	}
+
+	private void _assertPageSpecifications(
+		int expectedDraftLayoutPageElementsCount,
+		int expectedPublishedLayoutPageElementsCount,
+		PageSpecification[] pageSpecifications) {
+
+		Assert.assertEquals(
+			Arrays.toString(pageSpecifications), 2, pageSpecifications.length);
+
+		_assertContentPageSpecificationPageElements(
+			(ContentPageSpecification)pageSpecifications[0],
+			expectedPublishedLayoutPageElementsCount);
+		_assertContentPageSpecificationPageElements(
+			(ContentPageSpecification)pageSpecifications[1],
+			expectedDraftLayoutPageElementsCount);
 	}
 
 	private void _assertPageSpecifications(
@@ -719,6 +765,85 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 		PageSpecificationsTestUtil.assertPageSpecifications(
 			_layoutLocalService.getLayout(layoutPageTemplateEntry.getPlid()),
 			getMasterPage.getPageSpecifications());
+	}
+
+	private void _testGetSiteMasterPageWithNestedFieldsAndMissingFragmentEntryLink()
+		throws Exception {
+
+		LayoutPageTemplateEntry layoutPageTemplateEntry =
+			LayoutPageTemplateEntryTestUtil.getMasterLayoutPageTemplateEntry(
+				ServiceContextTestUtil.getServiceContext(
+					testGroup, TestPropsValues.getUserId()),
+				WorkflowConstants.STATUS_APPROVED);
+
+		MasterPageResource masterPageResource = _getMasterPageResource();
+
+		_testGetSiteMasterPageWithNestedFieldsAndMissingFragmentEntryLink(
+			1, 1, layoutPageTemplateEntry.getExternalReferenceCode(),
+			masterPageResource, testGroup.getExternalReferenceCode());
+
+		Layout layout = _layoutLocalService.getLayout(
+			layoutPageTemplateEntry.getPlid());
+
+		Layout draftLayout = layout.fetchDraftLayout();
+
+		FragmentEntryLink fragmentEntryLink =
+			ContentLayoutTestUtil.addFragmentEntryLinkToLayout(
+				"{}", draftLayout,
+				_segmentsExperienceLocalService.
+					fetchDefaultSegmentsExperienceId(draftLayout.getPlid()));
+
+		_testGetSiteMasterPageWithNestedFieldsAndMissingFragmentEntryLink(
+			2, 1, layoutPageTemplateEntry.getExternalReferenceCode(),
+			masterPageResource, testGroup.getExternalReferenceCode());
+
+		_fragmentEntryLinkLocalService.deleteFragmentEntryLink(
+			fragmentEntryLink);
+
+		_testGetSiteMasterPageWithNestedFieldsAndMissingFragmentEntryLink(
+			1, 1, layoutPageTemplateEntry.getExternalReferenceCode(),
+			masterPageResource, testGroup.getExternalReferenceCode(),
+			fragmentEntryLink.getFragmentEntryLinkId());
+	}
+
+	private void
+			_testGetSiteMasterPageWithNestedFieldsAndMissingFragmentEntryLink(
+				int expectedDraftLayoutPageElementsCount,
+				int expectedPublishedLayoutPageElementsCount,
+				String masterPageExternalReferenceCode,
+				MasterPageResource masterPageResource,
+				String siteExternalReferenceCode,
+				long... missingFragmentEntryLinkIds)
+		throws Exception {
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.headless.admin.site.internal.dto.v1_0.converter." +
+					"FragmentInstancePageElementDefinitionDTOConverter",
+				LoggerTestUtil.WARN)) {
+
+			MasterPage masterPage = masterPageResource.getSiteMasterPage(
+				siteExternalReferenceCode, masterPageExternalReferenceCode);
+
+			_assertPageSpecifications(
+				expectedDraftLayoutPageElementsCount,
+				expectedPublishedLayoutPageElementsCount,
+				masterPage.getPageSpecifications());
+
+			List<LogEntry> logEntries = logCapture.getLogEntries();
+
+			Assert.assertEquals(
+				logEntries.toString(), missingFragmentEntryLinkIds.length,
+				logEntries.size());
+
+			for (int i = 0; i < missingFragmentEntryLinkIds.length; i++) {
+				LogEntry logEntry = logEntries.get(i);
+
+				Assert.assertEquals(
+					"No fragment entry link exists with ID " +
+						missingFragmentEntryLinkIds[i],
+					logEntry.getMessage());
+			}
+		}
 	}
 
 	private void _testPatchSiteMasterPage(
@@ -1368,6 +1493,9 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 	}
 
 	@Inject
+	private FragmentEntryLinkLocalService _fragmentEntryLinkLocalService;
+
+	@Inject
 	private LayoutLocalService _layoutLocalService;
 
 	@Inject
@@ -1376,6 +1504,9 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 
 	@Inject
 	private PortletFileRepository _portletFileRepository;
+
+	@Inject
+	private SegmentsExperienceLocalService _segmentsExperienceLocalService;
 
 	@Inject
 	private Sites _sites;

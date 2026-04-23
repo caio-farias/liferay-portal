@@ -5,6 +5,7 @@
 
 import {Page, expect, mergeTests} from '@playwright/test';
 
+import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {isolatedLayoutTest} from '../../../fixtures/isolatedLayoutTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {pageEditorPagesTest} from '../../../fixtures/pageEditorPagesTest';
@@ -18,6 +19,9 @@ import {EditCustomElementPage} from './pages/EditCustomElementPage';
 const test = mergeTests(
 	clientExtensionsPageTest,
 	editCustomElementPageTest,
+	featureFlagsTest({
+		'LPD-11235': {enabled: true},
+	}),
 	loginTest()
 );
 

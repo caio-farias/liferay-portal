@@ -11,7 +11,11 @@ import {openToast} from 'frontend-js-components-web';
 import {fetch} from 'frontend-js-web';
 import React, {useState} from 'react';
 
+import {IBulkActionFDSData} from '../../common/types/BulkActionTask';
+import {downloadBlob} from '../../common/utils/downloadBlob';
+import {getFolderIdAndGroupIdsFromFilter} from '../../common/utils/odataFilterUtil';
 import {displayErrorToast} from '../../common/utils/toastUtil';
+import {exportTranslationBulkActionRequest} from '../props_transformer/actions/exportTranslationBulkActionRequest';
 
 type FileFormat = {
 	displayName: string;
@@ -131,19 +135,23 @@ const TargetLocale = ({
 };
 
 export default function ExportTranslationModalContent({
+	apiURL,
 	availableExportFileFormats = [],
 	availableSourceLocales = [],
 	availableTargetLocales = [],
 	closeModal,
 	defaultSourceLanguageId,
 	itemId,
+	selectedData,
 }: {
+	apiURL?: string;
 	availableExportFileFormats: FileFormat[];
 	availableSourceLocales: Locale[];
 	availableTargetLocales: Locale[];
 	closeModal: () => void;
 	defaultSourceLanguageId: string;
-	itemId: number;
+	itemId?: number;
+	selectedData?: IBulkActionFDSData;
 }) {
 	const [exportMimeType, setExportMimeType] = useState(
 		availableExportFileFormats[0].mimeType
@@ -161,6 +169,28 @@ export default function ExportTranslationModalContent({
 		const version = availableExportFileFormats
 			.find((format) => format.mimeType === exportMimeType)
 			?.displayName.split(' ')[1] as string;
+
+		if (selectedData) {
+			const url = new URL(apiURL || '', window.location.origin);
+			const {folderId, groupIds} = getFolderIdAndGroupIdsFromFilter(
+				url.searchParams.get('filter') || ''
+			);
+
+			return exportTranslationBulkActionRequest({
+				apiURL,
+				folderId,
+				groupIds,
+				keyValues: {
+					sourceLanguageId,
+					targetLanguageIds: selectedTargetLanguageIds,
+					xliffMimeType: exportMimeType,
+				},
+				selectedData,
+				type: 'ExportTranslationBulkAction',
+			}).then(() => {
+				closeModal();
+			});
+		}
 
 		const params = new URLSearchParams({
 			sourceLanguageId,
@@ -191,15 +221,7 @@ export default function ExportTranslationModalContent({
 					type: 'success',
 				});
 
-				const blob = response.blob();
-				const blobURL = URL.createObjectURL(await blob);
-
-				const link = document.createElement('a');
-				link.href = blobURL;
-
-				link.click();
-
-				URL.revokeObjectURL(blobURL);
+				await downloadBlob(response, 'export.zip');
 
 				closeModal();
 			}

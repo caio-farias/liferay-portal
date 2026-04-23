@@ -33,7 +33,6 @@ export const test = mergeTests(
 	changeTrackingPagesTest,
 	customFieldsPagesTest,
 	featureFlagsTest({
-		'LPD-36105': {enabled: true},
 		'LPD-39304': {enabled: true},
 	}),
 	isolatedSiteTest,
@@ -505,7 +504,7 @@ test('Apply style book layout', async ({
 
 	await styleBooksPage.goto();
 
-	await styleBooksPage.create(styleBookName);
+	await styleBooksPage.create(styleBookName, 'Classic Theme');
 
 	await styleBooksPage.selectTokenCategory('Typography');
 

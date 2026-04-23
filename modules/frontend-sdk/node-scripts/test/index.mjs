@@ -9,9 +9,9 @@ import path from 'path';
 import getNamedArguments from '../util/getNamedArguments.mjs';
 import getYarnWorkspaceProjects from '../util/getYarnWorkspaceProjects.mjs';
 import runJest from '../util/jest/runJest.mjs';
-import runConcurrentTasks, {
-	MAX_CONCURRENT_TASKS,
-} from '../util/runConcurrentTasks.mjs';
+import {PORTAL_DIR} from '../util/locations.mjs';
+import print from '../util/print.mjs';
+import runConcurrentTasks from '../util/runConcurrentTasks.mjs';
 
 export default async function () {
 	const {sync} = getNamedArguments({
@@ -74,40 +74,55 @@ export default async function () {
 
 		await runJest({
 			cliFlags: args,
-			cwd: projectPath,
 			execaConfig: {
 				env: envObj,
 				stdio: 'inherit',
 			},
+			projectPath,
 		});
 	}
 	else {
-		console.log(
-			`ℹ️ Testing ${totalTestableProjects} projects in ${sync ? 'series' : 'parallel'}.`
+		print(
+			0,
+			print.title(
+				`\n> Testing ${totalTestableProjects} projects in ${sync ? 'series' : 'parallel'}...\n`
+			)
 		);
 
 		const asyncItems = [];
 
 		for (const [projectPath, envObj] of testableProjectsMap) {
-			asyncItems.push(async (stdio = 'pipe') => {
-				console.log(`🧪 Testing ${path.basename(projectPath)}`);
+			asyncItems.push(async () => {
+				const projectName = path.relative(PORTAL_DIR, projectPath);
 
 				const {all, failed} = await runJest({
 					cliFlags: args,
-					cwd: projectPath,
 					execaConfig: {
 						all: true,
 						env: envObj,
 						reject: false,
-						stdio,
+						stdio: 'pipe',
 					},
+					projectPath,
 				});
 
-				console.log(
-					`${!failed ? '✅ PASSED' : '❌ FAILED'} ${path.basename(projectPath)}`
-				);
-
-				return all;
+				if (failed) {
+					print(
+						1,
+						print.error('FAILED:'),
+						print.underline(projectName),
+						'\n'
+					);
+					print(2, `${all}\n`);
+				}
+				else {
+					print(
+						1,
+						print.success('PASSED:'),
+						print.underline(projectName),
+						'\n'
+					);
+				}
 			});
 		}
 
@@ -117,11 +132,7 @@ export default async function () {
 			}
 		}
 		else {
-			console.log(`> Running in groups of ${MAX_CONCURRENT_TASKS}.`);
-
-			const results = await runConcurrentTasks(asyncItems);
-
-			console.log(results.join('\n'));
+			await runConcurrentTasks(asyncItems);
 		}
 	}
 

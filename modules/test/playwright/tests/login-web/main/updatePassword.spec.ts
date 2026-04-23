@@ -6,65 +6,44 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {apiHelpersTest} from '../../../fixtures/apiHelpersTest';
-import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {liferayConfig} from '../../../liferay.config';
 import {clickAndExpectToBeVisible} from '../../../utils/clickAndExpectToBeVisible';
 import {performLoginViaApi, performLogout} from '../../../utils/performLogin';
 
-export const test = mergeTests(
-	apiHelpersTest,
-	featureFlagsTest({
-		'LPD-36105': {enabled: true},
-	}),
-	loginTest()
-);
+let userAccount;
 
-test('LPD-52234: Check if you can change languages in the update password page', async ({
-	apiHelpers,
-	page,
-}) => {
-	const userAccount = await apiHelpers.headlessAdminUser.postUserAccount();
+export const test = mergeTests(apiHelpersTest, loginTest());
 
-	try {
-		await performLogout(page);
+test.beforeEach(async ({apiHelpers, page}) => {
+	userAccount = await apiHelpers.headlessAdminUser.postUserAccount();
 
-		await page.goto(liferayConfig.environment.baseUrl);
-		await page.getByRole('button', {name: 'Sign In'}).click();
-		await page.getByText('Forgot Password').click();
-		await page.getByRole('button', {name: 'Send New Password'}).waitFor();
-		await page.getByLabel('Email Address').fill(userAccount.emailAddress);
-		await page.getByRole('button', {name: 'Send New Password'}).click();
+	await performLogout(page);
 
-		await page.waitForLoadState('domcontentloaded');
-		await performLoginViaApi({page, screenName: 'test'});
+	await page.goto(liferayConfig.environment.baseUrl);
+	await page.getByRole('button', {name: 'Sign In'}).click();
+	await page.getByText('Forgot Password').click();
+	await page.getByRole('button', {name: 'Send New Password'}).waitFor();
+	await page.getByLabel('Email Address').fill(userAccount.emailAddress);
+	await page.getByRole('button', {name: 'Send New Password'}).click();
 
-		const ticket =
-			await apiHelpers.headlessAdminUser.getUserAccountPasswordResetTicket(
-				userAccount.id
-			);
+	await page.waitForLoadState('domcontentloaded');
+	await performLoginViaApi({page, screenName: 'test'});
 
-		await performLogout(page);
-
-		await page.goto(
-			`${liferayConfig.environment.baseUrl}/c/portal/update_password?ticketId=${ticket.id}&ticketKey=${ticket.key}`
+	const ticket =
+		await apiHelpers.headlessAdminUser.getUserAccountPasswordResetTicket(
+			userAccount.id
 		);
 
-		await clickAndExpectToBeVisible({
-			autoClick: true,
-			target: page.getByRole('menuitem', {name: 'português-Brasil'}),
-			trigger: page.getByTitle('Select a Language', {exact: true}),
-		});
+	await performLogout(page);
 
-		await page.getByRole('heading', {name: 'Alterar senha'}).waitFor();
+	await page.goto(
+		`${liferayConfig.environment.baseUrl}/c/portal/update_password?ticketId=${ticket.id}&ticketKey=${ticket.key}`
+	);
+});
 
-		await expect(
-			page.getByText(
-				'Este formato de link não é mais reconhecido. Solicite um novo link.'
-			)
-		).not.toBeVisible();
-	}
-	finally {
+test.afterEach(async ({apiHelpers, page}) => {
+	if (userAccount) {
 		await page.goto('/en');
 
 		await performLoginViaApi({page, screenName: 'test'});
@@ -73,4 +52,36 @@ test('LPD-52234: Check if you can change languages in the update password page',
 			Number(userAccount.id)
 		);
 	}
+});
+
+test('LPD-52234: Check if you can change languages in the update password page', async ({
+	page,
+}) => {
+	await clickAndExpectToBeVisible({
+		autoClick: true,
+		target: page.getByRole('menuitem', {name: 'português-Brasil'}),
+		trigger: page.getByTitle('Select a Language', {exact: true}),
+	});
+
+	await page.getByRole('heading', {name: 'Alterar senha'}).waitFor();
+
+	await expect(
+		page.getByText(
+			'Este formato de link não é mais reconhecido. Solicite um novo link.'
+		)
+	).not.toBeVisible();
+});
+
+test('LPD-85237: Check if the main content skip link works', async ({page}) => {
+	const mainContent = page.locator('#main-content');
+	await expect(mainContent).toBeAttached();
+
+	const skipLink = page.getByRole('link', {name: 'Skip to Main Content'});
+	await expect(skipLink).toHaveAttribute('href', '#main-content');
+
+	await skipLink.focus();
+	await expect(skipLink).toBeFocused();
+	await page.keyboard.press('Enter');
+
+	await expect(page.url()).toContain('#main-content');
 });

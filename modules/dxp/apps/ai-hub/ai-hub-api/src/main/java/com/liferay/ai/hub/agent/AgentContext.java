@@ -21,10 +21,12 @@ public class AgentContext {
 
 	public AgentContext(AgentContext.Builder builder) {
 		_accessToken = builder._accessToken;
+		_chatbotExternalReferenceCode = builder._chatbotExternalReferenceCode;
 		_companyId = builder._companyId;
 		_dtoConverterContext = builder._dtoConverterContext;
 		_groupId = builder._groupId;
 		_input = builder._input;
+		_instructionDefinitionScope = builder._instructionDefinitionScope;
 		_serviceContext = builder._serviceContext;
 		_sseEventSinkKey = builder._sseEventSinkKey;
 		_userId = builder._userId;
@@ -33,6 +35,10 @@ public class AgentContext {
 
 	public String getAccessToken() {
 		return _accessToken;
+	}
+
+	public String getChatbotExternalReferenceCode() {
+		return _chatbotExternalReferenceCode;
 	}
 
 	public long getCompanyId() {
@@ -49,6 +55,10 @@ public class AgentContext {
 
 	public Map<String, Object> getInput() {
 		return _input;
+	}
+
+	public String getInstructionDefinitionScope() {
+		return _instructionDefinitionScope;
 	}
 
 	public ServiceContext getServiceContext() {
@@ -79,6 +89,14 @@ public class AgentContext {
 			return new AgentContext(this);
 		}
 
+		public Builder chatbotExternalReferenceCode(
+			String chatbotExternalReferenceCode) {
+
+			_chatbotExternalReferenceCode = chatbotExternalReferenceCode;
+
+			return this;
+		}
+
 		public Builder companyId(long companyId) {
 			_companyId = companyId;
 
@@ -101,6 +119,14 @@ public class AgentContext {
 
 		public Builder input(Map<String, Object> input) {
 			_input = input;
+
+			return this;
+		}
+
+		public Builder instructionDefinitionScope(
+			String instructionDefinitionScope) {
+
+			_instructionDefinitionScope = instructionDefinitionScope;
 
 			return this;
 		}
@@ -130,10 +156,12 @@ public class AgentContext {
 		}
 
 		private String _accessToken;
+		private String _chatbotExternalReferenceCode;
 		private long _companyId;
 		private DTOConverterContext _dtoConverterContext;
 		private long _groupId;
 		private Map<String, Object> _input;
+		private String _instructionDefinitionScope;
 		private ServiceContext _serviceContext;
 		private String _sseEventSinkKey;
 		private long _userId;
@@ -142,10 +170,12 @@ public class AgentContext {
 	}
 
 	private final String _accessToken;
+	private final String _chatbotExternalReferenceCode;
 	private final long _companyId;
 	private final DTOConverterContext _dtoConverterContext;
 	private final long _groupId;
 	private final Map<String, Object> _input;
+	private final String _instructionDefinitionScope;
 	private final ServiceContext _serviceContext;
 	private final String _sseEventSinkKey;
 	private final long _userId;

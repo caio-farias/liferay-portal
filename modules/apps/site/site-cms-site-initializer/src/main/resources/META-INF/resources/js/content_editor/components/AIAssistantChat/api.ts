@@ -9,6 +9,12 @@ import {fetch} from 'frontend-js-web';
 const AI_HUB_ENDPOINT = '/o/ai-hub/v1.0';
 
 export async function createEventSource() {
+	const editMode = document.body.classList.contains('has-edit-mode-menu');
+
+	if (editMode) {
+		return null;
+	}
+
 	const authorizationToken = await postAuthorizationToken();
 
 	if (!authorizationToken) {
@@ -87,6 +93,7 @@ export async function postChatByExternalReferenceCodeMessage(
 					content,
 					title,
 				},
+				instructionDefinitionScope: 'cms',
 				text: message,
 			}),
 			headers: new Headers({

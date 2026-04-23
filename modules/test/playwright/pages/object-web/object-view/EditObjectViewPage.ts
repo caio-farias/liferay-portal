@@ -22,6 +22,7 @@ export class EditObjectViewPage {
 	readonly viewBuilderTab: Locator;
 
 	constructor(page: Page) {
+		this.page = page;
 		this.sidePanel = page.frameLocator('iframe');
 
 		this.addButton = this.sidePanel.getByLabel('Add');
@@ -53,7 +54,7 @@ export class EditObjectViewPage {
 	async createFilter(
 		filterBy: string,
 		filterType: 'Includes' | 'Excludes',
-		objectEntryId?: string
+		filterValues?: string
 	) {
 		await this.filtersTab.click();
 
@@ -67,13 +68,45 @@ export class EditObjectViewPage {
 
 		await this.sidePanel.getByRole('option', {name: filterType}).click();
 
-		if (objectEntryId) {
+		if (filterValues) {
 			await this.filterValue.click();
 
-			await this.sidePanel.getByLabel(objectEntryId).check();
+			for (const value of filterValues.split(',').map((v) => v.trim())) {
+				await this.sidePanel.getByLabel(value, {exact: true}).check();
+			}
+
+			await this.filterValue.press('Escape');
 		}
 
-		await this.saveFilter.click();
+		await this.saveFilter.dispatchEvent('click');
+	}
+
+	async addDefaultSort(columnName: string, sortOrder: string) {
+		const newDefaultSortButton = this.sidePanel
+			.getByRole('button', {
+				name: 'New Default Sort',
+			})
+			.or(this.sidePanel.getByRole('button', {name: 'Add'}));
+
+		await newDefaultSortButton.click();
+
+		const columnsCombobox = this.sidePanel.getByRole('combobox', {
+			name: 'Columns Mandatory',
+		});
+
+		const defaultSortModal = this.sidePanel.getByLabel('New Default Sort');
+
+		await columnsCombobox.click();
+
+		await this.sidePanel.getByRole('option', {name: columnName}).click();
+
+		const sortingCombobox = this.sidePanel.getByRole('combobox').last();
+
+		await sortingCombobox.click();
+
+		await this.sidePanel.getByRole('option', {name: sortOrder}).click();
+
+		await defaultSortModal.getByRole('button', {name: 'Save'}).click();
 	}
 
 	async selectObjectFields(objectFieldNames: string[]) {
@@ -92,6 +125,8 @@ export class EditObjectViewPage {
 				name: 'Save',
 			})
 			.click();
+
+		await this.addColumnsModal.waitFor({state: 'hidden'});
 	}
 
 	async unselectObjectFields(objectFieldNames: string[]) {

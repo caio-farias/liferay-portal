@@ -39,7 +39,6 @@ import com.liferay.layout.importer.util.PortletPreferencesPortletConfigurationIm
 import com.liferay.layout.page.template.constants.LayoutPageTemplateEntryTypeConstants;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.layout.page.template.service.LayoutPageTemplateEntryLocalServiceUtil;
-import com.liferay.layout.page.template.service.LayoutPageTemplateEntryServiceUtil;
 import com.liferay.layout.util.LayoutServiceContextHelperUtil;
 import com.liferay.layout.util.UpdateLayoutModifiedDateThreadLocal;
 import com.liferay.petra.function.transform.TransformUtil;
@@ -80,7 +79,6 @@ import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 import com.liferay.segments.constants.SegmentsExperienceConstants;
 import com.liferay.segments.model.SegmentsExperience;
 import com.liferay.segments.service.SegmentsExperienceLocalServiceUtil;
-import com.liferay.segments.service.SegmentsExperienceServiceUtil;
 import com.liferay.style.book.model.StyleBookEntry;
 import com.liferay.style.book.service.StyleBookEntryLocalServiceUtil;
 
@@ -717,7 +715,7 @@ public class LayoutUtil {
 		}
 
 		layoutPageTemplateEntry =
-			LayoutPageTemplateEntryServiceUtil.
+			LayoutPageTemplateEntryLocalServiceUtil.
 				fetchLayoutPageTemplateEntryByExternalReferenceCode(
 					itemExternalReference.getExternalReferenceCode(), groupId);
 
@@ -1181,8 +1179,8 @@ public class LayoutUtil {
 				new HashMap<>();
 
 			for (SegmentsExperience segmentsExperience :
-					SegmentsExperienceServiceUtil.getSegmentsExperiences(
-						layout.getGroupId(), layout.getPlid(), true)) {
+					SegmentsExperienceLocalServiceUtil.getSegmentsExperiences(
+						layout.getGroupId(), layout.getPlid())) {
 
 				originalSegmentsExperiencesMap.put(
 					segmentsExperience.getExternalReferenceCode(),
@@ -1239,11 +1237,12 @@ public class LayoutUtil {
 					actualSegmentsExperiencesMap.get(
 						pageExperience.getExternalReferenceCode());
 
-				SegmentsExperienceServiceUtil.updateSegmentsExperiencePriority(
-					actualSegmentsExperience.getSegmentsExperienceId(),
-					SegmentsExperienceUtil.getPriority(
-						pageExperience.getKey(), layout,
-						pageExperience.getPriority()));
+				SegmentsExperienceLocalServiceUtil.
+					updateSegmentsExperiencePriority(
+						actualSegmentsExperience.getSegmentsExperienceId(),
+						SegmentsExperienceUtil.getPriority(
+							pageExperience.getKey(), layout,
+							pageExperience.getPriority()));
 			}
 		}
 	}

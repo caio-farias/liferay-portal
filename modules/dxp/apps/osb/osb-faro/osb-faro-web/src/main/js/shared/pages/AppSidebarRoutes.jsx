@@ -4,7 +4,7 @@ import React, {lazy, Suspense} from 'react';
 import RouteNotFound from 'shared/components/RouteNotFound';
 import {ChannelContext} from 'shared/context/channel';
 import {connect} from 'react-redux';
-import {DEVELOPER_MODE, ENABLE_ACCOUNTS} from 'shared/util/constants';
+import {DEVELOPER_MODE} from 'shared/util/constants';
 import {DownloadReportProvider} from 'shared/components/download-report/DownloadReportContext';
 import {ENABLE_ASSET_OBJECT_ENTRY} from 'shared/util/constants';
 import {Routes} from 'shared/util/router';
@@ -99,6 +99,13 @@ const IndividualsDashboardCDP = lazy(() =>
 	)
 );
 
+/* Lifecycle */
+const LifecycleDashboard = lazy(() =>
+	import(
+		/* webpackChunkname: "LifecycleDashboard" */ '../../lifecycle/pages/BaseLifecycle'
+	)
+);
+
 /* Sites */
 
 const SitesDashboard = lazy(() =>
@@ -128,7 +135,7 @@ const TouchpointRoutes = lazy(() =>
 /* Assets */
 
 const NewAssetsList = lazy(() =>
-	import(/* webpackChunkName: "NewAssetsList" */ 'assets/List')
+	import(/* webpackChunkName: "NewAssetsList" */ 'assets/pages/List')
 );
 
 const AssetsList = lazy(() =>
@@ -170,7 +177,7 @@ const CommerceDashboard = lazy(() =>
 );
 
 const ROUTES = [
-	ENABLE_ACCOUNTS && {
+	{
 		data: AccountsList,
 		path: Routes.CONTACTS_LIST_ACCOUNT
 	},
@@ -281,6 +288,11 @@ const ROUTES = [
 		data: SitesDashboard,
 		destructured: false,
 		path: Routes.CHANNEL
+	},
+	{
+		data: LifecycleDashboard,
+		destructured: false,
+		path: Routes.LIFECYCLE
 	},
 	DEVELOPER_MODE && {
 		data: CommerceDashboard,

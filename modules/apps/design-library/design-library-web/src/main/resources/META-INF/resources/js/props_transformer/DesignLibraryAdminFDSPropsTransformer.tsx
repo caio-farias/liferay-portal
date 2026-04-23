@@ -12,6 +12,7 @@ import {TableCellContentType} from '../constants';
 import CreateDesignLibraryModal from '../modal/CreateDesignLibraryModal';
 import confirmAndDeleteEntryAction from './actions/confirmAndDeleteEntryAction';
 import {
+	AuthorRenderer,
 	FromNowDateTimeRenderer,
 	LinkRenderer,
 	createSetItemComponentProps,
@@ -67,6 +68,11 @@ export default function DesignLibraryAdminFDSPropsTransformer({
 					type: 'internal',
 				},
 				{
+					component: AuthorRenderer,
+					name: TableCellContentType.AUTHOR,
+					type: 'internal',
+				},
+				{
 					component: FromNowDateTimeRenderer,
 					name: TableCellContentType.FROM_NOW_DATE_TIME,
 					type: 'internal',
@@ -97,9 +103,10 @@ export default function DesignLibraryAdminFDSPropsTransformer({
 				event?.preventDefault();
 
 				confirmAndDeleteEntryAction({
-					bodyHTML: Liferay.Language.get(
-						'delete-design-library-confirmation-body'
-					),
+					bodyHTML: `
+						<p>${Liferay.Language.get('delete-design-library-confirmation-body-main')}</p>
+						<p>${Liferay.Language.get('delete-design-library-confirmation-body-warning')}</p>
+					`,
 					deleteAction: itemData.actions.delete,
 					loadData: () => {
 						navigate(window.location.href);
@@ -135,7 +142,8 @@ export default function DesignLibraryAdminFDSPropsTransformer({
 							sortable: true,
 						},
 						{
-							fieldName: 'creatorUserId',
+							contentRenderer: TableCellContentType.AUTHOR,
+							fieldName: 'creator.name',
 							label: Liferay.Language.get('author'),
 							localizeLabel: true,
 							truncate: true,

@@ -14,7 +14,7 @@
 			HashMapBuilder.<String, Object>put(
 				"editDataSetURL", fdsAdminDisplayContext.getEditDataSetURL()
 			).put(
-				"getSystemDataSetsURL", fdsAdminDisplayContext.getSystemDataSetsURL()
+				"importedSystemFDSEntriesDataProviderURL", fdsAdminDisplayContext.getImportedSystemFDSEntriesDataProviderURL()
 			).put(
 				"importSystemDataSetURL", fdsAdminDisplayContext.getImportSystemDataSetURL()
 			).put(

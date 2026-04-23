@@ -8,6 +8,7 @@ package com.liferay.segments.internal.provider;
 import com.liferay.asset.kernel.service.AssetCategoryLocalService;
 import com.liferay.asset.kernel.service.AssetTagLocalService;
 import com.liferay.expando.kernel.model.ExpandoColumn;
+import com.liferay.expando.kernel.model.ExpandoColumnConstants;
 import com.liferay.expando.kernel.model.ExpandoTable;
 import com.liferay.expando.kernel.model.ExpandoTableConstants;
 import com.liferay.expando.kernel.model.ExpandoValue;
@@ -15,10 +16,8 @@ import com.liferay.expando.kernel.service.ExpandoColumnLocalService;
 import com.liferay.expando.kernel.service.ExpandoTableLocalService;
 import com.liferay.expando.kernel.service.ExpandoValueLocalService;
 import com.liferay.petra.function.transform.TransformUtil;
-import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.petra.string.StringUtil;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
@@ -42,6 +41,7 @@ import com.liferay.segments.criteria.Criteria;
 import com.liferay.segments.criteria.contributor.SegmentsCriteriaContributor;
 import com.liferay.segments.criteria.contributor.SegmentsCriteriaContributorRegistry;
 import com.liferay.segments.internal.checker.UserSegmentsEntryMembershipChecker;
+import com.liferay.segments.internal.odata.entity.EntityModelFieldMapper;
 import com.liferay.segments.model.SegmentsEntry;
 import com.liferay.segments.model.SegmentsEntryRel;
 import com.liferay.segments.odata.matcher.ODataMatcher;
@@ -338,6 +338,9 @@ public abstract class BaseSegmentsEntryProvider
 	protected ClassNameLocalService classNameLocalService;
 
 	@Reference
+	protected EntityModelFieldMapper entityModelFieldMapper;
+
+	@Reference
 	protected ExpandoColumnLocalService expandoColumnLocalService;
 
 	@Reference
@@ -380,7 +383,7 @@ public abstract class BaseSegmentsEntryProvider
 	}
 
 	private Map<String, Object> _getUserAttributes(User user) throws Exception {
-		Map<String, String> expandoValues = new HashMap<>();
+		Map<String, Object> expandoValues = new HashMap<>();
 
 		ExpandoTable expandoTable = expandoTableLocalService.fetchTable(
 			user.getCompanyId(),
@@ -396,18 +399,21 @@ public abstract class BaseSegmentsEntryProvider
 					expandoTable.getTableId(), expandoColumn.getColumnId(),
 					user.getUserId());
 
-				String expandoColumnName = expandoColumn.getName();
+				String encodedName =
+					entityModelFieldMapper.getExpandoColumnEntityFieldName(
+						expandoColumn);
 
-				String key = StringBundler.concat(
-					"customField/_", expandoColumn.getColumnId(),
-					StringPool.UNDERLINE,
-					StringUtil.replace(
-						expandoColumnName.replaceAll(
-							":|;|'|\"", StringPool.BLANK),
-						CharPool.SPACE, CharPool.UNDERLINE));
+				String key = "customField/" + encodedName;
 
 				if (expandoValue != null) {
-					expandoValues.put(key, expandoValue.getData());
+					if (expandoColumn.getType() ==
+							ExpandoColumnConstants.BOOLEAN) {
+
+						expandoValues.put(key, expandoValue.getBoolean());
+					}
+					else {
+						expandoValues.put(key, expandoValue.getData());
+					}
 				}
 				else {
 					expandoValues.put(key, StringPool.BLANK);

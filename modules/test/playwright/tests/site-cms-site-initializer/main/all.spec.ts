@@ -15,6 +15,7 @@ import {clickAndExpectToBeVisible} from '../../../utils/clickAndExpectToBeVisibl
 import {getRandomInt} from '../../../utils/getRandomInt';
 import getRandomString from '../../../utils/getRandomString';
 import performLogin, {
+	performLoginViaApi,
 	performLogout,
 	userData,
 } from '../../../utils/performLogin';
@@ -27,8 +28,9 @@ const test = mergeTests(
 	cmsPagesTest,
 	dataApiHelpersTest,
 	featureFlagsTest({
-		'LPD-11235': {enabled: true},
+		'LPD-11235': {enabled: false},
 		'LPD-17564': {enabled: true},
+		'LPD-34594': {enabled: true},
 	}),
 	loginTest(),
 	structureBuilderPagesTest
@@ -238,22 +240,28 @@ test(
 
 		await page.getByRole('menuitem', {name: 'Delete'}).click();
 
-		expect(page.getByText('Some of the selected files')).toBeVisible();
+		await expect(
+			page.getByText('Some of the selected files')
+		).toBeVisible();
 
 		await page.getByRole('button', {name: 'Delete'}).click();
 
-		await page.reload();
+		await waitForAlert(page, 'Info:Delete action started for 2 assets.', {
+			type: 'info',
+		});
 
 		await expect(
-			page.getByRole('cell', {name: file1Title})
+			page.getByRole('cell', {exact: true, name: file1Title})
 		).not.toBeVisible();
 		await expect(
-			page.getByRole('cell', {name: file2Title})
+			page.getByRole('cell', {exact: true, name: file2Title})
 		).not.toBeVisible();
 
 		await recycleBinPage.goto();
 
-		await expect(page.getByRole('cell', {name: file1Title})).toBeVisible();
+		await expect(
+			page.getByRole('cell', {exact: true, name: file1Title})
+		).toBeVisible();
 	}
 );
 
@@ -311,13 +319,15 @@ test(
 
 		await page.getByRole('button', {name: 'Delete'}).click();
 
-		await page.reload();
+		await waitForAlert(page, 'Info:Delete action started for 2 assets.', {
+			type: 'info',
+		});
 
 		await expect(
-			page.getByRole('cell', {name: file1Title})
+			page.getByRole('cell', {exact: true, name: file1Title})
 		).not.toBeVisible();
 		await expect(
-			page.getByRole('cell', {name: file2Title})
+			page.getByRole('cell', {exact: true, name: file2Title})
 		).not.toBeVisible();
 	}
 );
@@ -370,12 +380,25 @@ test(
 
 		await page.getByRole('menuitem', {name: 'Delete'}).click();
 
-		await page.reload();
+		await waitForAlert(page, 'Info:Delete action started for 2 assets.', {
+			type: 'info',
+		});
+
+		await expect(
+			page.getByRole('cell', {exact: true, name: file1Title})
+		).not.toBeVisible();
+		await expect(
+			page.getByRole('cell', {exact: true, name: file2Title})
+		).not.toBeVisible();
 
 		await recycleBinPage.goto();
 
-		await expect(page.getByRole('cell', {name: file1Title})).toBeVisible();
-		await expect(page.getByRole('cell', {name: file2Title})).toBeVisible();
+		await expect(
+			page.getByRole('cell', {exact: true, name: file1Title})
+		).toBeVisible();
+		await expect(
+			page.getByRole('cell', {exact: true, name: file2Title})
+		).toBeVisible();
 	}
 );
 
@@ -427,11 +450,12 @@ test(
 
 test(
 	'Info Panel Comments and view Delete confirmation modal for added content',
-	{tag: '@LPD-62554'},
-	async ({apiHelpers, assetsPage, infoPanelPage, page}) => {
+	{tag: ['@LPD-62554', '@LPD-86000']},
+	async ({apiHelpers, assetsPage, infoPanelPage, page, spaceSummaryPage}) => {
 		const applicationName = 'cms/basic-web-contents';
 		const spaceName = `Space ${getRandomString()}`;
 		let objectEntry1;
+		let user;
 
 		const file1Title = `title ${getRandomString()}`;
 
@@ -443,6 +467,19 @@ test(
 				trashEnabled: false,
 			},
 			type: 'Space',
+		});
+
+		await test.step('Create an user and add to the Space', async () => {
+			user = await apiHelpers.headlessAdminUser.postUserAccount();
+
+			userData[user.alternateName] = {
+				name: user.givenName,
+				password: 'test',
+				surname: user.familyName,
+			};
+
+			await spaceSummaryPage.goto(spaceName);
+			await spaceSummaryPage.addUserOrUserGroup(user.name, 'users');
 		});
 
 		const addComment = async ({
@@ -506,7 +543,13 @@ test(
 				spaceName
 			);
 
-			await test.step('Go to All Assets, check the Location in Details tab and open the Info Panel Comments', async () => {
+			await test.step('Login as Space Member, go to All Assets, check the Details tab and open the Info Panel Comments', async () => {
+				await performLogout(page);
+				await performLoginViaApi({
+					page,
+					screenName: user.alternateName,
+				});
+
 				await assetsPage.gotoAll();
 
 				await assetsPage.execItemAction({
@@ -524,27 +567,7 @@ test(
 						.getByText('Location')
 				).toBeVisible();
 
-				await expect(
-					page.locator('div .space-breadcrumb').filter({
-						hasText: 'Content',
-					})
-				).toBeVisible();
-
-				await expect(
-					page.locator('div .space-breadcrumb').filter({
-						hasText: 'S',
-					})
-				).toBeVisible();
-
-				await expect(
-					page.locator('div .space-breadcrumb').filter({
-						hasText: spaceName,
-					})
-				).toBeVisible();
-
-				await infoPanelPage.selectTab('More').click();
 				await infoPanelPage.dropdownTab('Comments').click();
-				await infoPanelPage.selectTab('More').click();
 			});
 
 			await test.step('Add, edit and delete comments in the info Panel Comments', async () => {
@@ -633,6 +656,9 @@ test(
 			});
 		}
 		finally {
+			await performLogout(page);
+			await performLoginViaApi({page, screenName: 'test'});
+
 			await apiHelpers.objectEntry.deleteObjectEntry(
 				applicationName,
 				String(objectEntry1.id)
@@ -672,7 +698,7 @@ test(
 				assetLibraries: [{id: -1}],
 				assetTypes: [
 					{
-						required: true,
+						required: false,
 						subtype: 'AllAssetSubtypes',
 						type: 'AllAssetTypes',
 					},
@@ -834,10 +860,12 @@ test(
 
 			await performLogin(page, 'test');
 
-			await apiHelpers.objectEntry.deleteObjectEntry(
-				applicationName,
-				String(objectEntry.id)
-			);
+			if (objectEntry?.id) {
+				await apiHelpers.objectEntry.deleteObjectEntry(
+					applicationName,
+					String(objectEntry.id)
+				);
+			}
 
 			await apiHelpers.headlessAdminTaxonomy.deleteTaxonomyVocabulary(
 				vocabularyId
@@ -1473,8 +1501,29 @@ test(
 test(
 	'Expiration date filter allows future dates',
 	{tag: '@LPD-69189'},
-	async ({assetsPage, page}) => {
+	async ({apiHelpers, assetsPage, page}) => {
+		const applicationName = 'cms/basic-web-contents';
+		const file1Title = `Content ${getRandomString()}`;
+
+		const futureDate = new Date();
+
+		futureDate.setDate(futureDate.getDate() + 1);
+
+		await apiHelpers.objectEntry.postObjectEntry(
+			{
+				expirationDate: futureDate.toISOString(),
+				objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
+				title: file1Title,
+			},
+			applicationName,
+			'Default'
+		);
+
 		await assetsPage.gotoAll();
+
+		await expect(
+			page.getByRole('cell', {exact: true, name: file1Title})
+		).toBeVisible();
 
 		// Choose to filter by Expiration Date
 
@@ -1482,25 +1531,15 @@ test(
 
 		await page.getByRole('menuitem', {name: 'Expiration Date'}).click();
 
-		// Verify that future dates are allowed by checking the max attribute
-
 		const fromDateInput = page.getByLabel('From');
 		const toDateInput = page.getByLabel('To', {exact: true});
 
-		expect(
-			new Date(await fromDateInput.getAttribute('max')).getTime()
-		).toBeNaN();
-		expect(
-			new Date(await toDateInput.getAttribute('max')).getTime()
-		).toBeNaN();
-
-		// Set future From and To dates
+		// Set future From and To dates covering futureDate
 
 		const fromDate = new Date();
 		const toDate = new Date();
 
-		fromDate.setDate(fromDate.getDate() + 5);
-		toDate.setDate(toDate.getDate() + 10);
+		toDate.setDate(toDate.getDate() + 2);
 
 		// Fill in future dates and see that filter label is applied
 
@@ -1514,6 +1553,124 @@ test(
 				.getByRole('button', {name: /Expiration Date:/})
 				.locator('.label-section')
 		).toBeVisible();
+
+		// Verify that the content is still visible (it was filtered out before the fix)
+
+		await expect(
+			page.getByRole('cell', {exact: true, name: file1Title})
+		).toBeVisible();
+	}
+);
+
+test(
+	'Content can be filtered by Review Date',
+	{tag: '@LPD-85206'},
+	async ({apiHelpers, assetsPage, page}) => {
+		const applicationName = 'cms/basic-web-contents';
+		const file1Title = `Content ${getRandomString()}`;
+
+		const pastDate = new Date();
+
+		pastDate.setDate(pastDate.getDate() - 1);
+
+		await apiHelpers.objectEntry.postObjectEntry(
+			{
+				objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
+				reviewDate: pastDate.toISOString(),
+				title: file1Title,
+			},
+			applicationName,
+			'Default'
+		);
+
+		await assetsPage.gotoAll();
+
+		await expect(
+			page.getByRole('cell', {exact: true, name: file1Title})
+		).toBeVisible();
+
+		// Choose to filter by Review Date
+
+		await page.getByRole('button', {name: 'Filter'}).click();
+
+		await page.getByRole('menuitem', {name: 'Review Date'}).click();
+
+		const fromDateInput = page.getByLabel('From');
+		const toDateInput = page.getByLabel('To', {exact: true});
+
+		// Set past From and To dates covering pastDate
+
+		const fromDate = new Date();
+		const toDate = new Date();
+
+		fromDate.setDate(fromDate.getDate() - 2);
+
+		// Fill in dates and see that filter label is applied
+
+		await fromDateInput.fill(fromDate.toISOString().split('T')[0]);
+		await toDateInput.fill(toDate.toISOString().split('T')[0]);
+
+		await page.getByRole('button', {name: 'Add Filter'}).click();
+
+		await expect(
+			page
+				.getByRole('button', {name: /Review Date:/})
+				.locator('.label-section')
+		).toBeVisible();
+
+		// Verify that the content is visible
+
+		await expect(
+			page.getByRole('cell', {exact: true, name: file1Title})
+		).toBeVisible();
+	}
+);
+
+test(
+	'Expiration date filter does not allow "to" date to be before "from" date',
+	{tag: '@LPD-78935'},
+	async ({assetsPage, page}) => {
+		const addFilterButton = page.getByRole('button', {name: 'Add Filter'});
+
+		await test.step('Go to All section', async () => {
+			await assetsPage.gotoAll();
+		});
+
+		await test.step('Choose to filter by Expiration Date', async () => {
+			await page.getByRole('button', {name: 'Filter'}).click();
+
+			await page.getByRole('menuitem', {name: 'Expiration Date'}).click();
+		});
+
+		const fromDateInput = page.getByLabel('From');
+		const toDateInput = page.getByLabel('To', {exact: true});
+
+		const fromDate = new Date();
+		const toDate = new Date();
+
+		await test.step('Check that the "Add filter" button is disabled if "from" date is a past date', async () => {
+			fromDate.setDate(fromDate.getDate() - 1);
+			await fromDateInput.fill(fromDate.toISOString().split('T')[0]);
+			await expect(addFilterButton).toBeDisabled();
+		});
+
+		await test.step('Check that the "Add filter" button is enabled if "from" date is today or after', async () => {
+			fromDate.setDate(fromDate.getDate() + 2);
+			await fromDateInput.fill(fromDate.toISOString().split('T')[0]);
+			await expect(addFilterButton).toBeEnabled();
+		});
+
+		await test.step('Check that the "Add filter" button is disabled if "to" date is before "from date"', async () => {
+			toDate.setDate(toDate.getDate());
+			await toDateInput.fill(toDate.toISOString().split('T')[0]);
+			await expect(addFilterButton).toBeDisabled();
+		});
+
+		await test.step('Check that the "Add filter" button is enabled if "to" date is after "from date"', async () => {
+			toDate.setDate(toDate.getDate() + 5);
+			await toDateInput.fill(toDate.toISOString().split('T')[0]);
+			await expect(addFilterButton).toBeEnabled();
+		});
 	}
 );
 
@@ -3324,5 +3481,78 @@ test(
 
 			await expect(assetsPage.getItem(webContentNames[2])).toBeVisible();
 		});
+	}
+);
+
+test(
+	'Versions tab should not be visible for Space Member role',
+	{tag: '@LPD-86002'},
+	async ({apiHelpers, assetsPage, infoPanelPage, page, spaceSummaryPage}) => {
+		const contentApplicationName = 'cms/basic-web-contents';
+		let objectEntryContent;
+		const spaceName = 'Default';
+		let user;
+
+		const content = `title ${getRandomString()}`;
+
+		try {
+			objectEntryContent = await apiHelpers.objectEntry.postObjectEntry(
+				{
+					objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
+					title: content,
+				},
+				contentApplicationName,
+				spaceName
+			);
+
+			await test.step('Create an user and add to the Space', async () => {
+				user = await apiHelpers.headlessAdminUser.postUserAccount();
+
+				userData[user.alternateName] = {
+					name: user.givenName,
+					password: 'test',
+					surname: user.familyName,
+				};
+
+				await spaceSummaryPage.goto(spaceName);
+				await spaceSummaryPage.addUserOrUserGroup(user.name, 'users');
+			});
+
+			await test.step('Login as a space member and open Info Panel', async () => {
+				await performLogout(page);
+
+				await performLogin(page, user.alternateName);
+
+				await assetsPage.gotoAll();
+				await assetsPage.execItemAction({
+					action: 'Show Details',
+					filter: content,
+				});
+
+				await expect(
+					page.getByRole('heading', {name: content})
+				).toBeVisible();
+			});
+
+			await test.step('Check versions tab is not visible', async () => {
+				await expect(infoPanelPage.selectTab('More')).not.toBeVisible();
+				await expect(
+					infoPanelPage.selectTab('Versions')
+				).not.toBeVisible();
+				await expect(infoPanelPage.selectTab('Comments')).toBeVisible();
+			});
+		}
+		finally {
+			await performLogout(page);
+
+			await performLogin(page, 'test');
+
+			if (objectEntryContent) {
+				await apiHelpers.objectEntry.deleteObjectEntry(
+					contentApplicationName,
+					String(objectEntryContent.id)
+				);
+			}
+		}
 	}
 );

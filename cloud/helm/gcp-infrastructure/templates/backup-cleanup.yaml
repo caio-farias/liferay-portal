@@ -1,0 +1,35 @@
+{{- if .Values.backup.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+    labels:
+        component: backup-cleanup-platform
+        environmentId: {{ .Values.environmentId }}
+        projectId: {{ .Values.projectId }}
+    name: backup-cleanup-cron-workflow
+    namespace: {{ .Release.Namespace }}
+spec:
+    concurrencyPolicy: Forbid
+    schedules:
+        -   {{ .Values.backup.cleanup.schedule | quote }}
+    startingDeadlineSeconds: 300
+    workflowSpec:
+        entrypoint: clean-up-backups
+        serviceAccountName: {{ .Values.backup.cleanup.serviceAccountName }}
+        templates:
+            -   name: clean-up-backups
+                script:
+                    command: [sh]
+                    image: "{{ .Values.images.helmKubectl.repository }}:{{ .Values.images.helmKubectl.tag }}"
+                    resources:
+                        limits:
+                            cpu: 250m
+                            memory: 256Mi
+                        requests:
+                            cpu: 100m
+                            memory: 128Mi
+                    source: |-
+                        {{- tpl (.Files.Get "scripts/backup-cleanup.sh") . | nindent 24 }}
+        ttlStrategy:
+            secondsAfterCompletion: 86400
+{{- end -}}

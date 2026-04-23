@@ -40,9 +40,7 @@ export class ChangeTrackingPage {
 			name: 'Review Changes',
 		});
 		this.tabsContainer = page.locator('nav.navbar');
-		this.sandboxOnlyCheckbox = page.getByRole('checkbox', {
-			name: 'Enable Sandbox Only Mode',
-		});
+		this.sandboxOnlyCheckbox = page.getByTitle('Enable Sandbox Only Mode');
 	}
 
 	async addComment(comment?: string) {
@@ -294,8 +292,8 @@ export class ChangeTrackingPage {
 		await this.globalMenuPage.goToApplications();
 
 		await this.page
-			.getByRole('menuitem', {exact: true, name: 'Publications'})
-			.and(this.page.locator('.nav-link[href]'))
+			.locator('.nav-link[href]')
+			.getByText('Publications')
 			.click();
 
 		const enablePublications = this.page.getByText('Enable Publications');
@@ -506,9 +504,7 @@ export class ChangeTrackingPage {
 
 		await expect(this.page.getByText('Enable Publications')).toBeVisible();
 
-		const publicationsEnabled = this.page.getByRole('checkbox', {
-			name: 'Enable Publications',
-		});
+		const publicationsEnabled = this.page.getByTitle('Enable Publications');
 
 		await this.sandboxOnlyCheckbox.setChecked(check);
 

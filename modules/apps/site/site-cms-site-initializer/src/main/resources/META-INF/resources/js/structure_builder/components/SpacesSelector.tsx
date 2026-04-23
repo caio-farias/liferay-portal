@@ -8,20 +8,17 @@ import ClayIcon from '@clayui/icon';
 import ClayMultiSelect from '@clayui/multi-select';
 import {ItemSelector} from '@liferay/frontend-js-item-selector-web';
 import classNames from 'classnames';
-import {FieldFeedback, useId} from 'frontend-js-components-web';
-import React from 'react';
+import {FieldFeedback, openToast, useId} from 'frontend-js-components-web';
+import {sub} from 'frontend-js-web';
+import React, {useState} from 'react';
 
 import SpaceSticker from '../../common/components/SpaceSticker';
+import SpaceService from '../../common/services/SpaceService';
 import {Space} from '../../common/types/Space';
 import {useCache} from '../contexts/CacheContext';
 import {useSelector, useStateDispatch} from '../contexts/StateContext';
 import selectErrors from '../selectors/selectErrors';
 import {ReferencedStructure, Structure} from '../types/Structure';
-
-type Item = {
-	label: string;
-	value: string;
-};
 
 export default function SpacesSelector({
 	disabled,
@@ -30,7 +27,7 @@ export default function SpacesSelector({
 	disabled?: boolean;
 	structure: Structure | ReferencedStructure;
 }) {
-	const [value, setValue] = React.useState('');
+	const [removing, setRemoving] = useState(false);
 
 	const {spaces: structureSpaces, uuid: structureUuid} = structure;
 
@@ -47,6 +44,55 @@ export default function SpacesSelector({
 	const isDisabled = disabled || structureSpaces === 'all';
 
 	const error = errors.get('spaces');
+
+	const handleRemove = async (nextSpaces: Space[]) => {
+		setRemoving(true);
+
+		const space = findRemovedSpace({
+			allSpaces: spaces,
+			nextSpaces,
+			structureSpaces,
+		})!;
+
+		const {data, error} = await SpaceService.getSpaceContents({
+			path: (structure as Structure).path,
+			siteId: space?.siteId,
+		});
+
+		if (!data || error) {
+			openToast({
+				message: Liferay.Language.get('an-unexpected-error-occurred'),
+				type: 'danger',
+			});
+
+			return;
+		}
+
+		const contents = data.totalCount;
+
+		if (contents > 0) {
+			openToast({
+				message: sub(
+					Liferay.Language.get(
+						'the-space-x-cannot-be-removed-because-it-has-content-created-from-this-structure'
+					),
+					space.name
+				),
+				type: 'danger',
+			});
+
+			setRemoving(false);
+
+			return;
+		}
+
+		dispatch({
+			spaces: nextSpaces.map((space) => space.externalReferenceCode),
+			type: 'update-structure',
+		});
+
+		setRemoving(false);
+	};
 
 	return (
 		<div className="mt-5">
@@ -74,7 +120,7 @@ export default function SpacesSelector({
 
 				{isDisabled ? (
 					<ClayMultiSelect
-						disabled={true}
+						disabled
 						id={id}
 						items={selectedSpaces.map((space) => ({
 							label: space.name,
@@ -90,8 +136,10 @@ export default function SpacesSelector({
 					<ItemSelector<Space>
 						apiURL={`${location.origin}/o/headless-asset-library/v1.0/asset-libraries?filter=type eq 'Space'`}
 						as={ClayInput}
+						disabled={removing}
 						id={id}
 						items={selectedSpaces}
+						loadingState={removing ? 1 : undefined}
 						locator={{
 							id: 'id',
 							label: 'name',
@@ -108,18 +156,20 @@ export default function SpacesSelector({
 								});
 							}
 						}}
-						onChange={setValue}
-						onItemsChange={(items: Array<Item | Space>) => {
+						onItemsChange={async (items: Array<Space>) => {
+							if (items.length < structureSpaces.length) {
+								await handleRemove(items);
+
+								return;
+							}
+
 							dispatch({
 								spaces: items.map(
-									(item) =>
-										(item as Space).externalReferenceCode ||
-										(item as Item).value
+									(item) => item.externalReferenceCode
 								),
 								type: 'update-structure',
 							});
 						}}
-						value={value}
 					>
 						{(item: Space) => (
 							<ItemSelector.Item
@@ -158,12 +208,36 @@ export default function SpacesSelector({
 	);
 }
 
-function getSelection(structureSpaces: Structure['spaces'], spaces: Space[]) {
+function getSelection(
+	structureSpaces: Structure['spaces'],
+	spaces: Space[]
+): Space[] {
 	if (structureSpaces === 'all') {
 		return [];
 	}
 
 	return spaces.filter(({externalReferenceCode}) =>
 		structureSpaces.includes(externalReferenceCode)
+	);
+}
+
+function findRemovedSpace({
+	allSpaces,
+	nextSpaces,
+	structureSpaces,
+}: {
+	allSpaces: Space[];
+	nextSpaces: Space[];
+	structureSpaces: Structure['spaces'];
+}): Space | undefined {
+	const spaces = structureSpaces as Array<Space['externalReferenceCode']>;
+
+	const erc = spaces.find(
+		(erc) =>
+			!nextSpaces.some((space) => space.externalReferenceCode === erc)
+	);
+
+	return allSpaces.find(
+		({externalReferenceCode}) => erc === externalReferenceCode
 	);
 }

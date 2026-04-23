@@ -18,8 +18,11 @@ import com.liferay.object.model.ObjectEntryFolder;
 import com.liferay.object.service.ObjectDefinitionService;
 import com.liferay.object.service.ObjectDefinitionSettingLocalService;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.language.LanguageUtil;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.util.HashMapBuilder;
@@ -71,10 +74,38 @@ public class ViewAllSectionDisplayContext extends BaseSectionDisplayContext {
 	}
 
 	@Override
+	public Map<String, Object> getAdditionalProps() {
+		Map<String, Object> additionalProps = super.getAdditionalProps();
+
+		try {
+			additionalProps.put("breadcrumbProps", getBreadcrumbProps());
+		}
+		catch (PortalException portalException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(portalException);
+			}
+		}
+
+		return additionalProps;
+	}
+
+	@Override
 	public List<DropdownItem> getBulkActionDropdownItems() {
 		List<DropdownItem> fdsBulkActionDropdownItems =
 			super.getBulkActionDropdownItems();
 
+		fdsBulkActionDropdownItems.add(
+			FDSActionDropdownItemBuilder.setHighlighted(
+				true
+			).setHref(
+				"#"
+			).setIcon(
+				"move-folder"
+			).setLabel(
+				LanguageUtil.get(httpServletRequest, "move-to")
+			).build(
+				"move-to"
+			));
 		fdsBulkActionDropdownItems.add(
 			FDSActionDropdownItemBuilder.setHighlighted(
 				true
@@ -88,9 +119,33 @@ public class ViewAllSectionDisplayContext extends BaseSectionDisplayContext {
 				"copy-to"
 			));
 		fdsBulkActionDropdownItems.add(
+			FDSActionDropdownItemBuilder.setHighlighted(
+				true
+			).setHref(
+				"#"
+			).setIcon(
+				"time"
+			).setLabel(
+				LanguageUtil.get(httpServletRequest, "expire")
+			).build(
+				"expire"
+			));
+		fdsBulkActionDropdownItems.add(
+			FDSActionDropdownItemBuilder.setHighlighted(
+				true
+			).setHref(
+				"#"
+			).setIcon(
+				"upload"
+			).setLabel(
+				LanguageUtil.get(httpServletRequest, "export-for-translation")
+			).build(
+				"export-for-translation"
+			));
+		fdsBulkActionDropdownItems.add(
 			new FDSActionDropdownItem(
 				StringPool.BLANK, "download", "download",
-				LanguageUtil.get(_httpServletRequest, "download"), null, null,
+				LanguageUtil.get(httpServletRequest, "download"), null, null,
 				null));
 		fdsBulkActionDropdownItems.add(
 			new FDSActionDropdownItem(
@@ -108,18 +163,6 @@ public class ViewAllSectionDisplayContext extends BaseSectionDisplayContext {
 			).setHref(
 				"#"
 			).setIcon(
-				"time"
-			).setLabel(
-				LanguageUtil.get(_httpServletRequest, "expire")
-			).build(
-				"expire"
-			));
-		fdsBulkActionDropdownItems.add(
-			FDSActionDropdownItemBuilder.setHighlighted(
-				true
-			).setHref(
-				"#"
-			).setIcon(
 				"semantic-search"
 			).setLabel(
 				LanguageUtil.get(httpServletRequest, "find-and-replace")
@@ -129,8 +172,8 @@ public class ViewAllSectionDisplayContext extends BaseSectionDisplayContext {
 		fdsBulkActionDropdownItems.add(
 			new FDSActionDropdownItem(
 				StringPool.BLANK, "password-policies", "permissions",
-				LanguageUtil.get(_httpServletRequest, "permissions"), null,
-				null, null));
+				LanguageUtil.get(httpServletRequest, "permissions"), null, null,
+				null));
 		fdsBulkActionDropdownItems.add(
 			new FDSActionDropdownItem(
 				StringPool.BLANK, "password-policies",
@@ -193,6 +236,9 @@ public class ViewAllSectionDisplayContext extends BaseSectionDisplayContext {
 		throw new UnsupportedOperationException(
 			"ViewAllSectionSystemFDSEntry must calculate this");
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		ViewAllSectionDisplayContext.class);
 
 	private final HttpServletRequest _httpServletRequest;
 	private final FDSCreationMenu _viewAllSectionFDSCreationMenu;

@@ -263,7 +263,9 @@ describe('SpacingBox', () => {
 
 			userEvent.click(screen.getByLabelText('padding-left'));
 
-			expect(screen.queryByTitle('select-units')).not.toBeInTheDocument();
+			expect(
+				screen.queryByTitle('select-a-unit')
+			).not.toBeInTheDocument();
 		});
 
 		it('calls onChange when setting a custom value', async () => {

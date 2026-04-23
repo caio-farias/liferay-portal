@@ -18,7 +18,6 @@ const test = mergeTests(
 	apiHelpersTest,
 	fdsSamplePageTest,
 	featureFlagsTest({
-		'LPD-36105': {enabled: true},
 		'LPS-178052': {enabled: true},
 	}),
 	isolatedSiteTest,
@@ -165,8 +164,7 @@ test(
 
 			await advancedSampleRow.locator('.dropdown-toggle').click();
 
-			await systemDataSetsPage.page
-				.locator('.dropdown-menu.show')
+			await fdsSamplePage.dropdownMenu
 				.getByRole('menuitem', {name: 'Delete'})
 				.click();
 

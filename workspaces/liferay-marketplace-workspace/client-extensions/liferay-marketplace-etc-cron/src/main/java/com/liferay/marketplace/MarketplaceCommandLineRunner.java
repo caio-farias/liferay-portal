@@ -76,8 +76,6 @@ public class MarketplaceCommandLineRunner
 
 		_invoke(this::_processOnHoldTrials, "On Hold Trials");
 
-		_invoke(this::_processOrdersTotalAmount, "Orders Total Amount");
-
 		_invoke(this::_processPendingOrders, "Pending Orders");
 
 		_invoke(
@@ -107,6 +105,13 @@ public class MarketplaceCommandLineRunner
 
 		userAccountResource.postAccountUserAccountByEmailAddress(
 			account.getId(), userAccount.getEmailAddress());
+
+		if (_log.isInfoEnabled()) {
+			_log.info(
+				StringBundler.concat(
+					"Assigned account ", account.getName(), " to user ",
+					userAccount.getName()));
+		}
 	}
 
 	private void _assignRoleToUserAccount(Role role, UserAccount userAccount)
@@ -122,6 +127,13 @@ public class MarketplaceCommandLineRunner
 
 		roleResource.postRoleUserAccountAssociation(
 			role.getId(), userAccount.getId());
+
+		if (_log.isInfoEnabled()) {
+			_log.info(
+				StringBundler.concat(
+					"Assigned role ", role.getName(), " to user ",
+					userAccount.getName()));
+		}
 	}
 
 	private JSONObject _createPublisherSalesSummary(
@@ -444,6 +456,10 @@ public class MarketplaceCommandLineRunner
 	}
 
 	private void _invoke(UnsafeRunnable<?> task, String name) {
+		if (_log.isInfoEnabled()) {
+			_log.info("Processing \"" + name + "\"");
+		}
+
 		try {
 			task.run();
 		}
@@ -543,10 +559,6 @@ public class MarketplaceCommandLineRunner
 			-1, -1);
 
 		if (page.getTotalCount() == 0) {
-			if (_log.isInfoEnabled()) {
-				_log.info("There are no in progress trials");
-			}
-
 			return;
 		}
 
@@ -601,6 +613,10 @@ public class MarketplaceCommandLineRunner
 			"SSA-ACCOUNT");
 
 		if (account == null) {
+			if (_log.isInfoEnabled()) {
+				_log.info("Account is null");
+			}
+
 			return;
 		}
 
@@ -615,6 +631,10 @@ public class MarketplaceCommandLineRunner
 		Role role = rolesPage.fetchFirstItem();
 
 		if (role == null) {
+			if (_log.isInfoEnabled()) {
+				_log.info("Role is null");
+			}
+
 			return;
 		}
 
@@ -633,10 +653,6 @@ public class MarketplaceCommandLineRunner
 			-1, -1);
 
 		if (page.getTotalCount() == 0) {
-			if (_log.isInfoEnabled()) {
-				_log.info("There are no on hold trials");
-			}
-
 			return;
 		}
 
@@ -680,49 +696,15 @@ public class MarketplaceCommandLineRunner
 		}
 	}
 
-	private void _processOrdersTotalAmount() throws Exception {
-		_forEachOrder(
-			StringBundler.concat(
-				"orderStatus/any(x:(x eq ", _ORDER_STATUS_COMPLETED,
-				")) and orderTypeExternalReferenceCode eq 'DXP_APP'"),
-			order -> {
-				String currencyCode = order.getCurrencyCode();
-
-				if (!_totalAmount.containsKey(currencyCode)) {
-					_totalAmount.put(currencyCode, 0D);
-				}
-
-				_totalAmount.put(
-					currencyCode,
-					_totalAmount.get(currencyCode) + order.getTotalAmount());
-			});
-
-		if (_log.isInfoEnabled()) {
-			_log.info("Orders total amount " + _totalAmount);
-		}
-
-		_patchReport(
-			new JSONObject(
-			).put(
-				"value",
-				new JSONObject(
-					_totalAmount
-				).toString()
-			).toString(),
-			"TOTAL-AMOUNT");
-	}
-
 	private void _processPendingOrders() throws Exception {
-		Page<Order> page = _getOrdersPage(
-			"orderStatus/any(x:(x eq " + _ORDER_STATUS_PENDING +
-				")) and orderTypeExternalReferenceCode ne 'SOLUTIONS7'",
-			-1, -1);
+		String filterString = StringBundler.concat(
+			"orderStatus/any(x:(x eq ", _ORDER_STATUS_PENDING,
+			")) and not (orderTypeExternalReferenceCode in (",
+			"'AI_HUB', 'DXP', 'SOLUTIONS7'))");
+
+		Page<Order> page = _getOrdersPage(filterString, -1, -1);
 
 		if (page.getTotalCount() == 0) {
-			if (_log.isInfoEnabled()) {
-				_log.info("There are no pending orders");
-			}
-
 			return;
 		}
 
@@ -927,7 +909,7 @@ public class MarketplaceCommandLineRunner
 		DateTimeFormatter dateTimeFormatter =
 			DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
-		String filter = StringBundler.concat(
+		String filterString = StringBundler.concat(
 			"createDate ge ",
 			dateTimeFormatter.format(
 				windowStartZonedDateTime.minusDays(
@@ -939,7 +921,7 @@ public class MarketplaceCommandLineRunner
 			dateTimeFormatter.format(windowStartZonedDateTime.minusDays(7)),
 			" and orderTypeExternalReferenceCode eq 'CMP_BETA'");
 
-		Page<Order> page = _getOrdersPage(filter, -1, -1);
+		Page<Order> page = _getOrdersPage(filterString, -1, -1);
 
 		if (page.getTotalCount() == 0) {
 			if (_log.isInfoEnabled()) {
@@ -1011,7 +993,5 @@ public class MarketplaceCommandLineRunner
 
 	@Value("${com.liferay.lxc.dxp.server.protocol}")
 	private String _lxcDXPServerProtocol;
-
-	private final Map<String, Double> _totalAmount = new HashMap<>();
 
 }

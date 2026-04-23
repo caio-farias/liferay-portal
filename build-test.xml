@@ -2439,7 +2439,7 @@ war.path=${app.server.portal.dir}/</echo>
 						<then>
 							<mirrors-get
 								dest="@{patching.tool.dir}/patches"
-								src="http://files.liferay.com/private/ee/fix-packs/${patch.portal.version}/dxp/liferay-fix-pack-${fixpack.build.name}.zip"
+								src="https://releases.liferay.com/fix-packs/${patch.portal.version}/dxp/liferay-fix-pack-${fixpack.build.name}.zip"
 							/>
 						</then>
 					</if>
@@ -12323,7 +12323,17 @@ send_user $expect_out(buffer)]]></echo>
 				<basedir file="${liferay.faces.bridge.impl.dir}/test/integration" />
 				<basedir file="${liferay.faces.portal.dir}/test/integration" />
 				<basedir file="${test.workspace.dir}" />
-				<exclude name="**/node_modules/**/TEST-*.xml" />
+				<exclude name="**/.git/**" />
+				<exclude name="**/.gradle/**" />
+				<exclude name="**/bin/**" />
+				<exclude name="**/build/**" />
+				<exclude name="**/classes/**" />
+				<exclude name="**/dist/**" />
+				<exclude name="**/node_modules/**" />
+				<exclude name="**/src/**" />
+				<exclude name="**/test-classes/**" />
+				<exclude name="**/test-coverage/**" />
+				<exclude name="**/tmp/**" />
 				<include name="**/TEST-*.xml" />
 			</multirootfileset>
 		</path>
@@ -12429,7 +12439,7 @@ send_user $expect_out(buffer)]]></echo>
 			replace="&lt;system-err&gt;&lt;\/system-err&gt;"
 		/>
 
-		<echo>A report with all the test results can be found at test-results/html/index.html.</echo>
+		<echo>A report with all the test results can be found at ${project.dir}/test-results/html/index.html.</echo>
 	</target>
 
 	<target name="move-file">
@@ -13141,7 +13151,7 @@ company.default.web.id=www.able.com</echo>
 						<pull-clamd-docker-container image="${clamd.docker.image}" />
 						<start-docker-container image="${clamd.docker.image}" name="clamd">\
 							--expose=3310 \
-Comment view						</start-docker-container>
+						</start-docker-container>
 					</then>
 				</if>
 
@@ -13487,14 +13497,6 @@ feature.flag.LPD-11342=true</echo>
 
 		<echo append="true" file="portal-impl/src/portal-ext.properties">
 analytics.cloud.domain.allowed=*</echo>
-
-		<if>
-			<equals arg1="${functional.test.type}" arg2="poshi" />
-			<then>
-				<echo append="true" file="portal-impl/src/portal-ext.properties">
-feature.flag.LPD-36105=true</echo>
-			</then>
-		</if>
 
 		<apply-portal-ext-properties />
 	</target>

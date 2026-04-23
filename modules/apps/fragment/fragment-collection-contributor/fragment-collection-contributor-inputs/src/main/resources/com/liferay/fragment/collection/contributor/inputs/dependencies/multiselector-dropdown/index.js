@@ -1,6 +1,6 @@
 // Constants
 
-const DEFAULT_LOCALE = themeDisplay.getDefaultLanguageId();
+const DEFAULT_LOCALE = input.attributes.defaultLanguageId;
 const IS_RTL = document.documentElement.classList.contains('rtl');
 
 // DOM elements
@@ -91,8 +91,9 @@ async function main() {
 
 	if (input.localizable) {
 		const {onChange} = registerLocalizedInput({
+			availableLanguageIds: input.attributes.availableLanguageIds,
 			customLocaleChangeHandler: true,
-			defaultLanguageId: themeDisplay.getDefaultLanguageId(),
+			defaultLanguageId: input.attributes.defaultLanguageId,
 			hasMultipleValues: true,
 			initialValues: input.valueI18n,
 			inputElement,
@@ -141,7 +142,7 @@ async function main() {
 
 	else {
 		registerUnlocalizedInput({
-			defaultLanguageId: themeDisplay.getDefaultLanguageId(),
+			defaultLanguageId: input.attributes.defaultLanguageId,
 			inputElement,
 			readOnlyInputLabel: document.getElementById(
 				`${fragmentElementId}-read-only-label`

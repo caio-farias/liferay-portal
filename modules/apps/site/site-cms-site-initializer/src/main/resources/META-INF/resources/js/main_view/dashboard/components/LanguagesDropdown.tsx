@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import React, {useContext, useState} from 'react';
+import React, {useContext, useEffect, useState} from 'react';
 
+import SpaceService from '../../../common/services/SpaceService';
 import {ViewDashboardContext, initialLanguage} from '../ViewDashboardContext';
 import {FilterDropdown} from './FilterDropdown';
 
@@ -41,18 +42,88 @@ const availableLanguages = Object.entries(localizations).map(
 	})
 );
 
+const initialLanguages = [initialLanguage, ...availableLanguages];
+
 const LanguagesDropdown: React.FC<React.HTMLAttributes<HTMLElement>> = ({
 	className,
 }) => {
 	const {
 		changeLanguage,
-		filters: {language},
+		filters: {language, space},
 	} = useContext(ViewDashboardContext);
-
-	const initialLanguages = [initialLanguage, ...availableLanguages];
 
 	const [languages, setLanguages] = useState(initialLanguages);
 	const [dropdownActive, setDropdownActive] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const [searchValue, setSearchValue] = useState('');
+
+	useEffect(() => {
+		if (space.value === 'all') {
+			setLanguages(initialLanguages);
+
+			return;
+		}
+
+		const fetchSpaceLanguages = async () => {
+			setLoading(true);
+
+			try {
+				const {settings} = await SpaceService.getSpace(
+					space.externalReferenceCode as string
+				);
+
+				if (settings?.availableLanguageIds) {
+					const availableLanguageIds =
+						settings.availableLanguageIds.map((languageId) =>
+							languageId.replace('-', '_')
+						);
+
+					const filteredLanguages = availableLanguages.filter(
+						({value}) => availableLanguageIds.includes(value)
+					);
+
+					setLanguages([initialLanguage, ...filteredLanguages]);
+
+					if (
+						language.value !== 'all' &&
+						!availableLanguageIds.includes(language.value)
+					) {
+						changeLanguage(initialLanguage);
+					}
+				}
+				else {
+					setLanguages(initialLanguages);
+				}
+			}
+			catch (error) {
+				console.error(error);
+
+				setLanguages(initialLanguages);
+			}
+			finally {
+				setLoading(false);
+			}
+		};
+
+		fetchSpaceLanguages();
+	}, [
+		changeLanguage,
+		language.value,
+		space.value,
+		space.externalReferenceCode,
+	]);
+
+	useEffect(() => {
+		if (!dropdownActive) {
+			setSearchValue('');
+		}
+	}, [dropdownActive]);
+
+	const filteredLanguages = searchValue
+		? languages.filter(({label}) =>
+				label.toLowerCase().includes(searchValue.toLowerCase())
+			)
+		: languages;
 
 	return (
 		<FilterDropdown
@@ -61,19 +132,10 @@ const LanguagesDropdown: React.FC<React.HTMLAttributes<HTMLElement>> = ({
 			className={className}
 			filterByValue="languages"
 			icon="automatic-translate"
-			items={languages}
+			items={filteredLanguages}
+			loading={loading}
 			onActiveChange={() => setDropdownActive((prevState) => !prevState)}
-			onSearch={(value) => {
-				setLanguages(
-					value
-						? languages.filter(({label}) =>
-								label
-									.toLowerCase()
-									.includes(value.toLowerCase())
-							)
-						: initialLanguages
-				);
-			}}
+			onSearch={setSearchValue}
 			onSelectItem={(item) => {
 				changeLanguage(item);
 

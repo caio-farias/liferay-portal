@@ -6,6 +6,7 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {apiHelpersTest} from '../../../fixtures/apiHelpersTest';
+import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {isolatedSiteTest} from '../../../fixtures/isolatedSiteTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {messageBoardsPagesTest} from '../../../fixtures/messageBoardsTest';
@@ -15,6 +16,9 @@ import getRandomString from '../../../utils/getRandomString';
 export const test = mergeTests(
 	apiHelpersTest,
 	isolatedSiteTest,
+	featureFlagsTest({
+		'LPD-11235': {enabled: true},
+	}),
 	loginTest(),
 	messageBoardsPagesTest
 );

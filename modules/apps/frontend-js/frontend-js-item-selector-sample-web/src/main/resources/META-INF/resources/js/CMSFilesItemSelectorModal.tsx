@@ -12,15 +12,16 @@ import {
 	TSort,
 } from '@liferay/frontend-data-set-web';
 import {
+	CMSFileUploaderComponent,
 	IItemSelectorModalProps,
 	ItemSelectorModal,
+	getCMSItemSelectorFilters,
+	getCMSItemSelectorGroupedFilters,
 } from '@liferay/frontend-js-item-selector-web';
 import {useBrowserTabVisibility} from '@liferay/frontend-js-react-web';
 import {fetch} from 'frontend-js-web';
 import React, {useEffect, useState} from 'react';
 import {v4 as uuidv4} from 'uuid';
-
-import {FileUploaderComponentExample} from './FilesUploaderComponentExample';
 
 const OBJECT_ENTRY_FOLDER_CLASS_NAME =
 	'com.liferay.object.model.ObjectEntryFolder';
@@ -239,18 +240,10 @@ function CMSFilesItemSelectorModal({
 						},
 					],
 				},
-				filters: [
-					{
-						apiURL: '/o/headless-asset-library/v1.0/asset-libraries',
-						entityFieldType: 'collection',
-						id: 'groupIds',
-						itemKey: 'siteId',
-						itemLabel: 'name',
-						label: Liferay.Language.get('space'),
-						multiple: true,
-						type: 'selection',
-					},
-				],
+				filters: getCMSItemSelectorFilters(
+					Liferay.ThemeDisplay.getSiteGroupId()
+				),
+				groupedFilters: getCMSItemSelectorGroupedFilters(),
 				id: `itemSelectorModal-cms-${uuidv4()}`,
 				inlineNotificationComponent: NewItemsNotificationComponent,
 				pagination: {
@@ -348,7 +341,7 @@ function CMSFilesItemSelectorModal({
 					},
 				] as IView[],
 			}}
-			filesUploaderComponent={FileUploaderComponentExample}
+			filesUploaderComponent={CMSFileUploaderComponent}
 			itemTypeLabel={Liferay.Language.get('files')}
 			locator={{
 				id: 'embedded.id',

@@ -12,23 +12,34 @@ import {
 	TBulkActionTaskDTO,
 } from '../../../common/types/BulkActionTask';
 import {OBJECT_ENTRY_FOLDER_CLASS_NAME} from '../../../common/utils/constants';
+import {getFolderIdAndGroupIdsFromFilter} from '../../../common/utils/odataFilterUtil';
 import {
 	TASK_STATUS_PROPS,
 	URL_BULK_ACTION_TASK,
 	URL_DOWNLOAD_BULK_ACTION_TASK,
+	URL_EXPORT_TRANSLATION_BULK_ACTION_TASK,
 	URL_TASKS_REPORT_DETAIL,
 } from './constants';
 
 export function composeCreateTaskURL(
 	apiURL: string,
 	{filters = [], searchQuery = '', selectAll = false}: IBulkActionFDSData,
-	useDownloadURL: boolean = false
+	type: keyof IBulkActionType
 ): string {
-	const url: string = useDownloadURL
-		? URL_DOWNLOAD_BULK_ACTION_TASK
-		: URL_BULK_ACTION_TASK;
+	let url: string = URL_BULK_ACTION_TASK;
+
+	if (type === 'DownloadBulkAction') {
+		url = URL_DOWNLOAD_BULK_ACTION_TASK;
+	}
+	else if (type === 'ExportTranslationBulkAction') {
+		url = URL_EXPORT_TRANSLATION_BULK_ACTION_TASK;
+	}
 
 	const postURL = new URL(`${Liferay.ThemeDisplay.getPortalURL()}${url}`);
+
+	if (type === 'ExportTranslationBulkAction') {
+		postURL.searchParams.append('type', 'ExportTranslationBulkAction');
+	}
 
 	if (!selectAll) {
 		return postURL.toString();
@@ -43,10 +54,25 @@ export function composeCreateTaskURL(
 
 	const fullFilters = filters.map(({odataFilterString}) => odataFilterString);
 
-	const scopeFilter =
+	let scopeFilter =
 		new URL(
 			`${Liferay.ThemeDisplay.getPortalURL()}${apiURL}`
 		).searchParams.get('filter') || '';
+
+	if (type === 'ExportTranslationBulkAction') {
+		const {folderId, groupIds} =
+			getFolderIdAndGroupIdsFromFilter(scopeFilter);
+
+		scopeFilter = `cmsRoot eq true and cmsSection eq 'contents' and status in (0, 2, 3)`;
+
+		if (folderId) {
+			scopeFilter += ` and folderId eq ${folderId}`;
+		}
+
+		if (groupIds) {
+			scopeFilter += ` and ${groupIds}`;
+		}
+	}
 
 	if (scopeFilter) {
 		fullFilters.unshift(scopeFilter);

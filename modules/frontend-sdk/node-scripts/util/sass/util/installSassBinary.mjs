@@ -12,6 +12,7 @@ import unzipper from 'unzipper';
 import url from 'url';
 
 import fileExists from '../../fileExists.mjs';
+import print from '../../print.mjs';
 import getSassBinaryArchMap from './getSassBinaryArchMap.mjs';
 
 export default async function installSassBinary() {
@@ -63,10 +64,11 @@ export default async function installSassBinary() {
 		await downloadAndExtract(archMap.url, downloadPath);
 	}
 	catch (error) {
-		console.error(
-			'⚠️ Unable to download binary SASS compiler (will use Node.js based one)'
+		print(
+			0,
+			print.warning('\nWARNING:'),
+			`Unable to download binary SASS compiler (will use Node.js based one): ${error}\n`
 		);
-		console.error(error);
 
 		return null;
 	}
@@ -85,7 +87,7 @@ async function downloadAndExtract(url, dir) {
 	const bundleName = parts[parts.length - 1];
 	const bundlePath = path.join(dir, bundleName);
 
-	console.log('🚛 Downloading binary Sass compiler...');
+	print(0, print.info('INFO:'), 'Downloading binary Sass compiler...');
 
 	const response = await fetch(url, {redirect: 'follow'});
 
@@ -112,7 +114,7 @@ async function downloadAndExtract(url, dir) {
 		throw new Error(`Don't know how to uncompress ${bundlePath}`);
 	}
 
-	console.log('✅ Binary Sass compiler is ready');
+	print(0, print.success('SUCCESS:'), 'Binary Sass compiler is ready!');
 }
 
 async function setPermissions(dir) {

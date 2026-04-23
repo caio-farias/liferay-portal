@@ -10,7 +10,6 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.search.engine.ConnectionInformation;
@@ -28,20 +27,21 @@ import com.liferay.portal.search.opensearch2.internal.configuration.OpenSearchCo
 import com.liferay.portal.search.opensearch2.internal.connection.OpenSearchConnection;
 import com.liferay.portal.search.opensearch2.internal.connection.OpenSearchConnectionManager;
 
+import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
+
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Dictionary;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
+import org.opensearch.client.json.JsonpDeserializer;
 import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch._types.Time;
 import org.opensearch.client.opensearch._types.TimeUnit;
-import org.opensearch.client.opensearch.nodes.NodesInfoRequest;
-import org.opensearch.client.opensearch.nodes.NodesInfoResponse;
-import org.opensearch.client.opensearch.nodes.OpenSearchNodesClient;
-import org.opensearch.client.opensearch.nodes.info.NodeInfo;
+import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.Version;
+import org.opensearch.client.transport.endpoints.SimpleEndpoint;
 
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
@@ -320,39 +320,56 @@ public class OpenSearchSearchEngineInformation
 		}
 	}
 
+	private JsonObject _getNodesInfoJsonObject(
+			OpenSearchClient openSearchClient)
+		throws Exception {
+
+		OpenSearchTransport openSearchTransport = openSearchClient._transport();
+
+		JsonValue jsonValue = openSearchTransport.performRequest(
+			null,
+			new SimpleEndpoint<>(
+				nodesInfoEndpointRequest -> "GET", request -> "/_nodes",
+				nodesInfoEndpointRequest -> Collections.singletonMap(
+					"timeout", "10000" + TimeUnit.Milliseconds.jsonValue()),
+				nodesInfoEndpointRequest -> Collections.emptyMap(), false,
+				JsonpDeserializer.jsonValueDeserializer()),
+			null);
+
+		return jsonValue.asJsonObject();
+	}
+
 	private void _setClusterAndNodeInformation(
 			ConnectionInformationBuilder connectionInformationBuilder,
 			OpenSearchClient openSearchClient)
 		throws Exception {
 
-		OpenSearchNodesClient openSearchNodesClient = openSearchClient.nodes();
+		List<NodeInformation> nodeInformationList = new ArrayList<>();
 
-		NodesInfoResponse nodesInfoResponse = openSearchNodesClient.info(
-			NodesInfoRequest.of(
-				nodesInforequest -> nodesInforequest.timeout(
-					Time.of(
-						time -> time.time(
-							"10000" + TimeUnit.Milliseconds.jsonValue())))));
+		JsonObject jsonObject = _getNodesInfoJsonObject(openSearchClient);
 
-		String clusterName = GetterUtil.getString(
-			nodesInfoResponse.clusterName());
+		String clusterName = jsonObject.getString(
+			"cluster_name", StringPool.BLANK);
 
 		connectionInformationBuilder.clusterName(clusterName);
 
-		Map<String, NodeInfo> nodeInfos = nodesInfoResponse.nodes();
+		JsonObject nodesJsonObject = jsonObject.getJsonObject("nodes");
 
-		List<NodeInformation> nodeInformationList = new ArrayList<>();
+		if (nodesJsonObject != null) {
+			for (String nodeId : nodesJsonObject.keySet()) {
+				JsonObject nodeJsonObject = nodesJsonObject.getJsonObject(
+					nodeId);
 
-		for (Map.Entry<String, NodeInfo> entry : nodeInfos.entrySet()) {
-			NodeInfo nodeInfo = entry.getValue();
+				NodeInformationBuilder nodeInformationBuilder =
+					nodeInformationBuilderFactory.getNodeInformationBuilder();
 
-			NodeInformationBuilder nodeInformationBuilder =
-				nodeInformationBuilderFactory.getNodeInformationBuilder();
+				nodeInformationBuilder.name(
+					nodeJsonObject.getString("name", StringPool.BLANK));
+				nodeInformationBuilder.version(
+					nodeJsonObject.getString("version", StringPool.BLANK));
 
-			nodeInformationBuilder.name(nodeInfo.name());
-			nodeInformationBuilder.version(nodeInfo.version());
-
-			nodeInformationList.add(nodeInformationBuilder.build());
+				nodeInformationList.add(nodeInformationBuilder.build());
+			}
 		}
 
 		connectionInformationBuilder.nodeInformationList(nodeInformationList);

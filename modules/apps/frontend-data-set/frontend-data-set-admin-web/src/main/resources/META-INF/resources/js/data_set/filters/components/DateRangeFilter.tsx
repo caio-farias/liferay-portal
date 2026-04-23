@@ -27,15 +27,6 @@ interface IBodyProps {
 	onSave: Function;
 }
 
-const intl = new Intl.DateTimeFormat(
-	Liferay.ThemeDisplay.getBCP47LanguageId(),
-	{
-		day: '2-digit',
-		month: '2-digit',
-		year: 'numeric',
-	}
-);
-
 function Body({
 	fieldNames: usedFieldNames,
 	fields,
@@ -62,12 +53,18 @@ function Body({
 	);
 	const [from, setFrom] = useState<string>(
 		filter && (filter as IDateFilter)?.from
-			? intl.format(new Date((filter as IDateFilter)?.from))
+			? dateUtils.format(
+					new Date((filter as IDateFilter)?.from),
+					'yyyy-MM-dd'
+				)
 			: ''
 	);
 	const [to, setTo] = useState<string>(
 		filter && (filter as IDateFilter)?.to
-			? intl.format(new Date((filter as IDateFilter)?.to))
+			? dateUtils.format(
+					new Date((filter as IDateFilter)?.to),
+					'yyyy-MM-dd'
+				)
 			: ''
 	);
 	const [isValidDateRange, setIsValidDateRange] = useState<boolean>(true);

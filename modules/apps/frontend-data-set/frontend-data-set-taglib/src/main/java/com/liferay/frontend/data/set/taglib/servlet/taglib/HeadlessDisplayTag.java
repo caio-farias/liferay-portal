@@ -45,7 +45,10 @@ public class HeadlessDisplayTag extends BaseDisplayTag {
 				_creationMenu = new CreationMenu();
 			}
 
-			_setFiltersJSONArray();
+			_filtersJSONArray = fdsSerializer.serializeFilters(
+				getFdsFilters(), getId(), getRequest());
+			_groupedFiltersJSONArray = fdsSerializer.serializeGroupedFilters(
+				getId(), getRequest());
 		}
 		catch (Exception exception) {
 			_log.error(exception);
@@ -258,6 +261,7 @@ public class HeadlessDisplayTag extends BaseDisplayTag {
 		_filtersJSONArray = null;
 		_formId = null;
 		_formName = null;
+		_groupedFiltersJSONArray = null;
 		_nestedItemsKey = null;
 		_nestedItemsReferenceKey = null;
 		_selectedItemsKey = null;
@@ -297,6 +301,8 @@ public class HeadlessDisplayTag extends BaseDisplayTag {
 			).put(
 				"formName", _validateDataAttribute(_formName)
 			).put(
+				"groupedFilters", _groupedFiltersJSONArray
+			).put(
 				"id", getId()
 			).put(
 				"itemsActions", _fdsActionDropdownItems
@@ -333,11 +339,6 @@ public class HeadlessDisplayTag extends BaseDisplayTag {
 			).build());
 	}
 
-	private void _setFiltersJSONArray() {
-		_filtersJSONArray = fdsSerializer.serializeFilters(
-			getFdsFilters(), getId(), getRequest());
-	}
-
 	private Object _validateDataAttribute(Object object) {
 		if (Validator.isNull(object)) {
 			return null;
@@ -361,6 +362,7 @@ public class HeadlessDisplayTag extends BaseDisplayTag {
 	private JSONArray _filtersJSONArray;
 	private String _formId;
 	private String _formName;
+	private JSONArray _groupedFiltersJSONArray;
 	private String _nestedItemsKey;
 	private String _nestedItemsReferenceKey;
 	private String _selectedItemsKey;

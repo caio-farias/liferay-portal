@@ -1,0 +1,23 @@
+.room-document-statistics-container {
+	min-height: 200px;
+
+	.room-document-statistics-fds {
+		.table-responsive {
+			margin-bottom: 0;
+
+			.table-list {
+				border-bottom: 0;
+				border-top: 0;
+			}
+		}
+
+		tbody td:last-child,
+		thead th:last-child {
+			display: none;
+		}
+
+		thead th {
+			height: 2.5rem;
+		}
+	}
+}

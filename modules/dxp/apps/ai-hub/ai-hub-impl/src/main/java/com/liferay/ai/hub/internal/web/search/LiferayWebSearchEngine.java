@@ -65,6 +65,12 @@ public class LiferayWebSearchEngine implements WebSearchEngine {
 	private WebSearchResults _search(WebSearchRequest webSearchRequest)
 		throws Exception {
 
+		if (Validator.isNull(_accessToken) ||
+			!_accessToken.startsWith("Bearer ")) {
+
+			throw new IllegalArgumentException();
+		}
+
 		List<WebSearchOrganicResult> webSearchOrganicResults =
 			new ArrayList<>();
 
@@ -118,7 +124,7 @@ public class LiferayWebSearchEngine implements WebSearchEngine {
 				continue;
 			}
 
-			String url = "";
+			String url = oAuth2Application.getHomePageURL();
 
 			if (searchResult.getItemURL() != null) {
 				url = searchResult.getItemURL();

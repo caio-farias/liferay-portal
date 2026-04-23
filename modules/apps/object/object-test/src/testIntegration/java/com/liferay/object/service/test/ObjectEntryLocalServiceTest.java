@@ -9,10 +9,13 @@ import com.liferay.account.constants.AccountConstants;
 import com.liferay.account.model.AccountEntry;
 import com.liferay.account.service.AccountEntryLocalService;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.asset.kernel.model.AssetCategoryConstants;
 import com.liferay.asset.kernel.model.AssetEntry;
 import com.liferay.asset.kernel.service.AssetEntryLocalService;
 import com.liferay.asset.kernel.service.AssetTagLocalService;
+import com.liferay.asset.kernel.service.AssetVocabularyLocalService;
 import com.liferay.asset.kernel.service.persistence.AssetEntryQuery;
+import com.liferay.asset.test.util.AssetTestUtil;
 import com.liferay.commerce.currency.model.CommerceCurrency;
 import com.liferay.commerce.currency.test.util.CommerceCurrencyTestUtil;
 import com.liferay.commerce.model.CommerceOrder;
@@ -25,6 +28,7 @@ import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.document.library.kernel.exception.NoSuchFileEntryException;
 import com.liferay.document.library.kernel.model.DLFileEntry;
+import com.liferay.document.library.kernel.model.DLFolder;
 import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
@@ -67,6 +71,7 @@ import com.liferay.object.exception.ObjectEntryGroupIdException;
 import com.liferay.object.exception.ObjectEntryStatusException;
 import com.liferay.object.exception.ObjectEntryValuesException;
 import com.liferay.object.exception.ObjectValidationRuleEngineException;
+import com.liferay.object.field.attachment.AttachmentManager;
 import com.liferay.object.field.builder.AggregationObjectFieldBuilder;
 import com.liferay.object.field.builder.AssigneeObjectFieldBuilder;
 import com.liferay.object.field.builder.AttachmentObjectFieldBuilder;
@@ -232,6 +237,7 @@ import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LogEntry;
 import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
+import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -1521,6 +1527,26 @@ public class ObjectEntryLocalServiceTest {
 			persistedFileEntryId, _objectDefinition.getClassName(),
 			objectEntry.getObjectEntryId());
 
+		DLFolder dlFolder = _attachmentManager.getDLFolder(
+			_objectDefinition.getCompanyId(), TestPropsValues.getGroupId(),
+			_objectDefinition.getPortletId(),
+			ServiceContextTestUtil.getServiceContext(),
+			TestPropsValues.getUserId());
+
+		FileEntry fileEntry = _dlAppLocalService.addFileEntry(
+			null, TestPropsValues.getUserId(), dlFolder.getRepositoryId(),
+			dlFolder.getFolderId(), "test.txt", ContentTypes.TEXT_PLAIN,
+			StringUtil.randomString(), StringPool.BLANK, StringPool.BLANK,
+			StringPool.BLANK,
+			new ByteArrayInputStream(DLTestUtil.randomTextFileBytes()), 0, null,
+			null, null, ServiceContextTestUtil.getServiceContext());
+
+		objectEntry = _addObjectEntry(fileEntry.getFileEntryId(), "upload");
+
+		_assertDLFileEntry(
+			MapUtil.getLong(objectEntry.getValues(), "upload"),
+			_objectDefinition.getClassName(), objectEntry.getObjectEntryId());
+
 		ObjectEntry cmsBasicDocumentObjectEntry =
 			_addCMSBasicDocumentObjectEntry();
 		ObjectField objectField1 = _addAttachmentObjectField(
@@ -1764,6 +1790,38 @@ public class ObjectEntryLocalServiceTest {
 			0,
 			_counterLocalService.getCurrentId(
 				ObjectFieldUtil.getCounterName(objectField)));
+	}
+
+	@Test
+	public void testAddObjectEntryWithCategorization() throws Exception {
+		Group group = GroupTestUtil.addGroup();
+
+		AssetTestUtil.addVocabulary(
+			group.getGroupId(), AssetCategoryConstants.ALL_CLASS_NAME_ID,
+			AssetCategoryConstants.ALL_CLASS_TYPE_PK, true);
+
+		boolean originalEnableCategorization =
+			_siteObjectDefinition.isEnableCategorization();
+
+		_siteObjectDefinition = _enableCategorization(
+			true, _siteObjectDefinition);
+
+		AssertUtils.assertFailure(
+			PortalException.class, null,
+			() -> _addObjectEntry(
+				group.getGroupId(),
+				_siteObjectDefinition.getObjectDefinitionId(),
+				Collections.emptyMap()));
+
+		_siteObjectDefinition = _enableCategorization(
+			false, _siteObjectDefinition);
+
+		_addObjectEntry(
+			group.getGroupId(), _siteObjectDefinition.getObjectDefinitionId(),
+			Collections.emptyMap());
+
+		_siteObjectDefinition = _enableCategorization(
+			originalEnableCategorization, _siteObjectDefinition);
 	}
 
 	@Test
@@ -3189,11 +3247,38 @@ public class ObjectEntryLocalServiceTest {
 		_objectValidationRuleLocalService.deleteObjectValidationRule(
 			objectValidationRule5);
 
+		// Field must not match external reference code
+
+		ObjectValidationRule objectValidationRule6 = _addObjectValidationRule(
+			ObjectValidationRuleConstants.ENGINE_TYPE_GROOVY,
+			LocalizedMapUtil.getLocalizedMap(
+				"Field must not match external reference code"),
+			ObjectValidationRuleConstants.OUTPUT_TYPE_FULL_VALIDATION,
+			"invalidFields = (lastName == externalReferenceCode)",
+			Collections.emptyList());
+
+		_addObjectEntry(
+			HashMapBuilder.<String, Serializable>put(
+				"birthday", "2000-12-25"
+			).put(
+				"date", tomorrowLocalDate.toString()
+			).put(
+				"emailAddressRequired", "bob@liferay.com"
+			).put(
+				"lastName", RandomTestUtil.randomString()
+			).put(
+				"listTypeEntryKeyRequired", "listTypeEntryKey1"
+			).put(
+				"time", timeString
+			).build());
+
+		_assertCount(6);
+
 		// Must be over 18 years old
 
 		Class<?> clazz = getClass();
 
-		ObjectValidationRule objectValidationRule6 = _addObjectValidationRule(
+		ObjectValidationRule objectValidationRule7 = _addObjectValidationRule(
 			ObjectValidationRuleConstants.ENGINE_TYPE_GROOVY,
 			LocalizedMapUtil.getLocalizedMap("Must be over 18 years old"),
 			StringUtil.read(
@@ -3215,11 +3300,11 @@ public class ObjectEntryLocalServiceTest {
 				"time", timeString
 			).build());
 
-		_assertCount(6);
+		_assertCount(7);
 
 		// Names must be equals
 
-		ObjectValidationRule objectValidationRule7 = _addObjectValidationRule(
+		ObjectValidationRule objectValidationRule8 = _addObjectValidationRule(
 			ObjectValidationRuleConstants.ENGINE_TYPE_DDM,
 			LocalizedMapUtil.getLocalizedMap("Names must be equals"),
 			"equals(lastName, middleName)");
@@ -3243,7 +3328,9 @@ public class ObjectEntryLocalServiceTest {
 				"time", timeString
 			).build());
 
-		_assertCount(7);
+		_assertCount(8);
+
+		String externalReferenceCode = RandomTestUtil.randomString();
 
 		values = HashMapBuilder.<String, Serializable>put(
 			"birthday", "2010-12-25"
@@ -3254,7 +3341,9 @@ public class ObjectEntryLocalServiceTest {
 		).put(
 			"emailAddressRequired", RandomTestUtil.randomString()
 		).put(
-			"lastName", RandomTestUtil.randomString()
+			"externalReferenceCode", externalReferenceCode
+		).put(
+			"lastName", externalReferenceCode
 		).put(
 			"listTypeEntryKeyRequired", "listTypeEntryKey1"
 		).put(
@@ -3279,7 +3368,7 @@ public class ObjectEntryLocalServiceTest {
 					getObjectValidationRuleResults();
 
 			Assert.assertEquals(
-				objectValidationRuleResults.toString(), 5,
+				objectValidationRuleResults.toString(), 6,
 				objectValidationRuleResults.size());
 
 			_assertObjectValidationRuleResult(
@@ -3297,14 +3386,17 @@ public class ObjectEntryLocalServiceTest {
 			_assertObjectValidationRuleResult(
 				objectValidationRule7.getErrorLabel(LocaleUtil.getDefault()),
 				null, objectValidationRuleResults.get(4));
+			_assertObjectValidationRuleResult(
+				objectValidationRule8.getErrorLabel(LocaleUtil.getDefault()),
+				null, objectValidationRuleResults.get(5));
 		}
 
-		// Disable object validation rule 7
+		// Disable object validation rule 8
 
-		objectValidationRule7.setActive(false);
+		objectValidationRule8.setActive(false);
 
 		_objectValidationRuleLocalService.updateObjectValidationRule(
-			objectValidationRule7);
+			objectValidationRule8);
 
 		_addObjectEntry(
 			HashMapBuilder.<String, Serializable>put(
@@ -3323,7 +3415,7 @@ public class ObjectEntryLocalServiceTest {
 				"time", timeString
 			).build());
 
-		_assertCount(8);
+		_assertCount(9);
 
 		// No such engine
 
@@ -3361,10 +3453,14 @@ public class ObjectEntryLocalServiceTest {
 			ObjectEntryFolderConstants.PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
 			null, values, serviceContext);
 
-		_assertCount(9);
+		_assertCount(10);
 	}
 
-	@FeatureFlag("LPD-31212")
+	@FeatureFlags(
+		featureFlags = {
+			@FeatureFlag(value = "LPD-11235"), @FeatureFlag(value = "LPD-31212")
+		}
+	)
 	@Test
 	public void testAddObjectEntryWithRichTextObjectFieldWithCKEditor4()
 		throws Exception {
@@ -3385,7 +3481,7 @@ public class ObjectEntryLocalServiceTest {
 			).build());
 	}
 
-	@FeatureFlag("LPD-11235")
+	@FeatureFlag(enable = false, value = "LPD-11235")
 	@Test
 	public void testAddObjectEntryWithRichTextObjectFieldWithCKEditor5()
 		throws Exception {
@@ -7915,7 +8011,7 @@ public class ObjectEntryLocalServiceTest {
 		return false;
 	}
 
-	private int _count() throws Exception {
+	private long _count() throws Exception {
 		try (Connection connection = DataAccess.getConnection();
 
 			PreparedStatement preparedStatement = connection.prepareStatement(
@@ -7926,7 +8022,7 @@ public class ObjectEntryLocalServiceTest {
 
 			resultSet.next();
 
-			return resultSet.getInt("count");
+			return resultSet.getLong("count");
 		}
 	}
 
@@ -7943,6 +8039,15 @@ public class ObjectEntryLocalServiceTest {
 		}
 
 		return listTypeEntries;
+	}
+
+	private ObjectDefinition _enableCategorization(
+		boolean enable, ObjectDefinition objectDefinition) {
+
+		objectDefinition.setEnableCategorization(enable);
+
+		return _objectDefinitionLocalService.updateObjectDefinition(
+			objectDefinition);
 	}
 
 	private void _enableObjectEntryVersioning() {
@@ -9687,6 +9792,12 @@ public class ObjectEntryLocalServiceTest {
 
 	@Inject
 	private AssetTagLocalService _assetTagLocalService;
+
+	@Inject
+	private AssetVocabularyLocalService _assetVocabularyLocalService;
+
+	@Inject
+	private AttachmentManager _attachmentManager;
 
 	@Inject
 	private ClassNameLocalService _classNameLocalService;

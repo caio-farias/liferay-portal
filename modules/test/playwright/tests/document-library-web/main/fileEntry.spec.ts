@@ -34,7 +34,6 @@ const test = mergeTests(
 	documentLibraryPagesTest,
 	workflowPagesTest,
 	featureFlagsTest({
-		'LPD-36105': {enabled: true},
 		'LPS-178052': {enabled: true},
 	}),
 	globalMenuPagesTest,
@@ -335,7 +334,6 @@ test(
 	{
 		tag: '@LPD-29609',
 	},
-
 	async ({
 		documentLibraryEditDocumentTypesPage,
 		documentLibraryEditFilePage,
@@ -365,7 +363,6 @@ test(
 	{
 		tag: '@LPD-50971',
 	},
-
 	async ({apiHelpers, documentLibraryPage, page, site}) => {
 		const vocabularyName = getRandomString();
 
@@ -653,7 +650,6 @@ test(
 	{
 		tag: ['@LPD-27899', '@LPSA-74819'],
 	},
-
 	async ({
 		apiHelpers,
 		documentLibraryEditFilePage,
@@ -733,7 +729,6 @@ test(
 	{
 		tag: '@LPD-42737',
 	},
-
 	async ({
 		apiHelpers,
 		documentLibraryPage,
@@ -883,7 +878,6 @@ test(
 	{
 		tag: '@LPP-53324',
 	},
-
 	async ({
 		apiHelpers,
 		documentLibraryEditDocumentTypesPage,
@@ -891,7 +885,6 @@ test(
 		documentLibraryPage,
 		globalMenuPage,
 		page,
-		site,
 		siteSettingsLocalizationPage,
 	}) => {
 		const dTypeTitle = getRandomString();
@@ -900,6 +893,10 @@ test(
 			dTypeTitle,
 			'/global'
 		);
+
+		const site = await apiHelpers.headlessAdminSite.postSite({
+			name: getRandomString(),
+		});
 
 		await siteSettingsLocalizationPage.setCustomDefaultLanguage(
 			'Spanish (Spain)',
@@ -926,7 +923,9 @@ test(
 		);
 
 		await globalMenuPage.goToSite('Global');
-		await apiHelpers.headlessSite.deleteSite(site.id);
+		await apiHelpers.headlessAdminSite.deleteSite(
+			site.externalReferenceCode
+		);
 		await documentLibraryPage.deleteDocumentType(dTypeTitle);
 
 		await waitForAlert(
@@ -1026,7 +1025,6 @@ test(
 	{
 		tag: '@LPD-57911',
 	},
-
 	async ({
 		documentLibraryEditDocumentTypesPage,
 		documentLibraryEditFilePage,
@@ -1086,7 +1084,6 @@ test(
 	{
 		tag: ['@LPD-71053'],
 	},
-
 	async ({
 		documentLibraryEditFilePage,
 		documentLibraryEditFolderPage,

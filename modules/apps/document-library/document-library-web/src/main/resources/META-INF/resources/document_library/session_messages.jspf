@@ -40,3 +40,14 @@
 		/>
 	</c:if>
 </c:if>
+
+<c:if test='<%= SessionMessages.contains(request, "fileEntrySaved") %>'>
+	<liferay-frontend:component
+		context='<%=
+			HashMapBuilder.<String, Object>put(
+				"fileEntry", (FileEntry)SessionMessages.get(request, "fileEntrySaved")
+			).build()
+		%>'
+		module="{SessionMessages} from document-library-web"
+	/>
+</c:if>

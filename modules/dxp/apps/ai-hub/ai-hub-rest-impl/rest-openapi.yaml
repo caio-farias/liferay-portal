@@ -48,6 +48,12 @@ components:
                 externalReferenceCode:
                     readOnly: true
                     type: string
+                instructionDefinitionScope:
+                    enum:
+                        -   clickToChat
+                        -   cms
+                        -   everywhere
+                    type: string
                 sseEventSinkKey:
                     type: string
             type: object
@@ -89,10 +95,23 @@ components:
                 chat:
                     $ref: "#/components/schemas/Chat"
                     readOnly: true
+                chatbotExternalReferenceCode:
+                    type: string
                 context:
                     additionalProperties: true
                     type: object
+                instructionDefinitionScope:
+                    enum:
+                        -   clickToChat
+                        -   cms
+                        -   everywhere
+                    type: string
                 text:
+                    type: string
+            type: object
+        ProvisioningRequest:
+            properties:
+                customerName:
                     type: string
             type: object
         Site:
@@ -299,9 +318,29 @@ paths:
                     content:
                         text/event-stream: {}
             tags: ["Chat"]
-    "/content-retrievers":
-        post:
-            operationId: postContentRetriever
+    "/content-retrievers/by-external-reference-code/{externalReferenceCode}":
+        delete:
+            operationId: deleteContentRetrieverByExternalReferenceCode
+            parameters:
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+            responses:
+                204:
+                    content:
+                        application/json: {}
+                        application/xml: {}
+            tags: ["ContentRetriever"]
+        put:
+            operationId: putContentRetrieverByExternalReferenceCode
+            parameters:
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
             requestBody:
                 content:
                     application/json:
@@ -320,21 +359,23 @@ paths:
                             schema:
                                 $ref: "#/components/schemas/ContentRetriever"
             tags: ["ContentRetriever"]
-    "/content-retrievers/by-external-reference-code/{externalReferenceCode}":
-        delete:
-            operationId: deleteContentRetrieverByExternalReferenceCode
-            parameters:
-                -   in: path
-                    name: externalReferenceCode
-                    required: true
-                    schema:
-                        type: string
+    "/provisioning":
+        post:
+            operationId: postProvisioning
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/ProvisioningRequest"
+                    application/xml:
+                        schema:
+                            $ref: "#/components/schemas/ProvisioningRequest"
             responses:
-                204:
+                200:
                     content:
                         application/json: {}
                         application/xml: {}
-            tags: ["ContentRetriever"]
+            tags: ["ProvisioningRequest"]
     "/sites/by-external-reference-code/{externalReferenceCode}/site-initializer":
         put:
             operationId: putSiteByExternalReferenceCodeSiteInitializer

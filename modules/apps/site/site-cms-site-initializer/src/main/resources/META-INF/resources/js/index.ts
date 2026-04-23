@@ -4,7 +4,6 @@
  */
 
 export {default as Breadcrumb} from './common/components/Breadcrumb';
-export {default as EnterpriseFeatureIndicator} from './common/components/EnterpriseFeatureIndicator';
 export {default as EnterpriseProductMenuBanner} from './common/components/EnterpriseProductMenuBanner';
 export {default as SpaceSelector} from './common/components/SpaceSelector';
 export {default as SpaceSticker} from './common/components/SpaceSticker';
@@ -34,6 +33,7 @@ export {
 	displayNameInUseErrorToast,
 } from './common/utils/toastUtil';
 
+export {default as ContentEditorPreview} from './content_editor/components/ContentEditorPreview';
 export {default as ContentEditorSidePanel} from './content_editor/components/ContentEditorSidePanel';
 
 // Content Editor
@@ -98,6 +98,7 @@ export {default as SpaceSettings} from './main_view/spaces/SpaceSettings';
 export {default as SpaceSummaryHeader} from './main_view/spaces/SpaceSummaryHeader';
 export {default as SpacesNavigation} from './main_view/spaces_navigation/SpacesNavigation';
 export {default as VersionHistoryToolbar} from './main_view/version_history/VersionHistoryToolbar';
+export {default as ViewAsset} from './main_view/view_asset/ViewAsset';
 
 // Structure Builder
 

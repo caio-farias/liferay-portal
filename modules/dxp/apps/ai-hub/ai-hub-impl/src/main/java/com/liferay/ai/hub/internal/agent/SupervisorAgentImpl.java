@@ -7,6 +7,7 @@ package com.liferay.ai.hub.internal.agent;
 
 import com.liferay.ai.hub.agent.AgentContext;
 import com.liferay.ai.hub.agent.SupervisorAgent;
+import com.liferay.ai.hub.internal.configuration.VertexAIConfiguration;
 import com.liferay.ai.hub.internal.memory.ChatMemoryProviderUtil;
 import com.liferay.ai.hub.rest.resource.v1_0.util.SseUtil;
 import com.liferay.object.rest.dto.v1_0.ObjectEntry;
@@ -15,13 +16,19 @@ import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.petra.concurrent.NoticeableExecutorService;
 import com.liferay.petra.executor.PortalExecutorManager;
 import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.security.auth.CompanyInheritableThreadLocalCallable;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.MapUtil;
+import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowInstanceManager;
+import com.liferay.portal.vulcan.fields.NestedFieldsContext;
+import com.liferay.portal.vulcan.fields.NestedFieldsContextThreadLocal;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
 import com.liferay.portal.workflow.manager.WorkflowDefinitionManager;
@@ -31,6 +38,8 @@ import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.model.vertexai.gemini.VertexAiGeminiChatModel;
+
+import java.util.List;
 
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -57,14 +66,19 @@ public class SupervisorAgentImpl implements SupervisorAgent {
 					PermissionChecker originalPermissionChecker =
 						PermissionThreadLocal.getPermissionChecker();
 
+					VertexAIConfiguration vertexAIConfiguration =
+						_configurationProvider.getCompanyConfiguration(
+							VertexAIConfiguration.class,
+							agentContext.getCompanyId());
+
 					try (VertexAiGeminiChatModel vertexAiGeminiChatModel =
 							VertexAiGeminiChatModel.builder(
 							).location(
-								"europe-central2"
+								vertexAIConfiguration.location()
 							).modelName(
-								"gemini-2.5-flash-lite"
+								vertexAIConfiguration.modelName()
 							).project(
-								"ai-hub-liferay"
+								vertexAIConfiguration.projectId()
 							).build()) {
 
 						PermissionThreadLocal.setPermissionChecker(
@@ -109,7 +123,8 @@ public class SupervisorAgentImpl implements SupervisorAgent {
 				_objectDefinitionLocalService.getObjectDefinition(
 					agentContext.getCompanyId(), "AIHubAgentDefinition"),
 				null, null, agentContext.getDTOConverterContext(),
-				"(active eq true)", Pagination.of(1, 20), null, null);
+				_getFilterString(agentContext), Pagination.of(1, 20), null,
+				null);
 
 			InternalAgentFactory internalAgentFactory =
 				new InternalAgentFactory(
@@ -125,6 +140,51 @@ public class SupervisorAgentImpl implements SupervisorAgent {
 		}
 
 		return new InternalAgent[0];
+	}
+
+	private String _getFilterString(AgentContext agentContext)
+		throws Exception {
+
+		if (Validator.isNull(agentContext.getChatbotExternalReferenceCode())) {
+			return "(active eq true)";
+		}
+
+		NestedFieldsContext nestedFieldsContext =
+			NestedFieldsContextThreadLocal.getAndSetNestedFieldsContext(
+				new NestedFieldsContext(
+					1, List.of("agentDefinitionsToChatbots")));
+
+		try {
+			ObjectEntry chatbotObjectEntry = _objectEntryManager.getObjectEntry(
+				agentContext.getCompanyId(),
+				agentContext.getDTOConverterContext(),
+				agentContext.getChatbotExternalReferenceCode(),
+				_objectDefinitionLocalService.
+					fetchObjectDefinitionByExternalReferenceCode(
+						"L_AI_HUB_CHATBOT", agentContext.getCompanyId()),
+				null);
+
+			ObjectEntry[] agentDefinitionObjectEntries =
+				(ObjectEntry[])chatbotObjectEntry.getPropertyValue(
+					"agentDefinitionsToChatbots");
+
+			if (ArrayUtil.isEmpty(agentDefinitionObjectEntries)) {
+				return "(active eq true)";
+			}
+
+			String agentDefinitionIds = StringUtil.merge(
+				TransformUtil.transformToArray(
+					List.of(agentDefinitionObjectEntries),
+					objectEntry -> "'" + objectEntry.getId() + "'",
+					String.class),
+				",");
+
+			return "(active eq true) and (id in (" + agentDefinitionIds + "))";
+		}
+		finally {
+			NestedFieldsContextThreadLocal.setNestedFieldsContext(
+				nestedFieldsContext);
+		}
 	}
 
 	private void _invoke(
@@ -156,6 +216,9 @@ public class SupervisorAgentImpl implements SupervisorAgent {
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		SupervisorAgentImpl.class);
+
+	@Reference
+	private ConfigurationProvider _configurationProvider;
 
 	private NoticeableExecutorService _noticeableExecutorService;
 

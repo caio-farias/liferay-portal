@@ -1574,6 +1574,20 @@ app.server.type=@{app.server.type}]]></echo>
 				<format pattern="yyyyMMddkkmmssSSS" property="tstamp" />
 			</tstamp>
 
+			<if>
+				<and>
+					<available file="modules/yarn.lock" />
+					<isset property="nodejs.npm.ci.registry" />
+				</and>
+				<then>
+					<replace
+						file="modules/yarn.lock"
+						token="${nodejs.npm.ci.registry}"
+						value="https://registry.yarnpkg.com"
+					/>
+				</then>
+			</if>
+
 			<exec executable="git" output="${tstamp}.diff">
 				<arg value="diff" />
 				<arg value="--" />
@@ -10343,53 +10357,7 @@ tar --extract --file=liferay-portal-source.tar.gz modules/core/portal-bootstrap/
 					<arg value="--all" />
 				</exec>
 
-				<if>
-					<or>
-						<not>
-							<equals arg1="${skip.service.builder.core}" arg2="true" />
-						</not>
-						<not>
-							<equals arg1="${skip.service.builder.full}" arg2="true" />
-						</not>
-					</or>
-					<then>
-						<execute-ant-target-build-services ant.target.file="portal-impl/build.xml" ant.target.name="build-service-counter" />
-						<execute-ant-target-build-services ant.target.file="portal-impl/build.xml" ant.target.name="build-service-portal" />
-						<execute-ant-target-build-services ant.target.file="portal-impl/build.xml" ant.target.name="build-service-portlets" />
-					</then>
-				</if>
-
-				<if>
-					<isset property="modules.test.class.group" />
-					<then>
-						<get-gradle-module-dir-task-names gradle.task.names="${modules.test.class.group}" />
-
-						<for delimiter="|" list="${gradle.module.dir.task.names}" param="gradle.module.dir.task.name" trim="true">
-							<sequential>
-								<local name="gradle.module.dir" />
-								<local name="gradle.task.name" />
-
-								<propertyregex
-									input="@{gradle.module.dir.task.name}"
-									override="true"
-									property="gradle.module.dir"
-									regexp="([^=]+)=([^=]+)"
-									replace="\1"
-								/>
-
-								<propertyregex
-									input="@{gradle.module.dir.task.name}"
-									override="true"
-									property="gradle.task.name"
-									regexp="([^=]+)=([^=]+)"
-									replace="\2"
-								/>
-
-								<execute-gradle-task-build-services gradle.module.dir="${gradle.module.dir}" gradle.task.name="${gradle.task.name}" />
-							</sequential>
-						</for>
-					</then>
-				</if>
+				<execute-ant-target-build-services ant.target.file="portal-impl/build.xml" ant.target.name="build-services" />
 			</test-action>
 
 			<test-set-up>

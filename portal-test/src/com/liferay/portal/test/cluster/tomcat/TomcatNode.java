@@ -8,6 +8,7 @@ package com.liferay.portal.test.cluster.tomcat;
 import com.liferay.petra.concurrent.BaseFutureListener;
 import com.liferay.petra.concurrent.DefaultNoticeableFuture;
 import com.liferay.petra.concurrent.NoticeableFuture;
+import com.liferay.petra.concurrent.NoticeableFutureConverter;
 import com.liferay.petra.io.ClassLoaderObjectInputStream;
 import com.liferay.petra.io.Deserializer;
 import com.liferay.petra.io.Serializer;
@@ -504,29 +505,21 @@ public class TomcatNode {
 			throw new IllegalStateException("Tomcat node is not running");
 		}
 
-		if (osgiify) {
-			clusterExecutable = _osgiify(clusterExecutable);
+		if (!osgiify) {
+			return processChannel.write(
+				new BridgeProcessCallable<>(clusterExecutable));
 		}
 
-		return processChannel.write(
-			new BridgeProcessCallable<>(clusterExecutable));
-	}
+		return new NoticeableFutureConverter<V, byte[]>(
+			processChannel.write(
+				new BridgeProcessCallable<>(
+					RPCUtil._osgiify(clusterExecutable)))) {
 
-	private <V extends Serializable> ClusterExecutable<V> _osgiify(
-		ClusterExecutable<V> clusterExecutable) {
+			@Override
+			protected V convert(byte[] bytes) throws Exception {
+				return RPCUtil._deserialize(bytes);
+			}
 
-		Serializer serializer = new Serializer();
-
-		serializer.writeObject(clusterExecutable);
-
-		ByteBuffer byteBuffer = serializer.toByteBuffer();
-
-		byte[] data = byteBuffer.array();
-
-		return () -> {
-			Deserializer deserializer = new Deserializer(ByteBuffer.wrap(data));
-
-			return RPCUtil._invokeClusterExecutable(deserializer.readObject());
 		};
 	}
 
@@ -648,7 +641,7 @@ public class TomcatNode {
 		@Override
 		public T call() throws ProcessException {
 			try (InputStream inputStream = new UnsyncByteArrayInputStream(
-					_data);
+					_bytes);
 
 				ObjectInputStream objectInputStream =
 					new ClassLoaderObjectInputStream(
@@ -681,12 +674,12 @@ public class TomcatNode {
 				throw new RuntimeException(ioException);
 			}
 
-			_data = unsyncByteArrayOutputStream.toByteArray();
+			_bytes = unsyncByteArrayOutputStream.toByteArray();
 		}
 
 		private static final long serialVersionUID = 1L;
 
-		private final byte[] _data;
+		private final byte[] _bytes;
 
 		private static class BridgeClassLoaderHolder {
 
@@ -757,6 +750,15 @@ public class TomcatNode {
 	 */
 	private static class RPCUtil {
 
+		private static <T> T _deserialize(byte[] bytes)
+			throws ClassNotFoundException {
+
+			Deserializer deserializer = new Deserializer(
+				ByteBuffer.wrap(bytes));
+
+			return deserializer.readObject();
+		}
+
 		private static <T> T _invokeClusterExecutable(Object clusterExecutable)
 			throws Exception {
 
@@ -767,6 +769,25 @@ public class TomcatNode {
 			method.setAccessible(true);
 
 			return (T)method.invoke(clusterExecutable);
+		}
+
+		private static ClusterExecutable<byte[]> _osgiify(
+			ClusterExecutable<?> clusterExecutable) {
+
+			byte[] bytes = _serialize(clusterExecutable);
+
+			return () -> _serialize(
+				_invokeClusterExecutable(_deserialize(bytes)));
+		}
+
+		private static byte[] _serialize(Serializable serializable) {
+			Serializer serializer = new Serializer();
+
+			serializer.writeObject(serializable);
+
+			ByteBuffer byteBuffer = serializer.toByteBuffer();
+
+			return byteBuffer.array();
 		}
 
 	}

@@ -36,18 +36,12 @@ const renderLengthField = ({
 
 describe('LengthField', () => {
 	afterEach(() => {
-		Liferay.FeatureFlags['LPD-40054'] = false;
-
 		jest.runOnlyPendingTimers();
 		jest.useRealTimers();
 	});
 
-	beforeEach(() => {
-		Liferay.FeatureFlags['LPD-40054'] = true;
-	});
-
 	async function openUnitDropdown(user = userEvent) {
-		await user.click(screen.getByLabelText('select-a-unit'));
+		await user.click(screen.getByTitle('select-a-unit'));
 	}
 
 	it('renders LengthField', () => {
@@ -60,7 +54,7 @@ describe('LengthField', () => {
 		renderLengthField();
 
 		expect(screen.getByLabelText('length-field')).toHaveValue(12);
-		expect(screen.getByLabelText('select-a-unit').textContent).toBe('PX');
+		expect(screen.getByTitle('select-a-unit').textContent).toBe('PX');
 	});
 
 	it('changes the number of the value', async () => {
@@ -104,7 +98,7 @@ describe('LengthField', () => {
 
 		await userEvent.click(screen.getByText('%'));
 
-		expect(screen.getByLabelText('select-a-unit').textContent).toBe('%');
+		expect(screen.getByTitle('select-a-unit').textContent).toBe('%');
 	});
 
 	it('keeps the empty input and the units when the value is cleared', async () => {
@@ -114,7 +108,7 @@ describe('LengthField', () => {
 		await userEvent.clear(input);
 
 		expect(input).toHaveValue(null);
-		expect(screen.getByLabelText('select-a-unit').textContent).toBe('VH');
+		expect(screen.getByTitle('select-a-unit').textContent).toBe('VH');
 	});
 
 	it('renders an icon code in the button if custom option is selected', () => {
@@ -122,7 +116,7 @@ describe('LengthField', () => {
 
 		expect(
 			screen
-				.getByLabelText('select-a-unit')
+				.getByTitle('select-a-unit')
 				.querySelector('.lexicon-icon-code')
 		).toBeInTheDocument();
 	});
@@ -169,7 +163,7 @@ describe('LengthField', () => {
 
 		renderLengthField({field});
 
-		const button = screen.getByLabelText('select-a-unit');
+		const button = screen.getByTitle('select-a-unit');
 
 		expect(button.textContent).toBe('%');
 		expect(button).toBeDisabled();

@@ -6,10 +6,10 @@
 package com.liferay.portal.license.test;
 
 import com.liferay.petra.lang.SafeCloseable;
-import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.license.util.App;
 import com.liferay.portal.kernel.license.util.LicenseManagerUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -24,7 +24,6 @@ import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.module.framework.ModuleFrameworkUtil;
 import com.liferay.portal.test.log.LogCapture;
@@ -33,7 +32,6 @@ import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.util.LicenseUtil;
 
 import java.io.File;
-import java.io.InputStream;
 import java.io.Serializable;
 
 import java.lang.instrument.Instrumentation;
@@ -72,12 +70,8 @@ import org.osgi.framework.launch.Framework;
 public abstract class BaseLicenseTestCase implements Serializable {
 
 	public static SafeCloseable disableValidateWithSafeCloseable() {
-		ResettableClassFileTransformer resettableClassFileTransformer =
-			_transformMethod(ReflectionsHolder._validateMethod, true);
-
-		return () -> resettableClassFileTransformer.reset(
-			ReflectionsHolder._instrumentation,
-			AgentBuilder.RedefinitionStrategy.RETRANSFORMATION);
+		return setReturnValueWithSafeCloseable(
+			ReflectionsHolder._validateMethod, true);
 	}
 
 	public static boolean isReleaseBundle() {
@@ -88,13 +82,20 @@ public abstract class BaseLicenseTestCase implements Serializable {
 		return false;
 	}
 
-	public static SafeCloseable setVersionWithSafeCloseable(String version) {
+	public static SafeCloseable setReturnValueWithSafeCloseable(
+		Method method, Object result) {
+
 		ResettableClassFileTransformer resettableClassFileTransformer =
-			_transformMethod(ReflectionsHolder._versionMethod, version);
+			_transformMethod(method, result);
 
 		return () -> resettableClassFileTransformer.reset(
 			ReflectionsHolder._instrumentation,
 			AgentBuilder.RedefinitionStrategy.RETRANSFORMATION);
+	}
+
+	public static SafeCloseable setVersionWithSafeCloseable(String version) {
+		return setReturnValueWithSafeCloseable(
+			ReflectionsHolder._versionMethod, version);
 	}
 
 	public void assertBundlesExisted(String... bundleNames) {
@@ -168,18 +169,20 @@ public abstract class BaseLicenseTestCase implements Serializable {
 		Assert.assertFalse(response.contains(_LICENSE_PAGE_KEY));
 	}
 
-	public File deployCMPLicense(long validityPeriod) throws Exception {
+	public File deployAppLicense(App app, long validityPeriod)
+		throws Exception {
+
 		long currentTimeMillis = System.currentTimeMillis();
 
 		StringBundler sb = new StringBundler(19);
 
 		sb.append("<?xml version=\"1.0\"?><license><product-id>");
-		sb.append(getCMPProductId());
+		sb.append(getProductId(app));
 		sb.append("</product-id><product-name>");
-		sb.append(_CMP_PRODUCT_NAME);
+		sb.append(app);
 		sb.append("</product-name><product-version>2026.Q1</product-version>");
 		sb.append("<license-type>");
-		sb.append(_CMP_LICENSE_TYPE);
+		sb.append(_APP_LICENSE_TYPE);
 		sb.append("</license-type><license-version>3</license-version>");
 		sb.append("<start-date>");
 		sb.append(_DATE_FORMAT.format(new Date(currentTimeMillis)));
@@ -209,8 +212,8 @@ public abstract class BaseLicenseTestCase implements Serializable {
 		_registerLicense(sb.toString());
 
 		return _buildBinaryFile(
-			getCMPProductId(), StringPool.BLANK, _CMP_PRODUCT_NAME,
-			_CMP_LICENSE_TYPE);
+			getProductId(app), StringPool.BLANK, app.toString(),
+			_APP_LICENSE_TYPE);
 	}
 
 	public File deployEnterprisePortalLicense(long validityPeriod)
@@ -252,20 +255,18 @@ public abstract class BaseLicenseTestCase implements Serializable {
 		throws Exception {
 
 		return deployFreeTierPortalLicense(
-			_FREE_TIER_DOMAIN, StringPool.BLANK, System.currentTimeMillis(),
-			validityPeriod);
+			_FREE_TIER_DOMAIN, StringPool.BLANK, validityPeriod);
 	}
 
 	public File deployFreeTierPortalLicense(String domain, long validityPeriod)
 		throws Exception {
 
 		return deployFreeTierPortalLicense(
-			domain, StringPool.BLANK, System.currentTimeMillis(),
-			validityPeriod);
+			domain, StringPool.BLANK, validityPeriod);
 	}
 
 	public File deployFreeTierPortalLicense(
-			String domain, String key, long startTime, long validityPeriod)
+			String domain, String key, long validityPeriod)
 		throws Exception {
 
 		StringBundler sb = new StringBundler(20);
@@ -281,7 +282,11 @@ public abstract class BaseLicenseTestCase implements Serializable {
 		sb.append(_FREE_TIER_LICENSE_TYPE);
 		sb.append("</license-type><license-version>6</license-version>");
 		sb.append("<start-date>");
+
+		long startTime = System.currentTimeMillis();
+
 		sb.append(_DATE_FORMAT.format(new Date(startTime)));
+
 		sb.append("</start-date><expiration-date>");
 		sb.append(_DATE_FORMAT.format(new Date(startTime + validityPeriod)));
 		sb.append("</expiration-date>");
@@ -300,12 +305,23 @@ public abstract class BaseLicenseTestCase implements Serializable {
 
 	public void resetCheckInterval() throws Exception {
 		for (Field field : _lifecycleActionClass.getDeclaredFields()) {
+			field.setAccessible(true);
+
 			if (!Modifier.isFinal(field.getModifiers()) &&
 				Objects.equals(field.getType(), long.class)) {
 
-				field.setAccessible(true);
-
 				field.set(_lifecycleAction, 0L);
+			}
+			else if (Objects.equals(field.getType(), Map.class)) {
+				Map<?, ?> map = (Map<?, ?>)field.get(_lifecycleAction);
+
+				for (Object object : map.values()) {
+					if (Long.class.isAssignableFrom(object.getClass())) {
+						map.clear();
+
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -322,7 +338,10 @@ public abstract class BaseLicenseTestCase implements Serializable {
 		}
 
 		checkLicense(getPortalProductId());
-		checkLicense(getCMPProductId());
+
+		for (App app : App.values()) {
+			checkLicense(getProductId(app));
+		}
 
 		resetLifecycleAction();
 
@@ -344,7 +363,10 @@ public abstract class BaseLicenseTestCase implements Serializable {
 
 			try {
 				checkLicense(getPortalProductId());
-				checkLicense(getCMPProductId());
+
+				for (App app : App.values()) {
+					checkLicense(getProductId(app));
+				}
 
 				resetLifecycleAction();
 			}
@@ -373,14 +395,32 @@ public abstract class BaseLicenseTestCase implements Serializable {
 						if (Map.class.isAssignableFrom(field.getType())) {
 							field.setAccessible(true);
 
-							Object bundleData = field.get(_lifecycleAction);
+							if (!Modifier.isFinal(field.getModifiers())) {
+								Object bundleData = field.get(_lifecycleAction);
 
-							if (bundleData != null) {
-								method.invoke(
-									_lifecycleAction,
-									SystemBundleUtil.getBundleContext(),
-									bundleData,
-									ModuleFrameworkUtil.getFramework());
+								if (bundleData != null) {
+									method.invoke(
+										_lifecycleAction,
+										SystemBundleUtil.getBundleContext(),
+										bundleData,
+										ModuleFrameworkUtil.getFramework());
+								}
+							}
+							else {
+								Map<?, ?> map = (Map<?, ?>)field.get(
+									_lifecycleAction);
+
+								for (Object object : map.values()) {
+									if (Map.class.isAssignableFrom(
+											object.getClass())) {
+
+										method.invoke(
+											_lifecycleAction,
+											SystemBundleUtil.getBundleContext(),
+											object,
+											ModuleFrameworkUtil.getFramework());
+									}
+								}
 							}
 						}
 					}
@@ -390,9 +430,9 @@ public abstract class BaseLicenseTestCase implements Serializable {
 			}
 
 			for (Field field : _lifecycleActionClass.getDeclaredFields()) {
-				if (!Modifier.isFinal(field.getModifiers())) {
-					field.setAccessible(true);
+				field.setAccessible(true);
 
+				if (!Modifier.isFinal(field.getModifiers())) {
 					if (Objects.equals(field.getType(), long.class)) {
 						field.set(_lifecycleAction, 0L);
 					}
@@ -402,6 +442,11 @@ public abstract class BaseLicenseTestCase implements Serializable {
 					else {
 						field.set(_lifecycleAction, null);
 					}
+				}
+				else if (Objects.equals(field.getType(), Map.class)) {
+					Map<?, ?> map = (Map<?, ?>)field.get(_lifecycleAction);
+
+					map.clear();
 				}
 			}
 
@@ -466,21 +511,8 @@ public abstract class BaseLicenseTestCase implements Serializable {
 		return value;
 	}
 
-	protected void assertPortalInvalidatedWithBrokenFile(
-			String fileName, String failMessage)
-		throws Exception {
-
-		String filePath = StringBundler.concat(
-			StringUtil.replace(
-				_licensePackageName, CharPool.PERIOD, CharPool.SLASH),
-			CharPool.SLASH, fileName);
-
-		_assertPortalInvalidatedWithBrokenFile(
-			filePath, null,
-			"java.lang.IllegalArgumentException: Null input buffer");
-
-		_assertPortalInvalidatedWithBrokenFile(
-			filePath, InputStream.nullInputStream(), failMessage);
+	protected static Class<?> getValidateClass() {
+		return ReflectionsHolder._validateClass;
 	}
 
 	protected void checkLicense(String productId) throws Exception {
@@ -491,10 +523,6 @@ public abstract class BaseLicenseTestCase implements Serializable {
 
 			_throwLogEntriesException(logCapture, null, LoggerTestUtil.ERROR);
 		}
-	}
-
-	protected String getCMPProductId() {
-		return getProperty("product.id.cmp");
 	}
 
 	protected String getCurrentVersion() throws Exception {
@@ -517,8 +545,9 @@ public abstract class BaseLicenseTestCase implements Serializable {
 		return getProperty("product.id.portal");
 	}
 
-	protected Class<?> getValidateClass() {
-		return ReflectionsHolder._validateClass;
+	protected String getProductId(App app) {
+		return getProperty(
+			"product.id." + StringUtil.toLowerCase(app.toString()));
 	}
 
 	protected String hitHomePage(String host, int port) throws Exception {
@@ -559,48 +588,6 @@ public abstract class BaseLicenseTestCase implements Serializable {
 		).installOn(
 			ReflectionsHolder._instrumentation
 		);
-	}
-
-	private void _assertPortalInvalidatedWithBrokenFile(
-			String filePath, InputStream inputStream, String failMessage)
-		throws Exception {
-
-		ClassLoader classLoader = PortalClassLoaderUtil.getClassLoader();
-
-		PortalClassLoaderUtil.setClassLoader(
-			new ClassLoader(classLoader) {
-
-				@Override
-				public boolean equals(Object object) {
-					return classLoader.equals(object);
-				}
-
-				@Override
-				public InputStream getResourceAsStream(String name) {
-					if (name.equals(filePath)) {
-						return inputStream;
-					}
-
-					return classLoader.getResourceAsStream(name);
-				}
-
-				@Override
-				public int hashCode() {
-					return classLoader.hashCode();
-				}
-
-			});
-
-		try (SafeCloseable safeCloseable = resetLicenseDataWithSafeCloseble()) {
-			assertPortalLicenseNotRegistered();
-
-			deployFreeTierPortalLicense(Time.HOUR);
-
-			assertPortalLicenseInvalid(failMessage);
-		}
-		finally {
-			PortalClassLoaderUtil.setClassLoader(classLoader);
-		}
 	}
 
 	private File _buildBinaryFile(
@@ -662,13 +649,10 @@ public abstract class BaseLicenseTestCase implements Serializable {
 		}
 	}
 
+	private static final String _APP_LICENSE_TYPE = "production";
+
 	private static final String _BUNDLE_START_STOP_LOGGER =
 		"com.liferay.portal.bootstrap.log.BundleStartStopLogger";
-
-	private static final String _CMP_LICENSE_TYPE = "production";
-
-	private static final String _CMP_PRODUCT_NAME =
-		"Liferay Content Marketing Platform";
 
 	private static final DateFormat _DATE_FORMAT = new SimpleDateFormat(
 		"EEEE, MMMM d, yyyy hh:mm:ss a z", LocaleUtil.US);

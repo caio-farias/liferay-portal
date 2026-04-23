@@ -30,7 +30,7 @@ export default function CommentsPanel({
 	getCommentsURL,
 }: {
 	addCommentURL: string;
-	comments: Comment[];
+	comments?: Comment[];
 	deleteCommentURL: string;
 	editCommentURL: string;
 	editorConfig: LiferayEditorConfig;
@@ -145,6 +145,24 @@ export default function CommentsPanel({
 							)
 						: [...comments, data]
 				);
+
+				try {
+					const classPK = new URL(
+						addCommentURL,
+						window.location.origin
+					).searchParams.get('classPK');
+
+					if (classPK) {
+						Liferay.fire('messagePosted', {
+							className: data.className,
+							classPK,
+							commentId: Number(data.commentId),
+							externalReferenceCode: '',
+							text: content,
+						});
+					}
+				}
+				catch (error) {}
 			}
 			else if (error) {
 				errorMessage = error;

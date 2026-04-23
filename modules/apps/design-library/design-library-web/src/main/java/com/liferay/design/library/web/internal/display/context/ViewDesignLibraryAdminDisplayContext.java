@@ -96,9 +96,9 @@ public class ViewDesignLibraryAdminDisplayContext {
 			JSONUtil.put(
 				"href", "#import"
 			).put(
-				"symbolLeft", "import"
+				"label", LanguageUtil.get(_httpServletRequest, "import")
 			).put(
-				"title", LanguageUtil.get(_httpServletRequest, "import")
+				"symbolLeft", "import"
 			));
 	}
 

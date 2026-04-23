@@ -147,16 +147,10 @@ public class MirrorsGetTask extends Task {
 			}
 
 			if (_hostName == null) {
-				throw new RuntimeException(
-					"The property \"mirrors.gcp.bucket.hostname[" +
-						_gcpBucketName + "]\" is not set");
+				_hostName = "storage.googleapis.com";
 			}
 
 			_path = matcher.group("path");
-
-			while (_path.endsWith("/")) {
-				_path = _path.substring(0, _path.length() - 1);
-			}
 
 			return;
 		}
@@ -183,10 +177,21 @@ public class MirrorsGetTask extends Task {
 			_hostName += ".liferay.com";
 		}
 
-		_path = matcher.group("path");
+		_path = _normalizePath(matcher.group("path"));
 
-		while (_path.endsWith("/")) {
-			_path = _path.substring(0, _path.length() - 1);
+		if (Objects.equals(_hostName, "storage.googleapis.com")) {
+			int index = _path.indexOf("/");
+
+			if (index != -1) {
+				_gcpBucketName = _path.substring(0, index);
+
+				_path = _path.substring(index + 1);
+			}
+			else {
+				_gcpBucketName = _path;
+
+				_path = "";
+			}
 		}
 	}
 
@@ -369,47 +374,33 @@ public class MirrorsGetTask extends Task {
 
 		File gcpCredentialsFile = _getGCPCredentialsFile();
 
-		if (gcpCredentialsFile == null) {
-			StringBuilder sb = new StringBuilder();
-
-			sb.append("Unable to download from ");
-			sb.append(gsURL);
-			sb.append(" because \"mirrors.gcp.credentials.file[");
-			sb.append(_getGCPBucketName());
-			sb.append("]\" is not set.");
-
-			System.out.println(sb.toString());
-
-			return;
-		}
-
-		StringBuilder sb = new StringBuilder();
-
-		sb.append("Downloading ");
-		sb.append(gsURL);
-		sb.append(" to ");
-		sb.append(targetFile.getPath());
-		sb.append(".");
-
-		System.out.println(sb.toString());
-
 		try {
+			if (gcpCredentialsFile != null) {
+				Process process = _executeCommands(
+					new String[] {
+						"gcloud", "auth", "activate-service-account",
+						"--key-file", gcpCredentialsFile.toString()
+					});
+
+				if (process.exitValue() != 0) {
+					System.out.println("Unable to activate service account.");
+				}
+			}
+
+			System.out.println(
+				"Downloading " + gsURL + " to " + targetFile + ".");
+
 			Process process = _executeCommands(
 				new String[] {
-					"gcloud", "auth", "activate-service-account", "--key-file",
-					gcpCredentialsFile.toString()
+					"gcloud", "storage", "cp", gsURL, targetFile.toString()
 				});
 
-			if (process.exitValue() != 0) {
-				System.out.println("Unable to activate service account.");
-
+			if (process.exitValue() == 0) {
 				return;
 			}
 
 			process = _executeCommands(
-				new String[] {
-					"gcloud", "storage", "cp", gsURL, targetFile.toString()
-				});
+				new String[] {"gsutil", "cp", gsURL, targetFile.toString()});
 
 			if (process.exitValue() != 0) {
 				System.out.println(
@@ -418,8 +409,11 @@ public class MirrorsGetTask extends Task {
 				_deleteFile(targetFile);
 			}
 		}
-		catch (Exception exception) {
-			System.out.println("Unable to run GCP commands to download file.");
+		catch (InterruptedException | IOException | RuntimeException
+					exception) {
+
+			System.out.println(
+				"Unable to download file: " + exception.getMessage());
 		}
 	}
 
@@ -448,10 +442,6 @@ public class MirrorsGetTask extends Task {
 					hostname + ".");
 
 			_path = _path.substring(hostname.length());
-
-			while (_path.startsWith("/")) {
-				_path = _path.substring(1);
-			}
 		}
 
 		File mirrorsCacheFile = _getMirrorsCacheFile();
@@ -481,21 +471,6 @@ public class MirrorsGetTask extends Task {
 		}
 
 		if (!mirrorsCacheFile.exists()) {
-			_downloadGCPFile(mirrorsCacheTempFile);
-
-			if (mirrorsCacheTempFile.exists()) {
-				_moveFile(mirrorsCacheTempFile, mirrorsCacheFile);
-
-				if (_dest.exists() && _dest.isDirectory()) {
-					_copyFile(mirrorsCacheFile, new File(_dest, _fileName));
-				}
-				else {
-					_copyFile(mirrorsCacheFile, _dest);
-				}
-
-				return;
-			}
-
 			List<URL> urls = new ArrayList<>();
 
 			if (_tryLocalNetwork) {
@@ -510,40 +485,40 @@ public class MirrorsGetTask extends Task {
 				}
 			}
 
-			URL localURL = _getLocalURL();
-
-			urls.add(localURL);
-
-			URL remoteURL = _getRemoteURL();
-
-			if (!Objects.equals(localURL, remoteURL)) {
-				urls.add(remoteURL);
-			}
+			urls.add(_getLocalURL());
 
 			urls.removeAll(Collections.singleton(null));
 
-			for (int i = 0; i < urls.size(); i++) {
-				URL url = urls.get(i);
-
+			for (URL url : urls) {
 				try {
 					_downloadFile(url, mirrorsCacheTempFile, _retries);
 				}
 				catch (IOException ioException) {
-					if (i >= (urls.size() - 1)) {
-						_deleteFile(mirrorsCacheTempFile);
-
-						throw ioException;
-					}
-
 					if (_verbose) {
-						System.out.println(
-							"Unable to connect to " + url + ", defaulting to " +
-								urls.get(i + 1) + ".");
+						System.out.println("Unable to connect to " + url + ".");
 					}
 				}
 
 				if (mirrorsCacheTempFile.exists()) {
 					break;
+				}
+			}
+
+			if (!mirrorsCacheTempFile.exists()) {
+				_downloadGCPFile(mirrorsCacheTempFile);
+
+				if (!mirrorsCacheTempFile.exists()) {
+					URL remoteURL = _getRemoteURL();
+
+					try {
+						_downloadFile(
+							remoteURL, mirrorsCacheTempFile, _retries);
+					}
+					catch (IOException ioException) {
+						_deleteFile(mirrorsCacheTempFile);
+
+						throw ioException;
+					}
 				}
 			}
 
@@ -621,11 +596,9 @@ public class MirrorsGetTask extends Task {
 
 		File gcpCredentialsFile = new File(gcpCredentialsFileName);
 
-		if (!gcpCredentialsFile.exists()) {
-			return null;
+		if (gcpCredentialsFile.exists()) {
+			_gcpCredentialsFile = gcpCredentialsFile;
 		}
-
-		_gcpCredentialsFile = gcpCredentialsFile;
 
 		return _gcpCredentialsFile;
 	}
@@ -637,7 +610,13 @@ public class MirrorsGetTask extends Task {
 			return null;
 		}
 
-		return "gs://" + gcpBucketName + "/" + _path + "/" + _fileName;
+		String path = _normalizePath(_path);
+
+		if (!path.isEmpty()) {
+			path = "/" + path;
+		}
+
+		return "gs://" + gcpBucketName + path + "/" + _fileName;
 	}
 
 	private URL _getLocalURL() {
@@ -662,8 +641,14 @@ public class MirrorsGetTask extends Task {
 		}
 
 		sb.append("/");
-		sb.append(_path);
-		sb.append("/");
+
+		String path = _getPath();
+
+		if (!path.isEmpty()) {
+			sb.append(path);
+			sb.append("/");
+		}
+
 		sb.append(_fileName);
 
 		try {
@@ -685,7 +670,7 @@ public class MirrorsGetTask extends Task {
 		sb.append(File.separator);
 		sb.append(_hostName);
 		sb.append(File.separator);
-		sb.append(_getPlatformIndependentPath(_path));
+		sb.append(_getPlatformIndependentPath(_getPath()));
 
 		return new File(sb.toString(), _fileName);
 	}
@@ -720,8 +705,14 @@ public class MirrorsGetTask extends Task {
 		sb.append("/");
 		sb.append(_hostName);
 		sb.append("/");
-		sb.append(_path);
-		sb.append("/");
+
+		String path = _getPath();
+
+		if (!path.isEmpty()) {
+			sb.append(path);
+			sb.append("/");
+		}
+
 		sb.append(_fileName);
 
 		try {
@@ -769,6 +760,23 @@ public class MirrorsGetTask extends Task {
 		return _password;
 	}
 
+	private String _getPath() {
+		String path = _normalizePath(_path);
+
+		if (!Objects.equals(_hostName, "storage.googleapis.com") ||
+			path.startsWith(_gcpBucketName + "/") ||
+			Objects.equals(path, _gcpBucketName)) {
+
+			return path;
+		}
+
+		if (path.isEmpty()) {
+			return _gcpBucketName;
+		}
+
+		return _gcpBucketName + "/" + path;
+	}
+
 	private String _getPlatformIndependentPath(String path) {
 		String[] separators = {"/", "\\"};
 
@@ -805,9 +813,16 @@ public class MirrorsGetTask extends Task {
 	}
 
 	private URL _getRemoteURL() {
+		if (_hostName == null) {
+			return null;
+		}
+
 		StringBuilder sb = new StringBuilder();
 
-		if (_hostName.contains(".liferay.com") || _src.startsWith("https://")) {
+		if (_hostName.contains(".liferay.com") ||
+			_hostName.contains("storage.googleapis.com") ||
+			_src.startsWith("https://")) {
+
 			sb.append("https://");
 		}
 		else {
@@ -816,8 +831,14 @@ public class MirrorsGetTask extends Task {
 
 		sb.append(_hostName);
 		sb.append("/");
-		sb.append(_path);
-		sb.append("/");
+
+		String path = _getPath();
+
+		if (!path.isEmpty()) {
+			sb.append(path);
+			sb.append("/");
+		}
+
 		sb.append(_fileName);
 
 		try {
@@ -1076,6 +1097,24 @@ public class MirrorsGetTask extends Task {
 		System.out.println(sb.toString());
 
 		sourceFile.renameTo(destFile);
+	}
+
+	private String _normalizePath(String path) {
+		if (path == null) {
+			return "";
+		}
+
+		path = path.replaceAll("/+", "/");
+
+		if (path.startsWith("/")) {
+			path = path.substring(1);
+		}
+
+		if (path.endsWith("/")) {
+			path = path.substring(0, path.length() - 1);
+		}
+
+		return path;
 	}
 
 	private URLConnection _openConnection(URL url) throws IOException {

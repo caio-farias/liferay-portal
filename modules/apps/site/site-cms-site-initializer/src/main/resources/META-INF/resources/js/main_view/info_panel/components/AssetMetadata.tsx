@@ -28,7 +28,7 @@ import {
 } from '../context';
 import ObjectEntryService from '../services/ObjectEntryService';
 import {getAssetLanguages} from '../util';
-import {ASSET_TYPE, L_FILES} from '../util/constants';
+import {ASSET_TYPE} from '../util/constants';
 
 const AssetMetadata = () => {
 	const DATE_PATTERN = useMemo(
@@ -43,9 +43,8 @@ const AssetMetadata = () => {
 		[]
 	);
 
-	const {actions, asset, type}: IAssetTypeInfoPanelContext = useContext(
-		AssetTypeInfoPanelContext
-	);
+	const {actions, asset, breadcrumbProps, type}: IAssetTypeInfoPanelContext =
+		useContext(AssetTypeInfoPanelContext);
 
 	const copyText = useCallback(
 		(event: any) => {
@@ -129,31 +128,83 @@ const AssetMetadata = () => {
 		>
 			<ClayPanel.Body>
 				{type === ASSET_TYPE.FILES && (
-					<div className="asset-metadata-section mt-0">
-						<p className="d-block font-weight-bold mb-0">
-							{Liferay.Language.get('url')}
-						</p>
+					<>
+						<div className="asset-metadata-section mt-0">
+							<p className="d-block font-weight-bold mb-0">
+								{Liferay.Language.get('url')}
+							</p>
 
-						<ClayInput.Group className="mb-3 mt-1">
-							<ClayInput.GroupItem prepend>
-								<ClayInput
-									disabled={true}
-									placeholder={asset.file?.link?.href}
-									type="text"
-								/>
-							</ClayInput.GroupItem>
+							<ClayInput.Group className="mb-3 mt-1">
+								<ClayInput.GroupItem prepend>
+									<ClayInput
+										disabled={true}
+										placeholder={asset.file?.link?.href}
+										type="text"
+									/>
+								</ClayInput.GroupItem>
 
-							<ClayInput.GroupItem append shrink>
-								<ClayButtonWithIcon
-									aria-label={Liferay.Language.get('copy')}
-									data-clipboard-text={asset.file?.link?.href}
-									displayType="secondary"
-									onClick={copyText}
-									symbol="copy"
-								></ClayButtonWithIcon>
-							</ClayInput.GroupItem>
-						</ClayInput.Group>
-					</div>
+								<ClayInput.GroupItem append shrink>
+									<ClayButtonWithIcon
+										aria-label={Liferay.Language.get(
+											'copy'
+										)}
+										data-clipboard-text={
+											asset.file?.link?.href
+										}
+										displayType="secondary"
+										onClick={copyText}
+										symbol="copy"
+									/>
+								</ClayInput.GroupItem>
+							</ClayInput.Group>
+						</div>
+
+						{asset?.file?.extension && (
+							<div className="asset-metadata-section mt-3">
+								<p className="d-block font-weight-bold mb-0">
+									{Liferay.Language.get('extension')}
+								</p>
+
+								<p className="d-block">
+									{asset.file?.extension}
+								</p>
+							</div>
+						)}
+
+						{asset?.file?.size && (
+							<div className="asset-metadata-section mt-3">
+								<p className="d-block font-weight-bold mb-0">
+									{Liferay.Language.get('size')}
+								</p>
+
+								<p className="d-block">{asset.file?.size}</p>
+							</div>
+						)}
+
+						{asset?.file?.metadata?.resolution && (
+							<div className="asset-metadata-section mt-3">
+								<p className="d-block font-weight-bold mb-0">
+									{Liferay.Language.get('resolution')}
+								</p>
+
+								<p className="mb-0">
+									{asset.file?.metadata?.resolution}
+								</p>
+							</div>
+						)}
+
+						{asset?.file?.metadata?.aspectRatio && (
+							<div className="asset-metadata-section mt-3">
+								<p className="d-block font-weight-bold mb-0">
+									{Liferay.Language.get('aspect-ratio')}
+								</p>
+
+								<p className="d-block">
+									{asset.file?.metadata?.aspectRatio}
+								</p>
+							</div>
+						)}
+					</>
 				)}
 
 				{type === ASSET_TYPE.FOLDER && (
@@ -185,21 +236,14 @@ const AssetMetadata = () => {
 
 						<ClayBreadcrumb
 							className="p-0"
-							items={[
-								{
+							items={breadcrumbProps?.breadcrumbItems.map(
+								(breadcrumbItem: any) => ({
 									active: false,
 									label: Liferay.Language.get(
-										`${space.name}`
+										breadcrumbItem.label
 									),
-								},
-								{
-									label:
-										asset.objectEntryFolderExternalReferenceCode ===
-										L_FILES
-											? Liferay.Language.get('files')
-											: Liferay.Language.get('content'),
-								},
-							]}
+								})
+							)}
 						/>
 					</div>
 				</div>

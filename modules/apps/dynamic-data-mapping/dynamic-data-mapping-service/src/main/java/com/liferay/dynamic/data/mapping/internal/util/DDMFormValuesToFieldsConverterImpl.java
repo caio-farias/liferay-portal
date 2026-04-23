@@ -5,6 +5,8 @@
 
 package com.liferay.dynamic.data.mapping.internal.util;
 
+import com.liferay.dynamic.data.mapping.form.field.type.DDMFormFieldType;
+import com.liferay.dynamic.data.mapping.form.field.type.DDMFormFieldTypeServicesRegistry;
 import com.liferay.dynamic.data.mapping.model.DDMForm;
 import com.liferay.dynamic.data.mapping.model.DDMFormField;
 import com.liferay.dynamic.data.mapping.model.DDMStructure;
@@ -32,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Marcellus Tavares
@@ -166,10 +169,9 @@ public class DDMFormValuesToFieldsConverterImpl
 		if (MapUtil.isEmpty(value.getValues())) {
 			LocalizedValue predefinedValue = ddmFormField.getPredefinedValue();
 
-			Map<Locale, String> predefinedValuesMap =
-				predefinedValue.getValues();
+			if (_isPredefinedValueEmpty(
+					ddmFormField, predefinedValue.getValues())) {
 
-			if (predefinedValuesMap.isEmpty()) {
 				LocalizedValue localizedValue = new LocalizedValue(
 					defaultLocale);
 
@@ -252,5 +254,28 @@ public class DDMFormValuesToFieldsConverterImpl
 
 		return availableLocales;
 	}
+
+	private boolean _isPredefinedValueEmpty(
+		DDMFormField ddmFormField, Map<Locale, String> valuesMap) {
+
+		if (MapUtil.isEmpty(valuesMap)) {
+			return true;
+		}
+
+		DDMFormFieldType ddmFormFieldType =
+			_ddmFormFieldTypeServicesRegistry.getDDMFormFieldType(
+				ddmFormField.getType());
+
+		for (String predefinedValue : valuesMap.values()) {
+			if (!ddmFormFieldType.isPredefinedValueEmpty(predefinedValue)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	@Reference
+	private DDMFormFieldTypeServicesRegistry _ddmFormFieldTypeServicesRegistry;
 
 }

@@ -3,20 +3,19 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import ClayLink from '@clayui/link';
+import {FeatureIndicator} from 'frontend-js-components-web';
 import React from 'react';
 
-import {ENTERPRISE_URL} from '../utils/constants';
-import EnterpriseFeatureIndicator from './EnterpriseFeatureIndicator';
+import EnterpriseLink from './EnterpriseLink';
 
 export default function EnterpriseProductMenuBanner() {
 	return (
 		<div className="p-3">
 			<div className="bg-white border p-2 rounded-lg">
 				<div className="p-1 pb-2">
-					<EnterpriseFeatureIndicator />
+					<FeatureIndicator className="m-0" type="enterprise" />
 
-					<div className="mt-3 text-2 text-secondary">
+					<div className="mt-2 text-2 text-secondary">
 						<p className="mb-1 text-3 text-dark text-weight-semi-bold">
 							{Liferay.Language.get('get-more-with-enterprise')}
 						</p>
@@ -27,12 +26,7 @@ export default function EnterpriseProductMenuBanner() {
 							)}
 						</p>
 
-						<ClayLink
-							className="btn btn-primary btn-sm w-100"
-							href={ENTERPRISE_URL}
-						>
-							{Liferay.Language.get('get-enterprise-details')}
-						</ClayLink>
+						<EnterpriseLink className="btn btn-primary btn-sm w-100" />
 					</div>
 				</div>
 			</div>

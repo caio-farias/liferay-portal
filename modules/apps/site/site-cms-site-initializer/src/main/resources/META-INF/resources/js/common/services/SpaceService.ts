@@ -5,7 +5,7 @@
 
 import {Space} from '../../common/types/Space';
 import {UserAccount, UserGroup} from '../../common/types/UserAccount';
-import ApiHelper from './ApiHelper';
+import ApiHelper, {RequestResult} from './ApiHelper';
 
 async function addSpace({
 	description,
@@ -59,6 +59,32 @@ async function getSpaceWithCache(
 	spaceCache.set(cacheKey, fetchPromise);
 
 	return fetchPromise;
+}
+
+async function getSpaceContents({
+	page,
+	pageSize,
+	path,
+	siteId,
+}: {
+	page?: number;
+	pageSize?: number;
+	path: string;
+	siteId: number;
+}): Promise<RequestResult<{totalCount: number}>> {
+	const urlParams = new URLSearchParams();
+
+	if (page) {
+		urlParams.set('page', String(page));
+	}
+
+	if (pageSize) {
+		urlParams.set('pageSize', String(pageSize));
+	}
+
+	return await ApiHelper.get<{
+		totalCount: number;
+	}>(`${path}/scopes/${siteId}?${urlParams.toString()}`);
 }
 
 async function getSpaceUserGroups({
@@ -261,6 +287,7 @@ async function updateUserGroupRoles(payload: {
 export default {
 	addSpace,
 	getSpace,
+	getSpaceContents,
 	getSpaceUserGroups,
 	getSpaceUsers,
 	getSpaceWithCache,

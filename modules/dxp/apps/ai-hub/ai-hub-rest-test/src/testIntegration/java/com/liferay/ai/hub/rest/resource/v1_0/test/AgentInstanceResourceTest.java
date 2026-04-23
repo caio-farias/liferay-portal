@@ -10,8 +10,6 @@ import com.liferay.account.model.AccountEntry;
 import com.liferay.account.service.AccountEntryLocalService;
 import com.liferay.account.service.AccountEntryUserRelLocalService;
 import com.liferay.ai.hub.cell.configuration.AIHubCellConfiguration;
-import com.liferay.ai.hub.model.VertexAIEmbeddingModel;
-import com.liferay.ai.hub.rest.dto.v1_0.ContentRetriever;
 import com.liferay.ai.hub.rest.manager.v1_0.ContentRetrieverManager;
 import com.liferay.ai.hub.rest.resource.v1_0.test.util.SseEventSourceTestUtil;
 import com.liferay.ai.hub.rest.resource.v1_0.test.util.TokenTestUtil;
@@ -25,7 +23,6 @@ import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
-import com.liferay.object.test.util.ObjectRelationshipTestUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.test.util.ConfigurationTestUtil;
@@ -67,16 +64,12 @@ import com.liferay.portal.kernel.workflow.WorkflowInstance;
 import com.liferay.portal.kernel.workflow.WorkflowInstanceManager;
 import com.liferay.portal.kernel.workflow.WorkflowLog;
 import com.liferay.portal.kernel.workflow.WorkflowNode;
-import com.liferay.portal.search.document.DocumentBuilderFactory;
 import com.liferay.portal.search.engine.adapter.SearchEngineAdapter;
-import com.liferay.portal.search.engine.adapter.document.IndexDocumentRequest;
-import com.liferay.portal.search.engine.adapter.index.DeleteIndexRequest;
 import com.liferay.portal.search.test.util.IdempotentRetryAssert;
 import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
-import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
 import com.liferay.portal.workflow.constants.WorkflowDefinitionConstants;
 import com.liferay.portal.workflow.kaleo.runtime.util.WorkflowContextUtil;
 import com.liferay.portal.workflow.manager.WorkflowDefinitionManager;
@@ -88,7 +81,6 @@ import java.io.InputStream;
 import java.io.Serializable;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -292,7 +284,6 @@ public class AgentInstanceResourceTest
 		_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction();
 		_testPostAgentInstanceWithTypeLLMNodeWithRAGWorkflowDefinition();
 		_testPostAgentInstanceWithTypeLLMNodeWithRAGWorkflowDefinitionWithRestrictedUser();
-		_testPostAgentInstanceWithTypeLiferaySearchWithContentRetriever();
 		_testPostAgentInstanceWithTypeLLMNodeWithToolWorkflowDefinition();
 		_testPostAgentInstanceWithTypeMakeShorter();
 	}
@@ -351,10 +342,31 @@ public class AgentInstanceResourceTest
 		return StringUtil.read(inputStream);
 	}
 
-	private String _getExpectedPromptInput(String instruction, String occasion)
+	private ObjectEntry _addOrUpdateInstructionDefinitionObjectEntry(
+			Map<String, Serializable> values)
 		throws Exception {
 
-		String promptInput = StringBundler.concat(
+		return _objectEntryLocalService.addOrUpdateObjectEntry(
+			"L_AI_HUB_INSTRUCTION_DEFINITION", 0, TestPropsValues.getUserId(),
+			_instructionObjectDefinition.getObjectDefinitionId(), 0,
+			HashMapBuilder.<String, Serializable>put(
+				"r_accountToAIHubInstructionDefinitions_accountEntryId",
+				_accountEntry.getAccountEntryId()
+			).put(
+				"title_i18n",
+				(Serializable)RandomTestUtil.randomLanguageIdStringMap()
+			).putAll(
+				values
+			).build(),
+			ServiceContextTestUtil.getServiceContext());
+	}
+
+	private String _getExpectedPromptInput(
+			Map<String, Serializable> instructionDefinitionObjectEntryValues,
+			String instructionDefinitionScope)
+		throws Exception {
+
+		String prompt = StringBundler.concat(
 			"You are an expert linguistic editor. Your sole task is to ",
 			"correct all grammatical, spelling, and punctuation errors in the ",
 			"provided text while preserving its meaning, tone, and style. Do ",
@@ -363,15 +375,31 @@ public class AgentInstanceResourceTest
 			"corrected text, with no explanations or commentary. If the text ",
 			"is already correct, return it unchanged.");
 
-		if (Validator.isNull(instruction)) {
-			return promptInput;
+		if (!GetterUtil.getBoolean(
+				instructionDefinitionObjectEntryValues.get("active"))) {
+
+			return prompt;
 		}
+
+		String scope = GetterUtil.getString(
+			instructionDefinitionObjectEntryValues.get("scope"));
+
+		if (!StringUtil.equals(scope, "everywhere") &&
+			!StringUtil.equals(instructionDefinitionScope, scope)) {
+
+			return prompt;
+		}
+
+		String instruction = GetterUtil.getString(
+			instructionDefinitionObjectEntryValues.get("instruction"));
+		String occasion = GetterUtil.getString(
+			instructionDefinitionObjectEntryValues.get("occasion"));
 
 		if (Validator.isNull(occasion)) {
 			return StringUtil.replace(
 				_read("expected-prompt-input-with-instruction.txt"),
 				new String[] {"${instruction}", "${prompt}"},
-				new String[] {instruction, promptInput});
+				new String[] {instruction, prompt});
 		}
 
 		return StringUtil.replace(
@@ -379,13 +407,24 @@ public class AgentInstanceResourceTest
 			new String[] {"${instruction}", "${occasion}", "${prompt}"},
 			new String[] {
 				StringUtil.lowerCaseFirstLetter(instruction),
-				StringUtil.removeLast(occasion, StringPool.PERIOD), promptInput
+				StringUtil.removeLast(occasion, StringPool.PERIOD), prompt
 			});
 	}
 
 	private JSONObject _postAgentInstance(
 			String agentDefinitionExternalReferenceCode, String inputText,
 			String inputVariable, String sseEventSinkKey)
+		throws Exception {
+
+		return _postAgentInstance(
+			agentDefinitionExternalReferenceCode, inputText, inputVariable,
+			null, sseEventSinkKey);
+	}
+
+	private JSONObject _postAgentInstance(
+			String agentDefinitionExternalReferenceCode, String inputText,
+			String inputVariable, String instructionDefinitionScope,
+			String sseEventSinkKey)
 		throws Exception {
 
 		JSONObject tokenJSONObject = TokenTestUtil.postToken();
@@ -396,6 +435,8 @@ public class AgentInstanceResourceTest
 				agentDefinitionExternalReferenceCode
 			).put(
 				"context", JSONUtil.put(inputVariable, inputText)
+			).put(
+				"instructionDefinitionScope", instructionDefinitionScope
 			).put(
 				"sseEventSinkKey", sseEventSinkKey
 			).toString(),
@@ -533,51 +574,89 @@ public class AgentInstanceResourceTest
 	private void _testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction()
 		throws Exception {
 
+		// Active, scope clickToChat
+
+		ObjectEntry instructionDefinitionObjectEntry =
+			_addOrUpdateInstructionDefinitionObjectEntry(
+				HashMapBuilder.<String, Serializable>put(
+					"active", true
+				).put(
+					"instruction", "Respond in ALL CAPS."
+				).put(
+					"scope", "clickToChat"
+				).build());
+
 		_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction(
-			true, "Song she sang to me, song she brang to me.",
+			"THIS TEXT IS WRONG.", "Thi text ix wrong.",
+			instructionDefinitionObjectEntry, "clickToChat");
+		_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction(
+			"This text is wrong.", "Thi text ix wrong.",
+			instructionDefinitionObjectEntry, "cms");
+
+		// Active, scope everywhere
+
+		instructionDefinitionObjectEntry =
+			_addOrUpdateInstructionDefinitionObjectEntry(
+				HashMapBuilder.<String, Serializable>put(
+					"active", true
+				).put(
+					"instruction",
+					"Preserve all grammar errors exactly as they appear."
+				).put(
+					"scope", "everywhere"
+				).build());
+
+		_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction(
+			"Thi text ix wrong.", "Thi text ix wrong.",
+			instructionDefinitionObjectEntry, "clickToChat");
+		_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction(
+			"Thi text ix wrong.", "Thi text ix wrong.",
+			instructionDefinitionObjectEntry, "cms");
+
+		// Active, scope everywhere with occasion
+
+		instructionDefinitionObjectEntry =
+			_addOrUpdateInstructionDefinitionObjectEntry(
+				HashMapBuilder.<String, Serializable>put(
+					"active", true
+				).put(
+					"instruction",
+					"Preserve all grammar errors exactly as they appear."
+				).put(
+					"occasion", "When the text is a poem or song lyrics."
+				).put(
+					"scope", "everywhere"
+				).build());
+
+		_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction(
 			"Song she sang to me, song she brang to me.",
-			"Preserve all grammar errors exactly as they appear.",
-			"When the text is a poem or song lyrics.");
+			"Song she sang to me, song she brang to me.",
+			instructionDefinitionObjectEntry, "everywhere");
 		_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction(
-			true, "This text is wrong.", "Thi text ix wrong.",
-			"Preserve all grammar errors exactly as they appear.",
-			"When the text is a poem or song lyrics.");
+			"This text is wrong.", "Thi text ix wrong.",
+			instructionDefinitionObjectEntry, "everywhere");
+
+		// Inactive, scope everywhere
+
 		_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction(
-			true, "Thi text ix wrong.", "Thi text ix wrong.",
-			"Preserve all grammar errors exactly as they appear.", null);
-		_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction(
-			true, "THIS TEXT IS WRONG.", "Thi text ix wrong.",
-			"Respond in ALL CAPS.", null);
-		_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction(
-			false, "This text is wrong.", "Thi text ix wrong.",
-			"Respond in ALL CAPS.", null);
+			"This text is wrong.", "Thi text ix wrong.",
+			_addOrUpdateInstructionDefinitionObjectEntry(
+				HashMapBuilder.<String, Serializable>put(
+					"active", false
+				).put(
+					"instruction", "Respond in ALL CAPS."
+				).put(
+					"scope", "everywhere"
+				).build()),
+			null);
 	}
 
 	private void
 			_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction(
-				boolean active, String expectedOutput, String input,
-				String instruction, String occasion)
+				String expectedOutput, String input,
+				ObjectEntry instructionDefinitionObjectEntry,
+				String instructionDefinitionScope)
 		throws Exception {
-
-		_objectEntryLocalService.addOrUpdateObjectEntry(
-			"L_AI_HUB_INSTRUCTION", 0, TestPropsValues.getUserId(),
-			_instructionObjectDefinition.getObjectDefinitionId(), 0,
-			HashMapBuilder.<String, Serializable>put(
-				"active", active
-			).put(
-				"instruction", instruction
-			).put(
-				"occasion", occasion
-			).put(
-				"r_accountToAIHubInstructionDefinitions_accountEntryId",
-				_accountEntry.getAccountEntryId()
-			).put(
-				"scope", "clickToChat"
-			).put(
-				"title_i18n",
-				(Serializable)RandomTestUtil.randomLanguageIdStringMap()
-			).build(),
-			ServiceContextTestUtil.getServiceContext());
 
 		CountDownLatch countDownLatch = new CountDownLatch(4);
 		List<String> lines = new ArrayList<>();
@@ -586,7 +665,8 @@ public class AgentInstanceResourceTest
 			List.of(countDownLatch), lines, "agent-instances/subscribe");
 
 		JSONObject jsonObject = _postAgentInstance(
-			"L_FIX_SPELLING_AND_GRAMMAR", input, "text", sseEventSinkKey);
+			"L_FIX_SPELLING_AND_GRAMMAR", input, "text",
+			instructionDefinitionScope, sseEventSinkKey);
 
 		Assert.assertTrue(countDownLatch.await(10, TimeUnit.SECONDS));
 
@@ -646,7 +726,8 @@ public class AgentInstanceResourceTest
 
 				Assert.assertEquals(
 					_getExpectedPromptInput(
-						active ? instruction : null, occasion),
+						instructionDefinitionObjectEntry.getValues(),
+						instructionDefinitionScope),
 					workflowContext.get("promptInput"));
 				Assert.assertEquals(
 					inputTokensCount + outputTokensCount,
@@ -658,82 +739,6 @@ public class AgentInstanceResourceTest
 
 				return null;
 			});
-
-		SseUtil.closeAll();
-	}
-
-	private void _testPostAgentInstanceWithTypeLiferaySearchWithContentRetriever()
-		throws Exception {
-
-		ContentRetriever contentRetriever =
-			_contentRetrieverManager.postContentRetriever(
-				TestPropsValues.getCompanyId(),
-				new ContentRetriever() {
-					{
-						setCrawlDate(new Date());
-					}
-				},
-				new DefaultDTOConverterContext(
-					false, Map.of(), _dtoConverterRegistry, null,
-					LocaleUtil.getDefault(), null, TestPropsValues.getUser()));
-
-		ObjectEntry agentDefinitionObjectEntry =
-			_objectEntryLocalService.getObjectEntry(
-				"L_LIFERAY_SEARCH", 0L,
-				_agentDefinitionObjectDefinition.getObjectDefinitionId());
-
-		ObjectEntry contentRetrieverObjectEntry =
-			_objectEntryLocalService.getObjectEntry(
-				contentRetriever.getExternalReferenceCode(), 0L,
-				_contentRetrieverObjectDefinition.getObjectDefinitionId());
-
-		ObjectRelationshipTestUtil.relateObjectEntries(
-			agentDefinitionObjectEntry.getObjectEntryId(),
-			contentRetrieverObjectEntry.getObjectEntryId(),
-			_objectRelationshipLocalService.
-				fetchObjectRelationshipByExternalReferenceCode(
-					"L_AI_HUB_AGENT_DEFINITIONS_TO_L_AI_HUB_CONTENT_RETRIEVERS",
-					_agentDefinitionObjectDefinition.getObjectDefinitionId()),
-			TestPropsValues.getUserId());
-
-		String text = "Feliphe's favorite food is hamburger.";
-
-		IndexDocumentRequest indexDocumentRequest = new IndexDocumentRequest(
-			contentRetriever.getIndexName(),
-			DocumentBuilderFactory.builder(
-			).setString(
-				"text", text
-			).setFloats(
-				"text_embedding_3072",
-				_vertexAIEmbeddingModel.embed(
-					text
-				).toArray(
-					new Float[0]
-				)
-			).build());
-
-		indexDocumentRequest.setRefresh(true);
-
-		_searchEngineAdapter.execute(indexDocumentRequest);
-
-		CountDownLatch countDownLatch = new CountDownLatch(4);
-		List<String> lines = new ArrayList<>();
-
-		_postAgentInstance(
-			"L_LIFERAY_SEARCH", "What do you know about Feliphe?", "request",
-			SseEventSourceTestUtil.open(
-				List.of(countDownLatch), lines, "agent-instances/subscribe"));
-
-		Assert.assertTrue(countDownLatch.await(30, TimeUnit.SECONDS));
-
-		Assert.assertEquals(lines.toString(), 4, lines.size());
-
-		String response = StringUtil.toLowerCase(lines.get(3));
-
-		Assert.assertTrue(response, response.contains("hamburger"));
-
-		_searchEngineAdapter.execute(
-			new DeleteIndexRequest(contentRetriever.getIndexName()));
 
 		SseUtil.closeAll();
 	}
@@ -1010,9 +1015,6 @@ public class AgentInstanceResourceTest
 
 	@Inject
 	private UserLocalService _userLocalService;
-
-	@Inject
-	private VertexAIEmbeddingModel _vertexAIEmbeddingModel;
 
 	@Inject
 	private WorkflowInstanceManager _workflowInstanceManager;

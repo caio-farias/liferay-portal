@@ -227,3 +227,4 @@ public class VariableSerDes {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:1407704194

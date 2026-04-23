@@ -36,6 +36,7 @@ import com.liferay.portal.kernel.util.TextFormatter;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.Validator_IW;
 import com.liferay.portal.tools.ArgumentsUtil;
+import com.liferay.portal.tools.GitException;
 import com.liferay.portal.tools.GitUtil;
 import com.liferay.portal.tools.ToolsUtil;
 import com.liferay.portal.tools.java.parser.JavaParser;
@@ -182,12 +183,25 @@ public class ServiceBuilder {
 		String inputFilesDirName = arguments.get("service.input.files.dir");
 
 		if (Validator.isNotNull(inputFilesDirName)) {
-			List<String> apiModulePaths = _processModuleServiceFiles(
+			_gitSearchStartDirName = inputFilesDirName;
+
+			List<String> baselineTasks = _processModuleServiceFiles(
 				Paths.get(inputFilesDirName), arguments);
 
-			System.out.println(
-				"service.builder.baseline.tasks=" +
-					StringUtil.merge(apiModulePaths, StringPool.SPACE));
+			String baselineOutputFileName = arguments.get(
+				"service.builder.baseline.output.file");
+
+			if (Validator.isNotNull(baselineOutputFileName) &&
+				!baselineTasks.isEmpty()) {
+
+				Files.write(
+					Paths.get(baselineOutputFileName),
+					StringUtil.merge(
+						baselineTasks, StringPool.SPACE
+					).getBytes(
+						StandardCharsets.UTF_8
+					));
+			}
 
 			return;
 		}
@@ -1738,6 +1752,16 @@ public class ServiceBuilder {
 		return fieldName;
 	}
 
+	public boolean hasApiModifications() {
+		for (String modifiedFileName : _modifiedFileNames) {
+			if (modifiedFileName.startsWith(_apiDirName)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public boolean hasEntityByGenericsName(String genericsName) {
 		if (Validator.isNull(genericsName) ||
 			!genericsName.contains(".model.") ||
@@ -2334,9 +2358,9 @@ public class ServiceBuilder {
 		_threadLocalModelHints.set(moduleModelHintsImpl);
 
 		try {
-			System.err.println("Processing " + moduleDir.getFileName());
+			System.out.println("Processing " + moduleDir.getFileName());
 
-			new ServiceBuilder(
+			ServiceBuilder serviceBuilder = new ServiceBuilder(
 				apiDir.toString(), true, autoNamespaceTables,
 				"com.liferay.util.bean.PortletBeanLocatorUtil", 1, true,
 				databaseNameMaxLength, hbmFile.toString(), implDir.toString(),
@@ -2347,9 +2371,14 @@ public class ServiceBuilder {
 				sqlDir.toString(), "tables.sql", "indexes.sql", "sequences.sql",
 				null, testDirName, null, true);
 
-			Path apiModuleDir = apiDir.getParent(
-			).getParent(
-			).getParent();
+			if (!serviceBuilder.hasApiModifications()) {
+				return null;
+			}
+
+			Path apiModuleDir = apiDir.getParent();
+
+			apiModuleDir = apiModuleDir.getParent();
+			apiModuleDir = apiModuleDir.getParent();
 
 			Path relativePath = baseDirPath.relativize(
 				apiModuleDir.normalize());
@@ -2357,7 +2386,14 @@ public class ServiceBuilder {
 			String gradleProjectPath = StringUtil.replace(
 				relativePath.toString(), File.separatorChar, ':');
 
-			return ":" + gradleProjectPath + ":baseline";
+			String baselineTask = ":" + gradleProjectPath + ":baseline";
+
+			System.out.println(
+				StringBundler.concat(
+					"Baseline will be invoked for ", moduleDir.getFileName(),
+					" via ", baselineTask));
+
+			return baselineTask;
 		}
 		catch (Exception exception) {
 			System.err.println(
@@ -2466,7 +2502,7 @@ public class ServiceBuilder {
 
 		executorService.shutdown();
 
-		List<String> apiModulePaths = new ArrayList<>();
+		List<String> baselineTasks = new ArrayList<>();
 		List<Exception> exceptions = new ArrayList<>();
 
 		for (Future<String> future : futures) {
@@ -2474,7 +2510,7 @@ public class ServiceBuilder {
 				String baselineTask = future.get();
 
 				if (baselineTask != null) {
-					apiModulePaths.add(baselineTask);
+					baselineTasks.add(baselineTask);
 				}
 			}
 			catch (ExecutionException executionException) {
@@ -2501,7 +2537,7 @@ public class ServiceBuilder {
 			throw runtimeException;
 		}
 
-		return apiModulePaths;
+		return baselineTasks;
 	}
 
 	private static void _readResourceActionModels(
@@ -3188,6 +3224,8 @@ public class ServiceBuilder {
 				"extends " + entity.getName() + "BaseImpl");
 
 			ToolsUtil.writeFileRaw(modelFile, content, _modifiedFileNames);
+
+			_pendingContents.put(_normalize(modelFile.toString()), content);
 		}
 		else {
 			_write(modelFile, content, _modifiedFileNames);
@@ -3250,6 +3288,9 @@ public class ServiceBuilder {
 				entity.getName() + "FinderBaseImpl");
 
 			ToolsUtil.writeFileRaw(finderImplFile, content, _modifiedFileNames);
+
+			_pendingContents.put(
+				_normalize(finderImplFile.toString()), content);
 		}
 
 		JavaClass javaClass = _getJavaClass(finderImplFile.getPath());
@@ -4573,7 +4614,9 @@ public class ServiceBuilder {
 
 			if (_optimizeDBIndexes && (indexMetadatas != null)) {
 				indexMetadatasMap.put(
-					tableName, _optimizeForBTreeIndexes(indexMetadatas));
+					tableName,
+					_optimizeForBTreeIndexes(
+						entity.isChangeTrackingEnabled(), indexMetadatas));
 			}
 
 			for (EntityFinder indexOnlyEntityFinder :
@@ -5901,6 +5944,28 @@ public class ServiceBuilder {
 			fileName.substring(pos, fileName.length() - 5), CharPool.SLASH,
 			CharPool.PERIOD);
 
+		String javaClassContent = _pendingContents.remove(fileName);
+
+		if (javaClassContent != null) {
+			ClassLibraryBuilder classLibraryBuilder =
+				new SortedClassLibraryBuilder();
+
+			classLibraryBuilder.appendClassLoader(_negativeCachingClassLoader);
+
+			JavaProjectBuilder javaProjectBuilder = new JavaProjectBuilder(
+				classLibraryBuilder);
+
+			javaProjectBuilder.addSource(
+				new UnsyncStringReader(javaClassContent));
+
+			JavaClass javaClass = javaProjectBuilder.getClassByName(
+				fullyQualifiedClassName);
+
+			_javaClasses.put(fullyQualifiedClassName, javaClass);
+
+			return javaClass;
+		}
+
 		JavaClass javaClass = _javaClasses.get(fullyQualifiedClassName);
 
 		if (javaClass == null) {
@@ -5915,12 +5980,13 @@ public class ServiceBuilder {
 
 			classLibraryBuilder.appendClassLoader(_negativeCachingClassLoader);
 
-			JavaProjectBuilder builder = new JavaProjectBuilder(
+			JavaProjectBuilder javaProjectBuilder = new JavaProjectBuilder(
 				classLibraryBuilder);
 
-			builder.addSource(file);
+			javaProjectBuilder.addSource(file);
 
-			javaClass = builder.getClassByName(fullyQualifiedClassName);
+			javaClass = javaProjectBuilder.getClassByName(
+				fullyQualifiedClassName);
 
 			_javaClasses.put(fullyQualifiedClassName, javaClass);
 		}
@@ -6300,9 +6366,19 @@ public class ServiceBuilder {
 	}
 
 	private boolean _hasLocalChanges(File propsFile) throws Exception {
-		for (String localChangesFileName :
-				GitUtil.getLocalChangesFileNames("")) {
+		List<String> localChangesFileNames = null;
 
+		try {
+			localChangesFileNames = GitUtil.getLocalChangesFileNames(
+				_gitSearchStartDirName);
+		}
+		catch (GitException gitException) {
+			System.out.println("Unable to get locally modified files from Git");
+
+			return false;
+		}
+
+		for (String localChangesFileName : localChangesFileNames) {
 			if (localChangesFileName.equals(propsFile.getPath())) {
 				return true;
 			}
@@ -6494,7 +6570,7 @@ public class ServiceBuilder {
 	}
 
 	private List<IndexMetadata> _optimizeForBTreeIndexes(
-		List<IndexMetadata> indexMetadatas) {
+		boolean changeTrackingEnabled, List<IndexMetadata> indexMetadatas) {
 
 		Map<String, IntegerWrapper> frequencyMap = new HashMap<>();
 
@@ -6504,6 +6580,11 @@ public class ServiceBuilder {
 					columnName, key -> new IntegerWrapper());
 
 				if (columnName.endsWith("Date")) {
+					count.setValue(-1);
+				}
+				else if (changeTrackingEnabled &&
+						 columnName.equals("ctCollectionId")) {
+
 					count.setValue(0);
 				}
 				else {
@@ -8043,6 +8124,7 @@ public class ServiceBuilder {
 			}
 		}
 
+		_pendingContents.clear();
 		_pendingWrites.clear();
 	}
 
@@ -8082,6 +8164,13 @@ public class ServiceBuilder {
 	}
 
 	private String _read(File file) throws IOException {
+		String pendingContent = _pendingContents.get(
+			_normalize(file.toString()));
+
+		if (pendingContent != null) {
+			return pendingContent;
+		}
+
 		String s = new String(
 			Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
 
@@ -8574,6 +8663,8 @@ public class ServiceBuilder {
 
 		_pendingWrites.add(
 			new Object[] {file, packagePath, content, modifiedFileNames});
+
+		_pendingContents.put(fileName, content);
 	}
 
 	private static final int _DEFAULT_COLUMN_MAX_LENGTH = 75;
@@ -8658,6 +8749,7 @@ public class ServiceBuilder {
 		StringBundler.concat(
 			"public .* get.*", Pattern.quote("("), "|public boolean is.*",
 			Pattern.quote("(")));
+	private static String _gitSearchStartDirName = "";
 	private static final List<String> _highCardinalityColumnNames =
 		Arrays.asList("externalReferenceCode", "uuid_");
 	private static final ClassLoader _negativeCachingClassLoader;
@@ -8753,6 +8845,7 @@ public class ServiceBuilder {
 	private boolean _osgiModule;
 	private String _outputPath;
 	private String _packagePath;
+	private final Map<String, String> _pendingContents = new HashMap<>();
 	private final List<Object[]> _pendingWrites = new ArrayList<>();
 	private String _pluginName;
 	private String _portletShortName = StringPool.BLANK;

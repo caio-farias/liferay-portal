@@ -7,6 +7,7 @@ import ClayButton, {ClayButtonWithIcon} from '@clayui/button';
 import {Text} from '@clayui/core';
 import ClayDatePicker from '@clayui/date-picker';
 import ClayDropdown from '@clayui/drop-down';
+import ClayForm from '@clayui/form';
 import ClayIcon from '@clayui/icon';
 import classNames from 'classnames';
 import {dateUtils} from 'frontend-js-web';
@@ -128,6 +129,10 @@ const CustomRangeView: React.FC<Omit<IView, 'availableRangeSelectors'>> = ({
 	const [rangeStart, setRangeStart] = useState('');
 	const [rangeEnd, setRangeEnd] = useState('');
 
+	const isInvalidDateRange = Boolean(
+		rangeStart && rangeEnd && new Date(rangeStart) > new Date(rangeEnd)
+	);
+
 	return (
 		<>
 			<div className="align-items-center d-flex dropdown-header pl-3">
@@ -151,75 +156,95 @@ const CustomRangeView: React.FC<Omit<IView, 'availableRangeSelectors'>> = ({
 			</div>
 
 			<ClayDropdown.Item>
-				<div data-testid="range-start">
-					<label htmlFor="rangeStartId">
-						{Liferay.Language.get('from')}
-					</label>
+				<ClayForm.Group
+					className={isInvalidDateRange ? 'has-error' : ''}
+				>
+					<div data-testid="range-start">
+						<label htmlFor="rangeStartId">
+							{Liferay.Language.get('from')}
+						</label>
 
-					<ClayDatePicker
-						ariaLabels={{
-							buttonChooseDate: `${Liferay.Language.get(
-								'select-date'
-							)}`,
-							buttonDot: `${Liferay.Language.get(
-								'select-current-date'
-							)}`,
-							buttonNextMonth: `${Liferay.Language.get(
-								'select-next-month'
-							)}`,
-							buttonPreviousMonth: `${Liferay.Language.get(
-								'select-previous-month'
-							)}`,
-							dialog: `${Liferay.Language.get('select-date')}`,
-							selectMonth: `${Liferay.Language.get('select-a-month')}`,
-							selectYear: `${Liferay.Language.get('select-a-year')}`,
-						}}
-						dateFormat="yyyy-MM-dd"
-						firstDayOfWeek={dateUtils.getFirstDayOfWeek()}
-						inputName="rangeStartId"
-						months={[
-							`${Liferay.Language.get('january')}`,
-							`${Liferay.Language.get('february')}`,
-							`${Liferay.Language.get('march')}`,
-							`${Liferay.Language.get('april')}`,
-							`${Liferay.Language.get('may')}`,
-							`${Liferay.Language.get('june')}`,
-							`${Liferay.Language.get('july')}`,
-							`${Liferay.Language.get('august')}`,
-							`${Liferay.Language.get('september')}`,
-							`${Liferay.Language.get('october')}`,
-							`${Liferay.Language.get('november')}`,
-							`${Liferay.Language.get('december')}`,
-						]}
-						onChange={setRangeStart}
-						onClick={() => triggerRef?.current?.focus()}
-						placeholder="YYYY-MM-DD"
-						value={rangeStart}
-						weekdaysShort={dateUtils.getWeekdaysShort() as string[]}
-						years={{
-							end: new Date().getFullYear() + 25,
-							start: new Date().getFullYear() - 50,
-						}}
-					/>
-				</div>
+						<ClayDatePicker
+							aria-invalid={isInvalidDateRange}
+							ariaLabels={{
+								buttonChooseDate: `${Liferay.Language.get(
+									'select-date'
+								)}`,
+								buttonDot: `${Liferay.Language.get(
+									'select-current-date'
+								)}`,
+								buttonNextMonth: `${Liferay.Language.get(
+									'select-next-month'
+								)}`,
+								buttonPreviousMonth: `${Liferay.Language.get(
+									'select-previous-month'
+								)}`,
+								dialog: `${Liferay.Language.get('select-date')}`,
+								selectMonth: `${Liferay.Language.get('select-a-month')}`,
+								selectYear: `${Liferay.Language.get('select-a-year')}`,
+							}}
+							dateFormat="yyyy-MM-dd"
+							firstDayOfWeek={dateUtils.getFirstDayOfWeek()}
+							inputName="rangeStartId"
+							months={[
+								`${Liferay.Language.get('january')}`,
+								`${Liferay.Language.get('february')}`,
+								`${Liferay.Language.get('march')}`,
+								`${Liferay.Language.get('april')}`,
+								`${Liferay.Language.get('may')}`,
+								`${Liferay.Language.get('june')}`,
+								`${Liferay.Language.get('july')}`,
+								`${Liferay.Language.get('august')}`,
+								`${Liferay.Language.get('september')}`,
+								`${Liferay.Language.get('october')}`,
+								`${Liferay.Language.get('november')}`,
+								`${Liferay.Language.get('december')}`,
+							]}
+							onChange={setRangeStart}
+							onClick={() => triggerRef?.current?.focus()}
+							placeholder="YYYY-MM-DD"
+							value={rangeStart}
+							weekdaysShort={
+								dateUtils.getWeekdaysShort() as string[]
+							}
+							years={{
+								end: new Date().getFullYear() + 25,
+								start: new Date().getFullYear() - 50,
+							}}
+						/>
+					</div>
 
-				<div data-testid="range-end">
-					<label className="mt-2" htmlFor="rangeEndId">
-						{Liferay.Language.get('to[date-time]')}
-					</label>
+					<div data-testid="range-end">
+						<label className="mt-2" htmlFor="rangeEndId">
+							{Liferay.Language.get('to[date-time]')}
+						</label>
 
-					<ClayDatePicker
-						dateFormat="yyyy-MM-dd"
-						inputName="rangeEndId"
-						onChange={setRangeEnd}
-						placeholder="YYYY-MM-DD"
-						value={rangeEnd}
-						years={{
-							end: new Date().getFullYear() + 25,
-							start: new Date().getFullYear() - 50,
-						}}
-					/>
-				</div>
+						<ClayDatePicker
+							aria-invalid={isInvalidDateRange}
+							dateFormat="yyyy-MM-dd"
+							inputName="rangeEndId"
+							onChange={setRangeEnd}
+							placeholder="YYYY-MM-DD"
+							value={rangeEnd}
+							years={{
+								end: new Date().getFullYear() + 25,
+								start: new Date().getFullYear() - 50,
+							}}
+						/>
+					</div>
+
+					{isInvalidDateRange && (
+						<ClayForm.FeedbackGroup>
+							<ClayForm.FeedbackItem>
+								<ClayForm.FeedbackIndicator symbol="exclamation-full" />
+
+								{Liferay.Language.get(
+									'date-range-is-invalid.-from-must-be-before-to'
+								)}
+							</ClayForm.FeedbackItem>
+						</ClayForm.FeedbackGroup>
+					)}
+				</ClayForm.Group>
 			</ClayDropdown.Item>
 
 			<ClayDropdown.Divider />
@@ -227,7 +252,7 @@ const CustomRangeView: React.FC<Omit<IView, 'availableRangeSelectors'>> = ({
 			<ClayDropdown.Caption>
 				<ClayButton
 					block
-					disabled={!rangeStart || !rangeEnd}
+					disabled={!rangeStart || !rangeEnd || isInvalidDateRange}
 					onClick={() => {
 						onViewChange(View.Default);
 

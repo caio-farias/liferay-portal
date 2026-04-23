@@ -110,13 +110,16 @@ const TriggerButton = React.forwardRef(
 		return (
 			<ClayButton
 				{...props}
-				aria-label={sub(Liferay.Language.get('select-a-unit'), unit)}
+				aria-label={sub(
+					Liferay.Language.get('select-a-unit-currently-selected-x'),
+					unit
+				)}
 				className="border-0 layout__length-input__button p-1"
 				displayType="secondary"
 				monospaced
 				ref={ref}
 				size="sm"
-				title={Liferay.Language.get('select-units')}
+				title={Liferay.Language.get('select-a-unit')}
 			>
 				{defaultUnit ||
 					(unit === CUSTOM ? (
@@ -276,9 +279,7 @@ const LengthInput = forwardRef<LengthInputRef, Props>(
 
 		return (
 			<ClayForm.Group
-				className={classNames(className, 'layout__length-input w-100', {
-					old: !Liferay.FeatureFlags['LPD-40054'],
-				})}
+				className={classNames(className, 'layout__length-input w-100')}
 			>
 				<label
 					className={classNames({'sr-only': !showLabel})}

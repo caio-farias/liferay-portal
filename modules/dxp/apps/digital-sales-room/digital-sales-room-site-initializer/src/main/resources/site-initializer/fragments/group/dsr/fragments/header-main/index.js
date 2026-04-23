@@ -36,3 +36,29 @@ if (container) {
 		logoName.style.opacity = hasCustomImage || apiImg ? '0' : '1';
 	}
 }
+
+if (!window.onFileEntrySaved) {
+	window.onFileEntrySaved = (data) => {
+		if (typeof window.Analytics !== 'undefined') {
+			Analytics.track('documentUploaded', {
+				assetId: data.fileEntryId,
+				assetName: data.fileName,
+			});
+		}
+	};
+
+	Liferay.on('fileEntrySaved', window.onFileEntrySaved);
+}
+
+if (!window.onMessagePosted) {
+	window.onMessagePosted = (data) => {
+		if (typeof window.Analytics !== 'undefined') {
+			Analytics.track('commentPosted', {
+				assetId: data.classPK,
+				comment: data.text,
+			});
+		}
+	};
+
+	Liferay.on('messagePosted', window.onMessagePosted);
+}

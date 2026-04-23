@@ -106,7 +106,9 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 			try (SafeCloseable safeCloseable =
 					CompanyThreadLocal.
 						setInitializingCompanyIdWithSafeCloseable(companyId);
+
 				Connection connection = DataAccess.getConnection();
+
 				Statement statement = connection.createStatement()) {
 
 				createAndPopulateTable(TEST_TABLE_NAME);
@@ -124,7 +126,9 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 		try (SafeCloseable safeCloseable =
 				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
 					portal.getDefaultCompanyId());
+
 			Connection connection = DataAccess.getConnection();
+
 			Statement statement = connection.createStatement()) {
 
 			statement.execute("select 1 from CompanyInfo");
@@ -256,8 +260,8 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 	@TestInfo("LPS-200849")
 	public void testExportAndImportDBPartition() throws Exception {
 		try {
-			int companyCount = _getDefaultSchemaCount("Company");
-			int virtualHostCount = _getDefaultSchemaCount("VirtualHost");
+			long companyCount = _getDefaultSchemaCount("Company");
+			long virtualHostCount = _getDefaultSchemaCount("VirtualHost");
 
 			addDBPartitions();
 			insertPartitionRequiredData();
@@ -613,8 +617,10 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 
 		try (SafeCloseable safeCloseable =
 				CompanyThreadLocal.setCompanyIdWithSafeCloseable(companyId);
+
 			PreparedStatement preparedStatement = connection.prepareStatement(
 				"select primKey, primKeyId from ResourcePermission");
+
 			ResultSet resultSet = preparedStatement.executeQuery()) {
 
 			Assert.assertTrue(resultSet.next());
@@ -624,11 +630,11 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 		}
 	}
 
-	private int _getCount(long companyId, String tableName) throws Exception {
+	private long _getCount(long companyId, String tableName) throws Exception {
 		return _getCount(companyId, getPartitionName(companyId), tableName);
 	}
 
-	private int _getCount(
+	private long _getCount(
 			long companyId, String partitionName, String tableName)
 		throws Exception {
 
@@ -646,28 +652,28 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 			ResultSet resultSet = preparedStatement.executeQuery()) {
 
 			if (resultSet.next()) {
-				return resultSet.getInt("count");
+				return resultSet.getLong("count");
 			}
 		}
 
 		throw new Exception("Table does not exist");
 	}
 
-	private int _getDefaultSchemaCount(String tableName) throws Exception {
+	private long _getDefaultSchemaCount(String tableName) throws Exception {
 		try (PreparedStatement preparedStatement = connection.prepareStatement(
 				"select count(1) as count from " + tableName);
 
 			ResultSet resultSet = preparedStatement.executeQuery()) {
 
 			if (resultSet.next()) {
-				return resultSet.getInt("count");
+				return resultSet.getLong("count");
 			}
 		}
 
 		throw new Exception("Table does not exist");
 	}
 
-	private int _getJobsCount(String partitionName) throws Exception {
+	private long _getJobsCount(String partitionName) throws Exception {
 		try (PreparedStatement preparedStatement = connection.prepareStatement(
 				"select count(1) as count from " + partitionName +
 					".QUARTZ_JOB_DETAILS where JOB_GROUP = ?")) {
@@ -676,7 +682,7 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				if (resultSet.next()) {
-					return resultSet.getInt("count");
+					return resultSet.getLong("count");
 				}
 			}
 		}
@@ -684,7 +690,7 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 		throw new Exception("Table does not exist");
 	}
 
-	private int _getJobsCountByCompany(long companyId) throws Exception {
+	private long _getJobsCountByCompany(long companyId) throws Exception {
 		try (PreparedStatement preparedStatement = connection.prepareStatement(
 				StringBundler.concat(
 					"select count(1) as count from ",
@@ -697,7 +703,7 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				if (resultSet.next()) {
-					return resultSet.getInt("count");
+					return resultSet.getLong("count");
 				}
 			}
 		}
@@ -726,7 +732,7 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 		return objectNames;
 	}
 
-	private int _getQuartzTableCount(long companyId, String tableName)
+	private long _getQuartzTableCount(long companyId, String tableName)
 		throws Exception {
 
 		String whereClause = null;
@@ -747,7 +753,7 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 			ResultSet resultSet = preparedStatement.executeQuery()) {
 
 			if (resultSet.next()) {
-				return resultSet.getInt("count");
+				return resultSet.getLong("count");
 			}
 		}
 

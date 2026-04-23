@@ -16,6 +16,7 @@ import com.liferay.osb.faro.engine.client.model.ActivityGroup;
 import com.liferay.osb.faro.engine.client.model.Asset;
 import com.liferay.osb.faro.engine.client.model.AssetSummary;
 import com.liferay.osb.faro.engine.client.model.AssetSummaryCategory;
+import com.liferay.osb.faro.engine.client.model.AssetSummaryMimeType;
 import com.liferay.osb.faro.engine.client.model.AssetSummaryTag;
 import com.liferay.osb.faro.engine.client.model.AssetSummaryType;
 import com.liferay.osb.faro.engine.client.model.Author;
@@ -42,6 +43,7 @@ import com.liferay.osb.faro.engine.client.model.IndividualSegmentMembershipChang
 import com.liferay.osb.faro.engine.client.model.IndividualSegmentRealTimeMembership;
 import com.liferay.osb.faro.engine.client.model.IndividualTransformation;
 import com.liferay.osb.faro.engine.client.model.Interest;
+import com.liferay.osb.faro.engine.client.model.PageExperience;
 import com.liferay.osb.faro.engine.client.model.PageVisited;
 import com.liferay.osb.faro.engine.client.model.Provider;
 import com.liferay.osb.faro.engine.client.model.RealTimeMembershipMetric;
@@ -323,14 +325,12 @@ public abstract class BaseMockContactsEngineClientImpl
 
 	@Override
 	public Results<Account> getAccounts(
-		FaroProject faroProject, String channelId, String dataSourceId,
-		String individualSegmentId, String filterString, String query,
-		List<String> fields, int cur, int delta,
-		List<OrderByField> orderByFields) {
+		FaroProject faroProject, String channelId, String filterString,
+		String query, int cur, int delta, String sortString) {
 
 		return contactsEngineClient.getAccounts(
-			faroProject, channelId, dataSourceId, individualSegmentId,
-			filterString, query, fields, cur, delta, orderByFields);
+			faroProject, channelId, filterString, query, cur, delta,
+			sortString);
 	}
 
 	@Override
@@ -422,11 +422,11 @@ public abstract class BaseMockContactsEngineClientImpl
 
 	public Results<AssetSummary> getAssetSummaries(
 		FaroProject faroProject, long channelId, String filterString,
-		String keywords, int rangeKey, int cur, int delta, String sort) {
+		String keywords, int rangeKey, int cur, int delta, String sortString) {
 
 		return contactsEngineClient.getAssetSummaries(
 			faroProject, channelId, filterString, keywords, rangeKey, cur,
-			delta, sort);
+			delta, sortString);
 	}
 
 	@Override
@@ -435,6 +435,15 @@ public abstract class BaseMockContactsEngineClientImpl
 		String rangeStart, int cur, int delta) {
 
 		return contactsEngineClient.getAssetSummaryCategories(
+			faroProject, channelId, rangeEnd, rangeKey, rangeStart, cur, delta);
+	}
+
+	@Override
+	public Results<AssetSummaryMimeType> getAssetSummaryMimeTypes(
+		FaroProject faroProject, long channelId, String rangeEnd, int rangeKey,
+		String rangeStart, int cur, int delta) {
+
+		return contactsEngineClient.getAssetSummaryMimeTypes(
 			faroProject, channelId, rangeEnd, rangeKey, rangeStart, cur, delta);
 	}
 
@@ -623,6 +632,14 @@ public abstract class BaseMockContactsEngineClientImpl
 		return contactsEngineClient.getDataSources(
 			faroProject, faroEntityId, query, name, providerType, states, cur,
 			delta, orderByFields);
+	}
+
+	@Override
+	public long getDemandbaseAccountsCount(
+		String dataSourceId, FaroProject faroProject) {
+
+		return contactsEngineClient.getDemandbaseAccountsCount(
+			dataSourceId, faroProject);
 	}
 
 	@Override
@@ -951,6 +968,16 @@ public abstract class BaseMockContactsEngineClientImpl
 		return contactsEngineClient.getInterests(
 			faroProject, channelId, ownerId, ownerType, name, query, expand,
 			cur, delta, orderByFields);
+	}
+
+	@Override
+	public List<PageExperience> getPageExperiences(
+			FaroProject faroProject, String canonicalUrl, String channelId,
+			String pageTitle)
+		throws Exception {
+
+		return contactsEngineClient.getPageExperiences(
+			faroProject, canonicalUrl, channelId, pageTitle);
 	}
 
 	@Override

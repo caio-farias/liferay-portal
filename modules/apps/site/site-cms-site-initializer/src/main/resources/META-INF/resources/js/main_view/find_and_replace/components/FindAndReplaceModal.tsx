@@ -36,7 +36,6 @@ export default function Wrapper({
 	availableLocales,
 	dataSetId,
 	fdsItems,
-	search,
 	stickerConfig,
 }: Props) {
 	const [visible, setVisible] = useState(true);
@@ -56,18 +55,14 @@ export default function Wrapper({
 		onClose: () => {
 			setVisible(false);
 
-			const {hasApplied, hasAppliedAll, hasDiscarded, itemsCount} =
-				historyRef.current;
+			const {hasApplied, hasAppliedAll} = historyRef.current;
 
 			if (!hasApplied || hasAppliedAll) {
 				return;
 			}
 
-			const resetSearch = !(hasDiscarded || itemsCount > 0);
-
 			Liferay.fire(FDS_EVENT_UPDATE_DISPLAY, {
 				id: dataSetId,
-				resetSearch,
 			});
 		},
 	});
@@ -82,7 +77,6 @@ export default function Wrapper({
 			closeModal={closeModal}
 			dataSetId={dataSetId}
 			fdsItems={fdsItems}
-			search={search}
 			setHistory={setHistory}
 			stickerConfig={stickerConfig}
 		>
@@ -130,7 +124,11 @@ function getSize(view: View) {
 }
 
 function getStatus(view: View) {
-	if (view === 'no-matches' || view === 'discard') {
+	if (view === 'no-matches') {
+		return 'warning';
+	}
+
+	if (view === 'discard') {
 		return 'danger';
 	}
 

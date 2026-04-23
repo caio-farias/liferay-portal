@@ -130,7 +130,7 @@ public class CTScoreCalculator {
 					ResultSet resultSet = preparedStatement.executeQuery()) {
 
 					if (resultSet.next()) {
-						return resultSet.getInt("count");
+						return (int)resultSet.getLong("count");
 					}
 
 					return 0;

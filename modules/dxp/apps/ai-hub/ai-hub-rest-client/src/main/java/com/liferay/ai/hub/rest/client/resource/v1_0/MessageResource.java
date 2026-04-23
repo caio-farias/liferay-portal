@@ -271,3 +271,4 @@ public interface MessageResource {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:1543608887

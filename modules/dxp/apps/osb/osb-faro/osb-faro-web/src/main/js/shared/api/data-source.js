@@ -216,6 +216,24 @@ export function createCSV({fieldMappingMaps, fileVersionId, groupId, name}) {
 	});
 }
 
+export function createDemandbase({credentials, groupId, name}) {
+	const data = pickBy(
+		{
+			credentials
+		},
+		Boolean
+	);
+
+	return sendRequest({
+		data: {
+			...data,
+			name
+		},
+		method: 'POST',
+		path: `contacts/${groupId}/data_source/demandbase`
+	});
+}
+
 export function createLiferay({
 	credentials,
 	fieldMappingMaps,
@@ -292,6 +310,31 @@ export function updateCSV({fieldMappingMaps, groupId, id, name, status}) {
 		},
 		method: 'PATCH',
 		path: `contacts/${groupId}/data_source/${id}/csv`
+	});
+}
+
+export function updateDemandbase({
+	channelsConfiguration,
+	credentials,
+	groupId,
+	id,
+	name
+}) {
+	const data = pickBy(
+		{
+			channelsConfiguration,
+			credentials
+		},
+		Boolean
+	);
+
+	return sendRequest({
+		data: {
+			...data,
+			name
+		},
+		method: 'PATCH',
+		path: `contacts/${groupId}/data_source/${id}/demandbase`
 	});
 }
 
@@ -450,3 +493,12 @@ export function fetchChannelsMetric({groupId, id}) {
 }
 
 export {delete$ as delete};
+
+/* Demandbase endpoints */
+
+export async function fetchDemandbaseAccountsCount({groupId, id}) {
+	return sendRequest({
+		method: 'GET',
+		path: `contacts/${groupId}/demandbase/accounts_count?dataSourceId=${id}`
+	});
+}

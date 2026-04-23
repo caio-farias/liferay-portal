@@ -86,7 +86,8 @@ public class InformationTemplatesManagementToolbarDisplayContextTest {
 		_httpServletRequest.setAttribute(
 			WebKeys.THEME_DISPLAY, _setUpThemeDisplay());
 
-		InfoItemClassDetails infoItemClassDetails = _mockInfoItemClassDetails();
+		InfoItemClassDetails infoItemClassDetails = _mockInfoItemClassDetails(
+			_CLASS_NAME, _LABEL);
 
 		Mockito.when(
 			_infoItemServiceRegistry.getInfoItemClassDetails(
@@ -115,29 +116,98 @@ public class InformationTemplatesManagementToolbarDisplayContextTest {
 	}
 
 	@Test
-	@TestInfo("LPD-56468")
+	@TestInfo({"LPD-56468", "LPD-63947"})
 	public void testGetItemTypesJSONArray() {
 		_testGetItemTypesJSONArray(StringPool.BLANK, null);
 
 		String label = RandomTestUtil.randomString();
 
 		_testGetItemTypesJSONArray(label, label);
+
+		InfoItemClassDetails infoItemClassDetails1 = _mockInfoItemClassDetails(
+			RandomTestUtil.randomString(), "z");
+		InfoItemClassDetails infoItemClassDetails2 = _mockInfoItemClassDetails(
+			RandomTestUtil.randomString(), "á");
+		InfoItemClassDetails infoItemClassDetails3 = _mockInfoItemClassDetails(
+			RandomTestUtil.randomString(), "a");
+
+		Mockito.when(
+			_infoItemServiceRegistry.getInfoItemClassDetails(
+				0, TemplateInfoItemCapability.KEY, null)
+		).thenReturn(
+			List.of(
+				infoItemClassDetails1, infoItemClassDetails2,
+				infoItemClassDetails3)
+		);
+
+		Mockito.when(
+			_infoItemServiceRegistry.getFirstInfoItemService(
+				InfoItemFormVariationsProvider.class,
+				infoItemClassDetails3.getClassName())
+		).thenReturn(
+			_infoItemFormVariationsProvider
+		);
+
+		InfoItemFormVariation infoItemFormVariation1 =
+			_mockInfoItemFormVariation(RandomTestUtil.randomString(), "z");
+		InfoItemFormVariation infoItemFormVariation2 =
+			_mockInfoItemFormVariation(RandomTestUtil.randomString(), "á");
+		InfoItemFormVariation infoItemFormVariation3 =
+			_mockInfoItemFormVariation(RandomTestUtil.randomString(), "a");
+
+		Mockito.when(
+			_infoItemFormVariationsProvider.getInfoItemFormVariations(0)
+		).thenReturn(
+			List.of(
+				infoItemFormVariation1, infoItemFormVariation2,
+				infoItemFormVariation3)
+		);
+
+		JSONArray jsonArray = ReflectionTestUtil.invoke(
+			_informationTemplatesManagementToolbarDisplayContext,
+			"_getItemTypesJSONArray", new Class<?>[0]);
+
+		Assert.assertEquals(3, jsonArray.length());
+
+		_assertLabelAtIndex(jsonArray, 0, "a");
+		_assertLabelAtIndex(jsonArray, 1, "á");
+		_assertLabelAtIndex(jsonArray, 2, "z");
+
+		JSONObject jsonObject = jsonArray.getJSONObject(0);
+
+		JSONArray subtypesJSONArray = jsonObject.getJSONArray("subtypes");
+
+		Assert.assertEquals(3, subtypesJSONArray.length());
+
+		_assertLabelAtIndex(subtypesJSONArray, 0, "a");
+		_assertLabelAtIndex(subtypesJSONArray, 1, "á");
+		_assertLabelAtIndex(subtypesJSONArray, 2, "z");
 	}
 
-	private InfoItemClassDetails _mockInfoItemClassDetails() {
+	private void _assertLabelAtIndex(
+		JSONArray jsonArray, int index, String expectedLabel) {
+
+		JSONObject jsonObject = jsonArray.getJSONObject(index);
+
+		Assert.assertEquals(expectedLabel, jsonObject.getString("label"));
+	}
+
+	private InfoItemClassDetails _mockInfoItemClassDetails(
+		String className, String label) {
+
 		InfoItemClassDetails infoItemClassDetails = Mockito.mock(
 			InfoItemClassDetails.class);
 
 		Mockito.when(
 			infoItemClassDetails.getClassName()
 		).thenReturn(
-			_CLASS_NAME
+			className
 		);
 
 		Mockito.when(
 			infoItemClassDetails.getLabel(LocaleUtil.CANADA)
 		).thenReturn(
-			_LABEL
+			label
 		);
 
 		return infoItemClassDetails;

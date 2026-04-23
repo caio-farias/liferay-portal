@@ -41,6 +41,7 @@ import {config as commerceFragmentImplConfig} from './tests/commerce/commerce-fr
 import {config as commerceInitializerUtilConfig} from './tests/commerce/commerce-initializer-util/main/config';
 import {config as commerceInventoryWebConfig} from './tests/commerce/commerce-inventory-web/main/config';
 import {config as commerceOrderContentWebConfig} from './tests/commerce/commerce-order-content-web/main/config';
+import {config as commerceOrderManagementConfig} from './tests/commerce/commerce-order-management/main/config';
 import {config as commerceOrderWebConfig} from './tests/commerce/commerce-order-web/main/config';
 import {config as commercePaymentsWebConfig} from './tests/commerce/commerce-payment-web/main/config';
 import {config as commercePricingWebConfig} from './tests/commerce/commerce-pricing-web/main/config';
@@ -118,7 +119,22 @@ import {config as nestedPortletsWebConfig} from './tests/nested-portlets-web/mai
 import {config as notificationWebConfig} from './tests/notification-web/main/config';
 import {config as notificationsWebConfig} from './tests/notifications-web/main/config';
 import {config as oauthClientAdministrationConfig} from './tests/oauth-client-administration/main/config';
-import {config as objectWebConfig} from './tests/object-web/main/config';
+import {config as objectActionWebConfig} from './tests/object-web/action/config';
+import {config as objectClientExtensionWebConfig} from './tests/object-web/client-extension/config';
+import {config as objectEntryWebConfig} from './tests/object-web/entry/config';
+import {config as objectExportImportWebConfig} from './tests/object-web/export-import/config';
+import {config as objectFieldWebConfig} from './tests/object-web/field/config';
+import {config as objectFolderWebConfig} from './tests/object-web/folder/config';
+import {config as objectFormsIntegrationWebConfig} from './tests/object-web/forms-integration/config';
+import {config as objectHierarchyWebConfig} from './tests/object-web/hierarchy/config';
+import {config as objectLayoutWebConfig} from './tests/object-web/layout/config';
+import {config as listTypeDefinitionsWebConfig} from './tests/object-web/list-type-definition/config';
+import {config as objectDefinitionWebConfig} from './tests/object-web/main/config';
+import {config as objectRelationshipWebConfig} from './tests/object-web/relationship/config';
+import {config as objectSalesforceWebConfig} from './tests/object-web/salesforce/config';
+import {config as objectValidationWebConfig} from './tests/object-web/validation/config';
+import {config as objectViewWebConfig} from './tests/object-web/view/config';
+import {config as objectWorkflowWebConfig} from './tests/object-web/workflow/config';
 import {config as openIdLinkConfig} from './tests/openid-link/main/config';
 import {config as osbFaroWebConfig} from './tests/osb-faro-web/main/config';
 import {config as passwordPoliciesAdminWebFirstLoginConfig} from './tests/password-policies-admin-web/first-login/config';
@@ -243,6 +259,7 @@ export default defineConfig({
 		commerceFragmentImplConfig,
 		commerceInitializerUtilConfig,
 		commerceInventoryWebConfig,
+		commerceOrderManagementConfig,
 		commerceOrderWebConfig,
 		commerceOrderContentWebConfig,
 		commercePaymentsWebConfig,
@@ -324,7 +341,22 @@ export default defineConfig({
 		notificationWebConfig,
 		notificationsWebConfig,
 		oauthClientAdministrationConfig,
-		objectWebConfig,
+		listTypeDefinitionsWebConfig,
+		objectActionWebConfig,
+		objectClientExtensionWebConfig,
+		objectDefinitionWebConfig,
+		objectEntryWebConfig,
+		objectExportImportWebConfig,
+		objectFieldWebConfig,
+		objectFolderWebConfig,
+		objectFormsIntegrationWebConfig,
+		objectHierarchyWebConfig,
+		objectLayoutWebConfig,
+		objectRelationshipWebConfig,
+		objectSalesforceWebConfig,
+		objectValidationWebConfig,
+		objectViewWebConfig,
+		objectWorkflowWebConfig,
 		openIdLinkConfig,
 		osbFaroWebConfig,
 		passwordPoliciesAdminWebConfig,

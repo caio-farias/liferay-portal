@@ -26,6 +26,7 @@ import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.CollatorUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
@@ -35,6 +36,8 @@ import com.liferay.template.model.TemplateEntry;
 import com.liferay.template.web.internal.security.permissions.resource.TemplateEntryPermission;
 
 import jakarta.servlet.http.HttpServletRequest;
+
+import java.text.Collator;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -151,16 +154,28 @@ public class InformationTemplatesManagementToolbarDisplayContext
 			return itemTypesJSONArray;
 		}
 
-		for (InfoItemClassDetails infoItemClassDetails :
-				_infoItemServiceRegistry.getInfoItemClassDetails(
-					_themeDisplay.getScopeGroupId(),
-					TemplateInfoItemCapability.KEY,
-					_themeDisplay.getPermissionChecker())) {
+		Collator collator = CollatorUtil.getInstance(_themeDisplay.getLocale());
+
+		List<InfoItemClassDetails> infoItemClassDetails = new ArrayList<>(
+			_infoItemServiceRegistry.getInfoItemClassDetails(
+				_themeDisplay.getScopeGroupId(), TemplateInfoItemCapability.KEY,
+				_themeDisplay.getPermissionChecker()));
+
+		infoItemClassDetails = ListUtil.sort(
+			infoItemClassDetails,
+			Comparator.comparing(
+				curInfoItemClassDetails -> GetterUtil.getString(
+					curInfoItemClassDetails.getLabel(
+						_themeDisplay.getLocale())),
+				collator));
+
+		for (InfoItemClassDetails curInfoItemClassDetails :
+				infoItemClassDetails) {
 
 			InfoItemFormVariationsProvider<?> infoItemFormVariationsProvider =
 				_infoItemServiceRegistry.getFirstInfoItemService(
 					InfoItemFormVariationsProvider.class,
-					infoItemClassDetails.getClassName());
+					curInfoItemClassDetails.getClassName());
 
 			if (infoItemFormVariationsProvider != null) {
 				List<InfoItemFormVariation> infoItemFormVariations =
@@ -179,7 +194,7 @@ public class InformationTemplatesManagementToolbarDisplayContext
 				InfoPermissionProvider infoPermissionProvider =
 					_infoItemServiceRegistry.getFirstInfoItemService(
 						InfoPermissionProvider.class,
-						infoItemClassDetails.getClassName());
+						curInfoItemClassDetails.getClassName());
 
 				if (infoPermissionProvider != null) {
 					infoItemFormVariations = ListUtil.filter(
@@ -196,7 +211,8 @@ public class InformationTemplatesManagementToolbarDisplayContext
 					Comparator.comparing(
 						infoItemFormVariation -> GetterUtil.getString(
 							infoItemFormVariation.getLabel(
-								_themeDisplay.getLocale()))));
+								_themeDisplay.getLocale())),
+						collator));
 
 				for (InfoItemFormVariation infoItemFormVariation :
 						infoItemFormVariations) {
@@ -214,20 +230,22 @@ public class InformationTemplatesManagementToolbarDisplayContext
 				itemTypesJSONArray.put(
 					JSONUtil.put(
 						"label",
-						infoItemClassDetails.getLabel(_themeDisplay.getLocale())
+						curInfoItemClassDetails.getLabel(
+							_themeDisplay.getLocale())
 					).put(
 						"subtypes", itemSubtypesJSONArray
 					).put(
-						"value", infoItemClassDetails.getClassName()
+						"value", curInfoItemClassDetails.getClassName()
 					));
 			}
 			else {
 				itemTypesJSONArray.put(
 					JSONUtil.put(
 						"label",
-						infoItemClassDetails.getLabel(_themeDisplay.getLocale())
+						curInfoItemClassDetails.getLabel(
+							_themeDisplay.getLocale())
 					).put(
-						"value", infoItemClassDetails.getClassName()
+						"value", curInfoItemClassDetails.getClassName()
 					));
 			}
 		}

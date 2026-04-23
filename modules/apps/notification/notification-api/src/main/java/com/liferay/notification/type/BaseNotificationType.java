@@ -55,7 +55,6 @@ import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -225,6 +224,8 @@ public abstract class BaseNotificationType implements NotificationType {
 
 		if (FeatureFlagManagerUtil.isEnabled(
 				notificationContext.getCompanyId(), "LPD-17564") &&
+			!FeatureFlagManagerUtil.isEnabled(
+				notificationContext.getCompanyId(), "LPD-66359") &&
 			!notificationTemplate.isSystem() &&
 			StringUtil.startsWith(
 				notificationTemplate.getExternalReferenceCode(),
@@ -517,9 +518,9 @@ public abstract class BaseNotificationType implements NotificationType {
 			notificationRecipientId);
 		notificationRecipientSetting.setName(name);
 
-		if (value instanceof LinkedHashMap) {
+		if (value instanceof Map) {
 			notificationRecipientSetting.setValueMap(
-				LocalizedMapUtil.getLocalizedMap((LinkedHashMap)value));
+				LocalizedMapUtil.getLocalizedMap((Map)value));
 		}
 		else {
 			notificationRecipientSetting.setValue(String.valueOf(value));

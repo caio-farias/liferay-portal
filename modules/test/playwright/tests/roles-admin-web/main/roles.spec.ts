@@ -28,7 +28,6 @@ export const test = mergeTests(
 	dataApiHelpersTest,
 	featureFlagsTest({
 		'LPD-35443': {enabled: true},
-		'LPD-36105': {enabled: true},
 		'LPD-78863': {enabled: true, system: true},
 		'LPS-178052': {enabled: true},
 	}),
@@ -40,9 +39,12 @@ export const test = mergeTests(
 
 test.beforeAll(async ({browser}) => {
 	const page = await browser.newPage();
-	const rolesPage = new RolesPage(page);
+
+	await page.goto('/');
 
 	await performLoginViaApi({page, screenName: 'test'});
+
+	const rolesPage = new RolesPage(page);
 
 	await rolesPage.goto();
 

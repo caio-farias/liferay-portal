@@ -17,7 +17,8 @@ function main() {
 				}
 
 				const {onChange} = registerLocalizedInput({
-					defaultLanguageId: themeDisplay.getDefaultLanguageId(),
+					availableLanguageIds: input.attributes.availableLanguageIds,
+					defaultLanguageId: input.attributes.defaultLanguageId,
 					initialValues: input.valueI18n,
 					inputElement,
 					inputName: input.name,

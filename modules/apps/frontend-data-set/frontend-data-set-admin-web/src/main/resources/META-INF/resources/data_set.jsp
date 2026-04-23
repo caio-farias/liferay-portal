@@ -32,6 +32,8 @@ renderResponse.setTitle(dataSetLabel);
 		).put(
 			"learnResources", LearnMessageUtil.getReactDataJSONObject("frontend-data-set-admin-web")
 		).put(
+			"manageUserViewsURL", fdsAdminDisplayContext.getManageUserViewsURL()
+		).put(
 			"namespace", liferayPortletResponse.getNamespace()
 		).put(
 			"resolvedRESTSchemas", fdsAdminDisplayContext.getRESTApplicationResolvedSchemasJSONArray()

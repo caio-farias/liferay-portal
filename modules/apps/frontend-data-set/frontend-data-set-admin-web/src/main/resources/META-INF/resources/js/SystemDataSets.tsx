@@ -129,14 +129,14 @@ const SystemDataSetsView = ({
 
 const SelectSystemDataSetModalContent = ({
 	closeModal,
-	getSystemDataSetsURL,
 	importSystemDataSetURL,
+	importedSystemFDSEntriesDataProviderURL,
 	loadData,
 	namespace,
 }: {
 	closeModal: Function;
-	getSystemDataSetsURL: string;
 	importSystemDataSetURL: string;
+	importedSystemFDSEntriesDataProviderURL: string;
 	loadData: Function;
 	namespace: string;
 }) => {
@@ -187,7 +187,7 @@ const SelectSystemDataSetModalContent = ({
 				<div className="modal-height-full select-system-data-set-modal-body">
 					<FrontendDataSet
 						{...FDS_DEFAULT_PROPS}
-						apiURL={getSystemDataSetsURL}
+						apiURL={importedSystemFDSEntriesDataProviderURL}
 						id="SystemDataSets"
 						onSelectedItemsChange={(
 							selectedItems: Array<ISystemDataSet>
@@ -237,14 +237,14 @@ const SelectSystemDataSetModalContent = ({
 
 const SystemDataSets = ({
 	editDataSetURL,
-	getSystemDataSetsURL,
 	importSystemDataSetURL,
+	importedSystemFDSEntriesDataProviderURL,
 	namespace,
 	systemDataSets,
 }: {
 	editDataSetURL: string;
-	getSystemDataSetsURL: string;
 	importSystemDataSetURL: string;
+	importedSystemFDSEntriesDataProviderURL: string;
 	namespace: string;
 	systemDataSets: Array<ISystemDataSet>;
 }) => {
@@ -374,8 +374,10 @@ const SystemDataSets = ({
 						}) => (
 							<SelectSystemDataSetModalContent
 								closeModal={closeModal}
-								getSystemDataSetsURL={getSystemDataSetsURL}
 								importSystemDataSetURL={importSystemDataSetURL}
+								importedSystemFDSEntriesDataProviderURL={
+									importedSystemFDSEntriesDataProviderURL
+								}
 								loadData={loadData}
 								namespace={namespace}
 							/>

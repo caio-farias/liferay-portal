@@ -9,7 +9,7 @@ import {IFrontendDataSetProps, IView} from '@liferay/frontend-data-set-web';
 import {ItemSelectorModal} from '@liferay/frontend-js-item-selector-web';
 import {openToast} from 'frontend-js-components-web';
 import {sub} from 'frontend-js-web';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 
 import ApiHelper, {RequestResult} from '../../common/services/ApiHelper';
 import FolderService from '../../common/services/FolderService';
@@ -18,12 +18,13 @@ import {OBJECT_ENTRY_FOLDER_CLASS_NAME} from '../../common/utils/constants';
 import {openCMSModal} from '../../common/utils/openCMSModal';
 import {displayErrorToast} from '../../common/utils/toastUtil';
 import {triggerAssetBulkAction} from '../props_transformer/actions/triggerAssetBulkAction';
+import {isContentStructureMoveInvalid} from '../utils/ContentStructureUtil';
 import DuplicatedAssetFolderNamesModalContent, {
 	Option,
 } from './DuplicatedAssetFolderNamesModalContent';
 
 export type TFolderItemSelectorModalContent = {
-	action: Action;
+	action: FolderAction;
 	apiURL?: string;
 	assetLibraries: AssetLibrary[];
 	dataSetId?: string;
@@ -35,7 +36,7 @@ export type TFolderItemSelectorModalContent = {
 	selectedData?: any;
 };
 
-export type Action = 'copy' | 'move';
+export type FolderAction = 'copy' | 'move';
 
 type Folder = {
 	id: number;
@@ -67,7 +68,7 @@ const getSpaceFoldersURL = (cmsSection: string, scopeId: number) => {
 };
 
 const displayInfoToast = (
-	action: Action,
+	action: FolderAction,
 	folder: Folder,
 	itemData: ItemData
 ) => {
@@ -91,7 +92,7 @@ const displaySuccessToast = (message: string, ...args: string[]) => {
 };
 
 const displayToast = (
-	action: Action,
+	action: FolderAction,
 	error: any,
 	folder: Folder,
 	itemData: ItemData,
@@ -124,13 +125,14 @@ const displayToast = (
 	}
 };
 
-function executeBulkCopyAction({
+function executeBulkCopyOrMoveAction({
 	apiURL,
 	dataSetId,
 	folder,
 	onClose,
 	selectedData,
 	targetName,
+	type,
 }: {
 	apiURL: string | undefined;
 	dataSetId?: string;
@@ -138,6 +140,7 @@ function executeBulkCopyAction({
 	onClose: () => void;
 	selectedData: any;
 	targetName?: string;
+	type: 'CopyObjectBulkSelectionAction' | 'MoveObjectBulkSelectionAction';
 }) {
 	triggerAssetBulkAction({
 		additionalData: {
@@ -150,30 +153,58 @@ function executeBulkCopyAction({
 		},
 		onCreateSuccess: onClose,
 		selectedData,
-		type: 'CopyObjectBulkSelectionAction',
+		type,
 	});
 }
 
-function executeFolderAction(
-	action: Action,
-	folder: Folder,
-	itemData: ItemData,
-	loadData: () => {},
-	replace = false
-) {
+function executeAction({
+	action,
+	folder,
+	itemData,
+	loadData,
+	replace = false,
+}: {
+	action: FolderAction;
+	folder: Folder;
+	itemData: ItemData;
+	loadData: () => {};
+	replace?: boolean;
+}) {
 	displayInfoToast(action, folder, itemData);
+
+	const isFolder = itemData.entryClassName === OBJECT_ENTRY_FOLDER_CLASS_NAME;
 
 	let promise: Promise<RequestResult<unknown>>;
 
-	if (action === 'copy') {
-		promise = replace
-			? FolderService.copyReplaceFolder(itemData.embedded.id, folder.id)
-			: FolderService.copyFolder(itemData.embedded.id, folder.id);
+	if (isFolder) {
+		if (action === 'copy') {
+			promise = replace
+				? FolderService.copyReplaceFolder(
+						itemData.embedded.id,
+						folder.id
+					)
+				: FolderService.copyFolder(itemData.embedded.id, folder.id);
+		}
+		else {
+			promise = replace
+				? FolderService.moveReplaceFolder(
+						itemData.embedded.id,
+						folder.id
+					)
+				: FolderService.moveFolder(itemData.embedded.id, folder.id);
+		}
 	}
 	else {
-		promise = replace
-			? FolderService.moveReplaceFolder(itemData.embedded.id, folder.id)
-			: FolderService.moveFolder(itemData.embedded.id, folder.id);
+		const actionKey = `${action}${
+			replace ? '-replace' : ''
+		}` as keyof ItemData['actions'];
+
+		promise = ApiHelper.post<any>(
+			itemData.actions[actionKey].href.replace(
+				'{objectEntryFolderId}',
+				String(folder.id)
+			)
+		);
 	}
 
 	promise.then((result: any) => {
@@ -191,37 +222,8 @@ function executeFolderAction(
 	});
 }
 
-function executeAssetAction(
-	action: Action,
-	folder: Folder,
-	itemData: ItemData,
-	loadData: () => {},
-	replace = false
-) {
-	displayInfoToast(action, folder, itemData);
-
-	ApiHelper.post<any>(
-		itemData.actions[`${action}${replace ? '-replace' : ''}`].href.replace(
-			'{objectEntryFolderId}',
-			String(folder.id)
-		)
-	).then((result: any) => {
-		if (!result.error) {
-			loadData();
-		}
-
-		displayToast(
-			action,
-			result.error,
-			folder,
-			itemData,
-			SUCCESS_MESSAGES[action]
-		);
-	});
-}
-
 function openDuplicatedAssetFolderNamesModal(
-	action: Action,
+	action: FolderAction,
 	itemData: ItemData,
 	onContinueClick: (operation: Option) => void
 ) {
@@ -245,17 +247,14 @@ function FolderItemSelectorModalContent({
 	isBulk = false,
 	itemData,
 	loadData,
-	objectEntryFolderExternalReferenceCode,
 	rootObjectEntryFolderExternalReferenceCode,
 	selectedData,
 }: TFolderItemSelectorModalContent) {
 	const isCopy = action === 'copy';
-	const isFolderSelectionInitial =
-		objectEntryFolderExternalReferenceCode && !isCopy;
 
 	const [selectedItemType, setSelectedItemType] = useState<
 		'folder' | 'space'
-	>(isFolderSelectionInitial ? 'folder' : 'space');
+	>('space');
 
 	const objectFolderExternalReferenceCode =
 		itemData.entryClassName === OBJECT_ENTRY_FOLDER_CLASS_NAME
@@ -268,15 +267,32 @@ function FolderItemSelectorModalContent({
 		rootObjectEntryFolderExternalReferenceCode === 'L_CONTENTS'
 			? 'contents'
 			: 'files';
-	const [url, setURL] = useState<string>(
-		isFolderSelectionInitial
-			? getSpaceFoldersURL(cmsSection, itemData.embedded.scopeId)
-			: SPACES_URL
-	);
+
+	const [url, setURL] = useState<string>(SPACES_URL);
 	const [schemaKey, setSchemaKey] = useState(0);
 	const [currentSpace, setCurrentSpace] = useState<Space | undefined>();
 
 	const {observer, onOpenChange, open} = useModal();
+
+	const excludedERCs = useMemo(() => {
+		if (isBulk && selectedData?.items) {
+			return selectedData.items
+				.filter(
+					(item: any) =>
+						item.entryClassName === OBJECT_ENTRY_FOLDER_CLASS_NAME
+				)
+				.map((item: any) => item.embedded.externalReferenceCode);
+		}
+
+		if (
+			itemData?.entryClassName === OBJECT_ENTRY_FOLDER_CLASS_NAME &&
+			itemData.embedded?.externalReferenceCode
+		) {
+			return [itemData.embedded.externalReferenceCode];
+		}
+
+		return [];
+	}, [isBulk, itemData, selectedData]);
 
 	function handleSpaceClick(space: Space) {
 		setCurrentSpace(space);
@@ -305,83 +321,123 @@ function FolderItemSelectorModalContent({
 			};
 		}
 
+		if (selectedItemType === 'folder') {
+			const erc = item.embedded?.externalReferenceCode;
+
+			if (erc && excludedERCs.includes(erc)) {
+				return {
+					...props,
+					className: `${props.className || ''} hidden-item-selector-item`,
+					onSelectChange: null,
+				};
+			}
+		}
+
 		return {
 			...props,
 			symbol: 'folder',
 		};
 	};
 
-	const handleOnItemsChange = (folder: Folder, targetName?: string) => {
+	const handleOnItemsChange = async (folder: Folder, targetName?: string) => {
+		const invalidContentActionMessage = isCopy
+			? Liferay.Language.get(
+					'the-asset-cannot-be-copied-because-its-content-type-is-not-available-in-the-destination-space'
+				)
+			: Liferay.Language.get(
+					'the-asset-cannot-be-moved-because-its-content-type-is-not-available-in-the-destination-space'
+				);
+
 		if (isBulk) {
-			executeBulkCopyAction({
+			const invalidMovesPromises = selectedData.items.map(
+				async (item: any) =>
+					await isContentStructureMoveInvalid(
+						item.embedded,
+						currentSpace?.scopeId,
+						assetLibraries
+					)
+			);
+
+			const invalidMovesResults = await Promise.all(invalidMovesPromises);
+			const hasContentStructureInDifferentSpace =
+				invalidMovesResults.some(Boolean);
+
+			if (hasContentStructureInDifferentSpace) {
+				displayErrorToast(invalidContentActionMessage);
+				onOpenChange(false);
+
+				return;
+			}
+
+			const actionType = isCopy
+				? 'CopyObjectBulkSelectionAction'
+				: 'MoveObjectBulkSelectionAction';
+
+			executeBulkCopyOrMoveAction({
 				apiURL,
 				dataSetId,
 				folder,
 				onClose: () => onOpenChange(false),
 				selectedData,
 				targetName,
+				type: actionType,
 			});
+
+			return;
 		}
-		else if (itemData.entryClassName === OBJECT_ENTRY_FOLDER_CLASS_NAME) {
-			FolderService.searchFolder(
-				itemData.embedded.scopeId,
-				itemData.title,
-				folder.id
-			).then(({data, error}: any) => {
-				if (error) {
-					displayErrorToast(error);
-				}
-				else {
-					if (data?.items.length > 0) {
-						openDuplicatedAssetFolderNamesModal(
+
+		const isInvalidSingleMove = await isContentStructureMoveInvalid(
+			itemData.embedded,
+			currentSpace?.scopeId,
+			assetLibraries
+		);
+
+		if (isInvalidSingleMove) {
+			displayErrorToast(invalidContentActionMessage);
+			onOpenChange(false);
+
+			return;
+		}
+
+		const isFolder =
+			itemData.entryClassName === OBJECT_ENTRY_FOLDER_CLASS_NAME;
+
+		const checkDuplicatePromise = isFolder
+			? FolderService.searchFolder(
+					itemData.embedded.scopeId,
+					itemData.title,
+					folder.id
+				)
+			: ApiHelper.get(
+					`${itemData.actions['get-by-scope'].href}?filter=title eq '${itemData.title}' and folderId eq ${folder.id}`
+				);
+
+		checkDuplicatePromise.then(({data, error}: any) => {
+			if (error) {
+				displayErrorToast(error);
+
+				return;
+			}
+
+			if (data?.items.length > 0) {
+				openDuplicatedAssetFolderNamesModal(
+					action,
+					itemData,
+					(operation: Option) => {
+						executeAction({
 							action,
+							folder,
 							itemData,
-							(operation: Option) => {
-								executeFolderAction(
-									action,
-									folder,
-									itemData,
-									loadData,
-									operation === 'replace'
-								);
-							}
-						);
+							loadData,
+							replace: operation === 'replace',
+						});
 					}
-					else {
-						executeFolderAction(action, folder, itemData, loadData);
-					}
-				}
-			});
-		}
-		else {
-			ApiHelper.get(
-				`${itemData.actions['get-by-scope'].href}?filter=title eq '${itemData.title}' and folderId eq ${folder.id}`
-			).then(({data, error}: any) => {
-				if (error) {
-					displayErrorToast(error);
-				}
-				else {
-					if (data?.items.length > 0) {
-						openDuplicatedAssetFolderNamesModal(
-							action,
-							itemData,
-							(operation: Option) => {
-								executeAssetAction(
-									action,
-									folder,
-									itemData,
-									loadData,
-									operation === 'replace'
-								);
-							}
-						);
-					}
-					else {
-						executeAssetAction(action, folder, itemData, loadData);
-					}
-				}
-			});
-		}
+				);
+			}
+			else {
+				executeAction({action, folder, itemData, loadData});
+			}
+		});
 	};
 
 	useEffect(() => {
@@ -393,37 +449,35 @@ function FolderItemSelectorModalContent({
 			{open && (
 				<ItemSelectorModal<Folder>
 					apiURL={url}
-					breadcrumbs={
-						isFolderSelectionInitial
-							? undefined
-							: [
+					breadcrumbs={[
+						{
+							label: Liferay.Language.get('spaces'),
+							onClick: () => {
+								setCurrentSpace(undefined);
+								setSchemaKey((prev) => prev + 1);
+								setSelectedItemType('space');
+								setURL(SPACES_URL);
+							},
+						},
+						...(currentSpace
+							? [
 									{
-										label: Liferay.Language.get('spaces'),
+										label: currentSpace.name,
 										onClick: () => {
-											setCurrentSpace(undefined);
-											setSchemaKey((prev) => prev + 1);
-											setSelectedItemType('space');
-											setURL(SPACES_URL);
+											handleSpaceClick(currentSpace);
 										},
 									},
-									...(currentSpace
-										? [
-												{
-													label: currentSpace.name,
-													onClick: () => {
-														handleSpaceClick(
-															currentSpace
-														);
-													},
-												},
-											]
-										: []),
 								]
-					}
+							: []),
+					]}
 					breadcrumbsLabel={false}
 					fdsProps={{
 						...FDS_DEFAULT_PROPS,
-						id: `itemSelectorModal-users-${selectedItemType === 'folder' ? itemData.embedded.id : itemData.id}`,
+						id: `itemSelectorModal-users-${
+							selectedItemType === 'folder'
+								? itemData.embedded.id
+								: itemData.id
+						}`,
 						views: [
 							{
 								contentRenderer: 'cards',

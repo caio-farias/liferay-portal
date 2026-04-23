@@ -14,7 +14,7 @@ import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClass
  * @author Rafael Praxedes
  */
 @ExtendedObjectClassDefinition(
-	category = "ai-hub-cell", featureFlagKey = "LPD-62272",
+	category = "ai-hub", featureFlagKey = "LPD-62272",
 	scope = ExtendedObjectClassDefinition.Scope.COMPANY
 )
 @Meta.OCD(
@@ -26,7 +26,7 @@ public interface AIHubCellConfiguration {
 	@Meta.AD(name = "client-id")
 	public String clientId();
 
-	@Meta.AD(name = "client-secret")
+	@Meta.AD(name = "client-secret", type = Meta.Type.Password)
 	public String clientSecret();
 
 	@Meta.AD(name = "service-url")

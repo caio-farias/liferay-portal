@@ -101,7 +101,10 @@ public class CMSObjectEntryFolderDepotEntryLocalServiceWrapper
 	public DepotEntry deleteDepotEntry(DepotEntry depotEntry)
 		throws PortalException {
 
-		if (depotEntry.getType() == DepotConstants.TYPE_SPACE) {
+		if (FeatureFlagManagerUtil.isEnabled(
+				depotEntry.getCompanyId(), "LPD-17564") &&
+			(depotEntry.getType() == DepotConstants.TYPE_SPACE)) {
+
 			ObjectEntryFolderUtil.deleteObjectEntryFolders(depotEntry);
 
 			_deleteCMSDefaultPermissions(depotEntry.getGroup());
@@ -222,8 +225,7 @@ public class CMSObjectEntryFolderDepotEntryLocalServiceWrapper
 					externalReferenceCode, companyId);
 
 		String[] assetLibraryMemberObjectEntryActionIds = {
-			ActionKeys.ADD_DISCUSSION, ActionKeys.DOWNLOAD,
-			ObjectActionKeys.OBJECT_ENTRY_HISTORY, ActionKeys.VIEW
+			ActionKeys.ADD_DISCUSSION, ActionKeys.DOWNLOAD, ActionKeys.VIEW
 		};
 		String[] objectDefinitionActionIds = TransformUtil.transformToArray(
 			_resourceActionLocalService.getResourceActions(

@@ -26,7 +26,6 @@ export const test = mergeTests(
 	pagesAdminPagesTest,
 	isolatedSiteTest,
 	featureFlagsTest({
-		'LPD-40054': {enabled: true},
 		'LPS-178052': {enabled: true},
 	}),
 	loginTest(),
@@ -579,7 +578,11 @@ test(
 
 		await dialog.getByLabel('Overwrite Existing Items').check();
 
-		await dialog.getByRole('button', {name: 'Import'}).click();
+		await dialog.getByRole('button', {name: 'Save'}).click();
+
+		await expect(dialog).not.toBeVisible();
+
+		await page.getByRole('button', {name: 'Import'}).click();
 
 		await expect(
 			page.getByRole('button', {name: '1 item was imported.'})

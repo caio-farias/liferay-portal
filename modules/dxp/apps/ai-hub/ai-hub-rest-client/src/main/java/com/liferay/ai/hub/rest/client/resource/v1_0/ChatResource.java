@@ -261,3 +261,4 @@ public interface ChatResource {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:-324762630

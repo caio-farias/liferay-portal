@@ -78,3 +78,4 @@ public class Chat implements Cloneable, Serializable {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:-391467504

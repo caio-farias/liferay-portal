@@ -1,5 +1,13 @@
 @import 'atlas-variables';
 
+.fds {
+	.data-set-wrapper {
+		.col-md-3:has(.hidden-item-selector-item) {
+			display: none;
+		}
+	}
+}
+
 .cms-fds-fluid {
 	.container-fluid {
 		padding: 0;

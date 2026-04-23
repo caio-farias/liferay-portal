@@ -11,6 +11,10 @@ import ClayIcon from '@clayui/icon';
 import ClayLayout from '@clayui/layout';
 import ClayLink from '@clayui/link';
 import {ClayTooltipProvider} from '@clayui/tooltip';
+import {
+	getConfigParamName,
+	serializeFDSConfig,
+} from '@liferay/frontend-data-set-web';
 import {fetch, navigate} from 'frontend-js-web';
 import React, {useCallback, useEffect, useState} from 'react';
 
@@ -34,6 +38,8 @@ const NOT_CONFIGURED_VISUALIZATION_MODE = {
 const Settings = ({
 	backURL,
 	dataSet,
+	manageUserViewsURL,
+	namespace,
 	onActiveSectionChange,
 	onDataSetUpdate,
 	spritemap,
@@ -55,6 +61,36 @@ const Settings = ({
 		() => setHideManagementBarInEmptyState(!hideManagementBarInEmptyState),
 		[hideManagementBarInEmptyState]
 	);
+
+	const getManageUserViewsWithFilterURL = () => {
+		const url = new URL(
+			manageUserViewsURL,
+			Liferay.ThemeDisplay.getPortalURL()
+		);
+		const dataSetFilterConfig = {
+			filters: [
+				{
+					id: 'fdsName',
+					selectedData: {
+						exclude: false,
+						selectedItems: [
+							{
+								label: dataSet.label,
+								value: dataSet.externalReferenceCode,
+							},
+						],
+					},
+				},
+			],
+		};
+
+		url.searchParams.set(
+			getConfigParamName(`${namespace}ManageUserViews`),
+			serializeFDSConfig(dataSetFilterConfig)
+		);
+
+		return url.toString();
+	};
 
 	const updateFDSViewSettings = async () => {
 		const body = {
@@ -210,7 +246,7 @@ const Settings = ({
 					</h3>
 
 					<ClayLayout.Row className="align-items-center justify-content-between">
-						<ClayLayout.Col size={8}>
+						<ClayLayout.Col size={9}>
 							<div>
 								<label
 									htmlFor="view-mode-picker"
@@ -244,7 +280,7 @@ const Settings = ({
 							</div>
 						</ClayLayout.Col>
 
-						<ClayLayout.Col size={4}>
+						<ClayLayout.Col size={3}>
 							{!loading && (
 								<Picker
 									aria-labelledby="view-mode"
@@ -355,7 +391,7 @@ const Settings = ({
 					</h3>
 
 					<ClayLayout.Row className="align-items-center justify-content-between mb-4">
-						<ClayLayout.Col size={11}>
+						<ClayLayout.Col size={9}>
 							<div>
 								<label
 									htmlFor="hide-management-bar-in-empty-state"
@@ -386,7 +422,7 @@ const Settings = ({
 					</ClayLayout.Row>
 
 					<ClayLayout.Row className="align-items-center justify-content-between mb-4">
-						<ClayLayout.Col size={11}>
+						<ClayLayout.Col size={9}>
 							<div>
 								<label htmlFor="user-views-toggle">
 									{Liferay.Language.get('enable-user-views')}
@@ -402,6 +438,33 @@ const Settings = ({
 								onToggle={setSnapshotsEnabled}
 								toggled={snapshotsEnabled}
 							/>
+						</ClayLayout.Col>
+					</ClayLayout.Row>
+
+					<ClayLayout.Row className="align-items-center justify-content-between">
+						<ClayLayout.Col size={9}>
+							<div>
+								<label htmlFor="manage-user-views-button">
+									{Liferay.Language.get('manage-user-views')}
+								</label>
+							</div>
+
+							<div>
+								{Liferay.Language.get('manage-user-views-help')}
+							</div>
+						</ClayLayout.Col>
+
+						<ClayLayout.Col size={3}>
+							<ClayButton
+								className="w-100"
+								displayType="secondary"
+								id="manage-user-views-button"
+								onClick={() =>
+									navigate(getManageUserViewsWithFilterURL())
+								}
+							>
+								{Liferay.Language.get('manage-user-views')}
+							</ClayButton>
 						</ClayLayout.Col>
 					</ClayLayout.Row>
 				</ClayLayout.SheetSection>

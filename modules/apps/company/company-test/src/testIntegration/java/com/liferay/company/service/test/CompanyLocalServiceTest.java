@@ -34,6 +34,7 @@ import com.liferay.portal.kernel.dao.jdbc.DataAccess;
 import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
+import com.liferay.portal.kernel.exception.CompanyMaxUsersException;
 import com.liferay.portal.kernel.exception.CompanyMxException;
 import com.liferay.portal.kernel.exception.CompanyNameException;
 import com.liferay.portal.kernel.exception.CompanyVirtualHostException;
@@ -110,8 +111,6 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
 import com.liferay.portal.model.impl.CompanyImpl;
-import com.liferay.portal.test.log.LogCapture;
-import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
@@ -304,14 +303,7 @@ public class CompanyLocalServiceTest {
 
 		try (SafeCloseable safeCloseable =
 				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
-					company.getCompanyId());
-
-			// LPD-79857
-
-			LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
-				"com.liferay.batch.engine.internal." +
-					"BatchEngineExportTaskExecutorImpl",
-				LoggerTestUtil.ERROR)) {
+					company.getCompanyId())) {
 
 			companyGroup = company.getGroup();
 
@@ -1075,6 +1067,30 @@ public class CompanyLocalServiceTest {
 	}
 
 	@Test
+	public void testUpdateCompany() throws Exception {
+		_testUpdateCompanyMaxUsers(-1);
+		_testUpdateCompanyMaxUsers(-100);
+		_testUpdateCompanyMaxUsers(0);
+		_testUpdateCompanyMaxUsers(10000);
+		_testUpdateCompanyMaxUsers(20);
+		_testUpdateCompanyMx("abc", false, true);
+		_testUpdateCompanyMx("abc.com", true, false);
+		_testUpdateCompanyMx("abc.com", true, true);
+		_testUpdateCompanyMx(StringPool.BLANK, false, false);
+		_testUpdateCompanyMx(StringPool.BLANK, false, true);
+		_testUpdateCompanyNames(false);
+		_testUpdateCompanyNames(true);
+		_testUpdateCompanyVirtualHostnames(
+			new String[] {
+				"abc.com", "255.0.0.0", "0:0:0:0:0:0:0:1", "::1",
+				"0000:0000:0000:0000:0000:0000:0000:0001"
+			},
+			false);
+		_testUpdateCompanyVirtualHostnames(
+			new String[] {StringPool.BLANK, "localhost", ".abc"}, true);
+	}
+
+	@Test
 	public void testUpdateCompanyLocales() throws Exception {
 		SafeCloseable safeCloseable =
 			CompanyThreadLocal.setCompanyIdWithSafeCloseable(
@@ -1272,89 +1288,6 @@ public class CompanyLocalServiceTest {
 
 			safeCloseable.close();
 		}
-	}
-
-	@Test
-	public void testUpdateInvalidCompanyNames() throws Exception {
-		String companyName = _company.getName();
-		Group group = null;
-		SafeCloseable safeCloseable =
-			CompanyThreadLocal.setCompanyIdWithSafeCloseable(
-				_company.getCompanyId());
-
-		try {
-			group = GroupTestUtil.addGroup(
-				_company.getCompanyId(),
-				_userLocalService.getGuestUserId(_company.getCompanyId()),
-				GroupConstants.DEFAULT_PARENT_GROUP_ID);
-
-			_testUpdateCompanyNames(
-				_company,
-				new String[] {StringPool.BLANK, group.getDescriptiveName()},
-				true);
-		}
-		finally {
-			_company = _companyLocalService.updateCompany(
-				_company.getCompanyId(), _company.getVirtualHostname(),
-				_company.getMx(), _company.getHomeURL(), true, null,
-				companyName, _company.getLegalName(), _company.getLegalId(),
-				_company.getLegalType(), _company.getSicCode(),
-				_company.getTickerSymbol(), _company.getIndustry(),
-				_company.getType(), _company.getSize());
-
-			GroupTestUtil.deleteGroup(group);
-
-			safeCloseable.close();
-		}
-	}
-
-	@Test
-	public void testUpdateInvalidMx() throws Exception {
-		_testUpdateMx("abc", false, true);
-		_testUpdateMx(StringPool.BLANK, false, true);
-	}
-
-	@Test
-	public void testUpdateInvalidVirtualHostnames() throws Exception {
-		_testUpdateVirtualHostnames(
-			new String[] {StringPool.BLANK, "localhost", ".abc"}, true);
-	}
-
-	@Test
-	public void testUpdateMx() throws Exception {
-		_testUpdateMx("abc.com", true, true);
-		_testUpdateMx("abc.com", true, false);
-		_testUpdateMx(StringPool.BLANK, false, true);
-		_testUpdateMx(StringPool.BLANK, false, false);
-	}
-
-	@Test
-	public void testUpdateValidCompanyNames() throws Exception {
-		String companyName = _company.getName();
-
-		try {
-			_testUpdateCompanyNames(
-				_company, new String[] {RandomTestUtil.randomString()}, false);
-		}
-		finally {
-			_company = _companyLocalService.updateCompany(
-				_company.getCompanyId(), _company.getVirtualHostname(),
-				_company.getMx(), _company.getHomeURL(), true, null,
-				companyName, _company.getLegalName(), _company.getLegalId(),
-				_company.getLegalType(), _company.getSicCode(),
-				_company.getTickerSymbol(), _company.getIndustry(),
-				_company.getType(), _company.getSize());
-		}
-	}
-
-	@Test
-	public void testUpdateValidVirtualHostnames() throws Exception {
-		_testUpdateVirtualHostnames(
-			new String[] {
-				"abc.com", "255.0.0.0", "0:0:0:0:0:0:0:1", "::1",
-				"0000:0000:0000:0000:0000:0000:0000:0001"
-			},
-			false);
 	}
 
 	private static Company _addCompany() throws Exception {
@@ -1599,36 +1532,37 @@ public class CompanyLocalServiceTest {
 		LanguageUtil.resetAvailableLocales(companyId);
 	}
 
-	private void _testUpdateCompanyNames(
-			Company company, String[] companyNames, boolean expectFailure)
-		throws Exception {
+	private void _testUpdateCompanyMaxUsers(int maxUsers) throws Exception {
+		int originalMaxUsers = _company.getMaxUsers();
 
-		for (String companyName : companyNames) {
-			try (SafeCloseable safeCloseable =
-					CompanyThreadLocal.setCompanyIdWithSafeCloseable(
-						company.getCompanyId())) {
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					_company.getCompanyId())) {
 
-				company = _companyLocalService.updateCompany(
-					company.getCompanyId(), company.getVirtualHostname(),
-					company.getMx(), company.getHomeURL(), true, null,
-					companyName, company.getLegalName(), company.getLegalId(),
-					company.getLegalType(), company.getSicCode(),
-					company.getTickerSymbol(), company.getIndustry(),
-					company.getType(), company.getSize());
+			try {
+				_company = _companyLocalService.updateCompany(
+					_company.getCompanyId(), _company.getVirtualHostname(),
+					_company.getMx(), maxUsers, _company.isActive());
 
-				Assert.assertFalse(expectFailure);
+				Assert.assertTrue(maxUsers >= 0);
+
+				Assert.assertEquals(maxUsers, _company.getMaxUsers());
 			}
-			catch (CompanyNameException companyNameException) {
-				if (_log.isDebugEnabled()) {
-					_log.debug(companyNameException);
-				}
+			catch (CompanyMaxUsersException companyMaxUsersException) {
+				Assert.assertTrue(maxUsers < 0);
 
-				Assert.assertTrue(expectFailure);
+				Assert.assertEquals(originalMaxUsers, _company.getMaxUsers());
+			}
+			finally {
+				_company = _companyLocalService.updateCompany(
+					_company.getCompanyId(), _company.getVirtualHostname(),
+					_company.getMx(), originalMaxUsers, _company.isActive());
 			}
 		}
 	}
 
-	private void _testUpdateMx(String mx, boolean valid, boolean mailMxUpdate)
+	private void _testUpdateCompanyMx(
+			String mx, boolean valid, boolean mailMxUpdate)
 		throws Exception {
 
 		String originalMx = _company.getMx();
@@ -1640,14 +1574,12 @@ public class CompanyLocalServiceTest {
 				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
 					_company.getCompanyId())) {
 
-			_companyLocalService.updateCompany(
+			_company = _companyLocalService.updateCompany(
 				_company.getCompanyId(), _company.getVirtualHostname(), mx,
 				_company.getMaxUsers(), _company.isActive());
 
-			_company = _companyLocalService.getCompany(_company.getCompanyId());
-
 			if (valid && mailMxUpdate) {
-				Assert.assertNotEquals(originalMx, _company.getMx());
+				Assert.assertEquals(mx, _company.getMx());
 			}
 			else {
 				Assert.assertEquals(originalMx, _company.getMx());
@@ -1668,7 +1600,83 @@ public class CompanyLocalServiceTest {
 		}
 	}
 
-	private void _testUpdateVirtualHostnames(
+	private void _testUpdateCompanyNames(boolean expectFailure)
+		throws Exception {
+
+		String name = _company.getName();
+
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					_company.getCompanyId())) {
+
+			Group group = null;
+
+			try {
+				String[] names = null;
+
+				if (expectFailure) {
+					group = GroupTestUtil.addGroup(
+						_company.getCompanyId(),
+						_userLocalService.getGuestUserId(
+							_company.getCompanyId()),
+						GroupConstants.DEFAULT_PARENT_GROUP_ID);
+
+					names = new String[] {
+						StringPool.BLANK, group.getDescriptiveName()
+					};
+				}
+				else {
+					names = new String[] {RandomTestUtil.randomString()};
+				}
+
+				_testUpdateCompanyNames(_company, names, expectFailure);
+			}
+			finally {
+				_company = _companyLocalService.updateCompany(
+					_company.getCompanyId(), _company.getVirtualHostname(),
+					_company.getMx(), _company.getHomeURL(), true, null, name,
+					_company.getLegalName(), _company.getLegalId(),
+					_company.getLegalType(), _company.getSicCode(),
+					_company.getTickerSymbol(), _company.getIndustry(),
+					_company.getType(), _company.getSize());
+
+				if (group != null) {
+					GroupTestUtil.deleteGroup(group);
+				}
+			}
+		}
+	}
+
+	private void _testUpdateCompanyNames(
+			Company company, String[] names, boolean expectFailure)
+		throws Exception {
+
+		for (String name : names) {
+			try (SafeCloseable safeCloseable =
+					CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+						company.getCompanyId())) {
+
+				company = _companyLocalService.updateCompany(
+					company.getCompanyId(), company.getVirtualHostname(),
+					company.getMx(), company.getHomeURL(), true, null, name,
+					company.getLegalName(), company.getLegalId(),
+					company.getLegalType(), company.getSicCode(),
+					company.getTickerSymbol(), company.getIndustry(),
+					company.getType(), company.getSize());
+
+				Assert.assertFalse(expectFailure);
+			}
+			catch (CompanyNameException companyNameException) {
+				if (_log.isDebugEnabled()) {
+					_log.debug(companyNameException);
+				}
+
+				Assert.assertTrue(expectFailure);
+			}
+		}
+	}
+
+	private void _testUpdateCompanyVirtualHostnames(
 			String[] virtualHostnames, boolean expectFailure)
 		throws Exception {
 

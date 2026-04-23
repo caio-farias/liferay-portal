@@ -49,8 +49,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -583,7 +583,7 @@ public class FreeMarkerTool {
 		Map<String, Schema> schemas = getSchemas(openAPIYAML);
 
 		Map<String, JavaMethodSignature> javaMethodSignatureMap =
-			new HashMap<>();
+			new LinkedHashMap<>();
 
 		for (JavaMethodSignature javaMethodSignature : javaMethodSignatures) {
 			List<JavaMethodParameter> javaMethodParameters =
@@ -700,10 +700,16 @@ public class FreeMarkerTool {
 	public String getObjectFieldStringValue(String type, Object value) {
 		if (value instanceof Date) {
 			if (type.equals("Date")) {
-				return _dateFormat.format(value);
+				return _dateFormat.get(
+				).format(
+					value
+				);
 			}
 
-			return _dateTimeDateFormat.format(value);
+			return _dateTimeDateFormat.get(
+			).format(
+				value
+			);
 		}
 
 		return value.toString();
@@ -964,7 +970,7 @@ public class FreeMarkerTool {
 		Components components = openAPIYAML.getComponents();
 
 		if (components == null) {
-			return new HashMap<>();
+			return new TreeMap<>();
 		}
 
 		return new TreeMap<>(components.getSchemas());
@@ -1766,9 +1772,11 @@ public class FreeMarkerTool {
 		return parameterName;
 	}
 
-	private static final DateFormat _dateFormat = _getDateFormat("yyyy-MM-dd");
-	private static final DateFormat _dateTimeDateFormat = _getDateFormat(
-		DateUtil.ISO_8601_PATTERN);
+	private static final ThreadLocal<DateFormat> _dateFormat =
+		ThreadLocal.withInitial(() -> _getDateFormat("yyyy-MM-dd"));
+	private static final ThreadLocal<DateFormat> _dateTimeDateFormat =
+		ThreadLocal.withInitial(
+			() -> _getDateFormat(DateUtil.ISO_8601_PATTERN));
 	private static final FreeMarkerTool _freeMarkerTool = new FreeMarkerTool();
 
 }

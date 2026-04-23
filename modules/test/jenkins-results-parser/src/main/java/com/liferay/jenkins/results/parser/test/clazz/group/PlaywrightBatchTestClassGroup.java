@@ -281,11 +281,6 @@ public class PlaywrightBatchTestClassGroup extends BatchTestClassGroup {
 	}
 
 	protected File getPlaywrightBaseDir() {
-		PortalTestClassJob portalTestClassJob = (PortalTestClassJob)getJob();
-
-		PortalGitWorkingDirectory portalGitWorkingDirectory =
-			portalTestClassJob.getPortalGitWorkingDirectory();
-
 		return new File(
 			portalGitWorkingDirectory.getWorkingDirectory(),
 			"modules/test/playwright");
@@ -528,6 +523,16 @@ public class PlaywrightBatchTestClassGroup extends BatchTestClassGroup {
 		return sb.toString();
 	}
 
+	private File _getModulesDir() {
+		PortalTestClassJob portalTestClassJob = (PortalTestClassJob)getJob();
+
+		PortalGitWorkingDirectory portalGitWorkingDirectory =
+			portalTestClassJob.getPortalGitWorkingDirectory();
+
+		return new File(
+			portalGitWorkingDirectory.getWorkingDirectory(), "modules");
+	}
+
 	private JobProperty _getPlaywrightProjectsIncludesJobProperty() {
 		JobProperty playwrightProjectsIncludesJobProperty = getJobProperty(
 			"playwright.test.project", testSuiteName, batchName);
@@ -755,6 +760,46 @@ public class PlaywrightBatchTestClassGroup extends BatchTestClassGroup {
 		return testClasses;
 	}
 
+	private boolean _isPlaywrightInYarnWorkspace() throws IOException {
+		File packageJSONFile = new File(_getModulesDir(), "package.json");
+
+		if (!packageJSONFile.exists()) {
+			return false;
+		}
+
+		String packageJSON = JenkinsResultsParserUtil.read(packageJSONFile);
+
+		if (JenkinsResultsParserUtil.isNullOrEmpty(packageJSON)) {
+			return false;
+		}
+
+		JSONObject packageJSONObject = new JSONObject(packageJSON);
+
+		JSONObject workspacesJSONObject = packageJSONObject.optJSONObject(
+			"workspaces");
+
+		if (workspacesJSONObject == null) {
+			return false;
+		}
+
+		JSONArray packagesJSONArray = workspacesJSONObject.optJSONArray(
+			"packages");
+
+		if (packagesJSONArray == null) {
+			return false;
+		}
+
+		for (int i = 0; i < packagesJSONArray.length(); i++) {
+			if (Objects.equals(
+					packagesJSONArray.optString(i), "test/playwright")) {
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	private void _loadPlaywrightJSONObjects() {
 		synchronized (_playwrightJSONObjectsLoaded) {
 			if (_playwrightJSONObjectsLoaded.get()) {
@@ -773,13 +818,20 @@ public class PlaywrightBatchTestClassGroup extends BatchTestClassGroup {
 			}
 
 			try {
-				_callNPMCommand(playwrightBaseDir, "npm install");
+				if (!_isPlaywrightInYarnWorkspace()) {
+					_callNPMCommand(playwrightBaseDir, "npm install");
+				}
 
 				String result = _callNPMCommand(
 					playwrightBaseDir,
 					"npm run playwright test -- --list --reporter=json");
 
 				int index = result.indexOf("\n{");
+
+				if (index == -1) {
+					throw new RuntimeException(
+						"Invalid NPM command output: " + result);
+				}
 
 				result = result.substring(index);
 

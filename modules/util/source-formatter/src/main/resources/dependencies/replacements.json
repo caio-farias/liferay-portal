@@ -5047,6 +5047,23 @@
 	},
 	{
 		"classNames": [
+			"CommerceOrderItemWrapper"
+		],
+		"classStructurePattern": true,
+		"issueKey": "LPD-54263",
+		"methodsToFormat": [
+			{
+				"from": "@Override\n\tpublic long getBookedQuantityId",
+				"to": "@Override\n\tpublic long getCommerceInventoryBookedQuantityId"
+			},
+			{
+				"from": "@Override\n\tpublic void setBookedQuantityId",
+				"to": "@Override\n\tpublic void setCommerceInventoryBookedQuantityId"
+			}
+		]
+	},
+	{
+		"classNames": [
 			"TemplateContextHelper"
 		],
 		"from": "getHelperUtilities(ClassLoader paramName, boolean paramName)",
@@ -5471,6 +5488,14 @@
 		"from": "PluginPackage.REPOSITORY_XML_FILENAME_EXTENSION",
 		"issueKey": "LPD-61573",
 		"to": "\"xml\""
+	},
+	{
+		"classNames": [
+			"MailMessage"
+		],
+		"from": "addFileAttachment(File paramName, String paramName)",
+		"hasMessage": true,
+		"issueKey": "LPD-61575"
 	},
 	{
 		"classNames": [

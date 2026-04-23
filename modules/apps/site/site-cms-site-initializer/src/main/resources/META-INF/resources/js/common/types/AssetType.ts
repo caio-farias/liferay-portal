@@ -8,6 +8,7 @@ import {SharingPermission} from './SharingPermission';
 
 export interface IAssetFile {
 	alternativeText?: string;
+	extension?: string;
 	externalReferenceCode: string;
 	id: number;
 	link: {
@@ -15,11 +16,14 @@ export interface IAssetFile {
 		label: string;
 	};
 	metadata?: {
+		aspectRatio?: string;
 		numberOfPages?: number;
+		resolution?: string;
 	};
 	mimeType?: string | MimeTypes;
 	name: string;
 	previewURL: string;
+	size?: string;
 	thumbnailURL: string;
 }
 
@@ -97,6 +101,12 @@ export interface IAssetVersion {
 	version: {
 		number: number;
 	};
+}
+
+export interface IBreadcrumbItem {
+	active?: boolean;
+	href?: string;
+	label: string;
 }
 
 export interface ISearchAssetObjectEntry {

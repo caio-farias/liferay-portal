@@ -994,3 +994,4 @@ public abstract class BaseAgentDefinitionResourceImpl
 		LogFactoryUtil.getLog(BaseAgentDefinitionResourceImpl.class);
 
 }
+// LIFERAY-REST-BUILDER-HASH:-54760489

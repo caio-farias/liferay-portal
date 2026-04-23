@@ -27,7 +27,6 @@ exports[`FormMetricCard should render 1`] = `
           class="dropdown dropdown-range-key-root"
         >
           <button
-            aria-controls="clay-dropdown-menu-1"
             aria-expanded="false"
             aria-haspopup="true"
             class="dropdown-toggle button-root btn btn-outline-borderless btn-sm btn-outline-secondary"
@@ -155,7 +154,7 @@ exports[`FormMetricCard should render 1`] = `
                   <div
                     class="metric-value"
                   >
-                    10000
+                    10,000
                     <span
                       class="metric-value-letter"
                     >

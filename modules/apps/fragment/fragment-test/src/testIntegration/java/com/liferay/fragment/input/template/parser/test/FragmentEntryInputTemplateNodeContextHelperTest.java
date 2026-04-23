@@ -316,7 +316,9 @@ public class FragmentEntryInputTemplateNodeContextHelperTest {
 			Assert.assertEquals(
 				localeMap.get(LocaleUtil.getSiteDefault()),
 				inputTemplateNode.getInputValue());
-			Assert.assertEquals(localeMap, inputTemplateNode.getValueI18n());
+			Assert.assertEquals(
+				LocalizedMapUtil.getLanguageIdMap(localeMap),
+				inputTemplateNode.getValueI18n());
 		}
 		finally {
 			ServiceContextThreadLocal.popServiceContext();
@@ -766,8 +768,8 @@ public class FragmentEntryInputTemplateNodeContextHelperTest {
 
 		objectDefinition =
 			_objectDefinitionLocalService.addCustomObjectDefinition(
-				null, TestPropsValues.getUserId(), 0, null, false, true, false,
-				true, true, false, false, false, null,
+				null, TestPropsValues.getUserId(), 0, null, true, false, true,
+				false, true, true, false, false, false, null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 				"CustomObjectDefinition", null, "control_panel.sites",
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
@@ -959,7 +961,7 @@ public class FragmentEntryInputTemplateNodeContextHelperTest {
 				Assert.assertEquals(
 					entry.getValue(), inputTemplateNode.getInputValue());
 
-				Map<Locale, String> actualValueI18nMap =
+				Map<String, String> actualValueI18nMap =
 					inputTemplateNode.getValueI18n();
 
 				Assert.assertEquals(
@@ -971,7 +973,8 @@ public class FragmentEntryInputTemplateNodeContextHelperTest {
 
 					Assert.assertEquals(
 						curEntry.getValue(),
-						actualValueI18nMap.get(curEntry.getKey()));
+						actualValueI18nMap.get(
+							LocaleUtil.toLanguageId(curEntry.getKey())));
 				}
 			}
 		}

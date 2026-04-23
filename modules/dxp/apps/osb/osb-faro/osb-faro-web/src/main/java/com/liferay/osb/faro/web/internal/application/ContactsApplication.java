@@ -11,6 +11,7 @@ import com.liferay.osb.faro.web.internal.controller.contacts.ActivityController;
 import com.liferay.osb.faro.web.internal.controller.contacts.ActivityGroupController;
 import com.liferay.osb.faro.web.internal.controller.contacts.AssetSummaryCategoryController;
 import com.liferay.osb.faro.web.internal.controller.contacts.AssetSummaryController;
+import com.liferay.osb.faro.web.internal.controller.contacts.AssetSummaryMimeTypeController;
 import com.liferay.osb.faro.web.internal.controller.contacts.AssetSummaryTagController;
 import com.liferay.osb.faro.web.internal.controller.contacts.AssetSummaryTypeController;
 import com.liferay.osb.faro.web.internal.controller.contacts.ContactsCardController;
@@ -18,6 +19,7 @@ import com.liferay.osb.faro.web.internal.controller.contacts.ContactsCardTemplat
 import com.liferay.osb.faro.web.internal.controller.contacts.ContactsLayoutController;
 import com.liferay.osb.faro.web.internal.controller.contacts.ContactsLayoutTemplateController;
 import com.liferay.osb.faro.web.internal.controller.contacts.DataSourceController;
+import com.liferay.osb.faro.web.internal.controller.contacts.DemandbaseController;
 import com.liferay.osb.faro.web.internal.controller.contacts.FieldController;
 import com.liferay.osb.faro.web.internal.controller.contacts.FieldMappingController;
 import com.liferay.osb.faro.web.internal.controller.contacts.IndividualController;
@@ -52,6 +54,7 @@ public class ContactsApplication extends BaseApplication {
 		controllers.add(_activityGroupController);
 		controllers.add(_assetSummaryCategoryController);
 		controllers.add(_assetSummaryController);
+		controllers.add(_assetSummaryMimeTypeController);
 		controllers.add(_assetSummaryTagController);
 		controllers.add(_assetSummaryTypeController);
 		controllers.add(_contactsCardController);
@@ -59,6 +62,7 @@ public class ContactsApplication extends BaseApplication {
 		controllers.add(_contactsLayoutController);
 		controllers.add(_contactsLayoutTemplateController);
 		controllers.add(_dataSourceController);
+		controllers.add(_demandbaseController);
 		controllers.add(_fieldController);
 		controllers.add(_fieldMappingController);
 		controllers.add(_individualController);
@@ -87,6 +91,9 @@ public class ContactsApplication extends BaseApplication {
 	private AssetSummaryController _assetSummaryController;
 
 	@Reference
+	private AssetSummaryMimeTypeController _assetSummaryMimeTypeController;
+
+	@Reference
 	private AssetSummaryTagController _assetSummaryTagController;
 
 	@Reference
@@ -106,6 +113,9 @@ public class ContactsApplication extends BaseApplication {
 
 	@Reference
 	private DataSourceController _dataSourceController;
+
+	@Reference
+	private DemandbaseController _demandbaseController;
 
 	@Reference
 	private FieldController _fieldController;

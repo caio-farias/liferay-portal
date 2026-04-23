@@ -19,6 +19,7 @@ import com.liferay.portal.kernel.search.Indexer;
 import com.liferay.portal.kernel.search.ReindexCacheThreadLocal;
 import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.kernel.search.SearchEngineHelperUtil;
+import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.Time;
@@ -32,6 +33,7 @@ import com.liferay.portal.search.index.SyncReindexManager;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
 import org.apache.commons.lang.time.StopWatch;
@@ -49,11 +52,12 @@ import org.apache.commons.lang.time.StopWatch;
 public class SearchEngineInitializer implements Runnable {
 
 	public SearchEngineInitializer(
-		long companyId, ConcurrentReindexManager concurrentReindexManager,
-		String executionMode, ExecutorService executorService,
-		IndexNameBuilder indexNameBuilder, List<Indexer<?>> indexers,
-		JSONFactory jsonFactory, SearchEngineAdapter searchEngineAdapter,
-		SyncReindexManager syncReindexManager) {
+			long companyId, ConcurrentReindexManager concurrentReindexManager,
+			String executionMode, ExecutorService executorService,
+			IndexNameBuilder indexNameBuilder, List<Indexer<?>> indexers,
+			JSONFactory jsonFactory, SearchEngineAdapter searchEngineAdapter,
+			SyncReindexManager syncReindexManager)
+		throws Exception {
 
 		_companyId = companyId;
 		_concurrentReindexManager = concurrentReindexManager;
@@ -64,6 +68,139 @@ public class SearchEngineInitializer implements Runnable {
 		_jsonFactory = jsonFactory;
 		_searchEngineAdapter = searchEngineAdapter;
 		_syncReindexManager = syncReindexManager;
+
+		if (_log.isInfoEnabled()) {
+			_log.info("Reindexing started");
+		}
+
+		_stopWatch = new StopWatch();
+
+		_stopWatch.start();
+
+		SafeCloseable bulkLoadSafeCloseable = null;
+		Date date = null;
+		boolean fullMode = false;
+
+		if (_isExecuteConcurrentReindex()) {
+			SearchEngineHelperUtil.initialize(_companyId);
+
+			_concurrentReindexManager.createNextIndex(_companyId);
+		}
+		else if (_isExecuteSyncReindex()) {
+			date = new Date();
+
+			Thread.sleep(1000);
+		}
+		else {
+			fullMode = true;
+
+			SearchEngineHelperUtil.removeCompany(_companyId);
+
+			SearchEngineHelperUtil.initialize(_companyId);
+
+			bulkLoadSafeCloseable = _configureIndexForBulkLoad();
+		}
+
+		_bulkLoadSafeCloseable = bulkLoadSafeCloseable;
+		_date = date;
+		_fullMode = fullMode;
+		_sharedReindexCacheMap = new ConcurrentHashMap<>();
+	}
+
+	public void complete() {
+		try {
+			if (_isExecuteConcurrentReindex()) {
+				_concurrentReindexManager.replaceCurrentIndexWithNextIndex(
+					_companyId);
+			}
+			else if (_isExecuteSyncReindex()) {
+				Set<String> indexerClassNames = new HashSet<>();
+
+				for (Indexer<?> indexer : _indexers) {
+					indexerClassNames.add(indexer.getClassName());
+				}
+
+				_syncReindexManager.deleteStaleDocuments(
+					_companyId, _date, indexerClassNames);
+			}
+
+			if (_log.isInfoEnabled()) {
+				_log.info(
+					"Reindexing completed in " +
+						(_stopWatch.getTime() / Time.SECOND) + " seconds");
+			}
+		}
+		catch (Exception exception) {
+			if (_isExecuteConcurrentReindex()) {
+				_concurrentReindexManager.deleteNextIndex(_companyId);
+			}
+
+			_log.error("Unable to reindex", exception);
+
+			if (_log.isInfoEnabled()) {
+				_log.info("Unable to reindex");
+			}
+		}
+		finally {
+			if (_bulkLoadSafeCloseable != null) {
+				try {
+					_bulkLoadSafeCloseable.close();
+				}
+				catch (Exception exception) {
+					_log.error("Unable to restore index settings", exception);
+				}
+			}
+		}
+
+		_finished = true;
+	}
+
+	public long getCompanyId() {
+		return _companyId;
+	}
+
+	public Map<Indexer<?>, Long> getReindexEntryCounts() {
+		Map<Indexer<?>, Future<Long>> futures = new HashMap<>();
+
+		for (Indexer<?> indexer : _indexers) {
+			futures.put(
+				indexer,
+				_executorService.submit(
+					() -> {
+						try (SafeCloseable safeCloseable1 =
+								CompanyThreadLocal.
+									setCompanyIdWithSafeCloseable(_companyId);
+							SafeCloseable safeCloseable2 =
+								ReindexCacheThreadLocal.openReindexMode(
+									_fullMode, _sharedReindexCacheMap)) {
+
+							return indexer.getReindexEntryCount(_companyId);
+						}
+					}));
+		}
+
+		Map<Indexer<?>, Long> reindexEntryCounts = new HashMap<>();
+
+		for (Map.Entry<Indexer<?>, Future<Long>> entry : futures.entrySet()) {
+			Indexer<?> indexer = entry.getKey();
+			Future<Long> future = entry.getValue();
+
+			try {
+				long count = future.get();
+
+				if (count != 0) {
+					reindexEntryCounts.put(indexer, count);
+				}
+			}
+			catch (Exception exception) {
+				_log.error(
+					"Unable to get reindex entry count for " +
+						indexer.getClassName(),
+					exception);
+			}
+		}
+
+		return reindexEntryCounts;
 	}
 
 	public void halt() {
@@ -81,41 +218,40 @@ public class SearchEngineInitializer implements Runnable {
 		_reindex(delay);
 	}
 
+	public void reindexIndexer(Indexer<?> indexer) throws Exception {
+		try (SafeCloseable safeCloseable1 =
+				ReindexCacheThreadLocal.openReindexMode(
+					_fullMode, _sharedReindexCacheMap);
+			SafeCloseable safeCloseable2 = SearchContext.openBatchMode(false)) {
+
+			StopWatch stopWatch = new StopWatch();
+
+			stopWatch.start();
+
+			if (_log.isInfoEnabled()) {
+				_log.info(
+					"Reindexing of " + indexer.getClassName() +
+						" entities started");
+			}
+
+			indexer.reindexCompany(_companyId);
+
+			if (_log.isInfoEnabled()) {
+				_log.info(
+					StringBundler.concat(
+						"Reindexing of ", indexer.getClassName(),
+						" entities completed in ",
+						stopWatch.getTime() / Time.SECOND, " seconds"));
+			}
+		}
+	}
+
 	@Override
 	public void run() {
 		reindex(PropsValues.INDEX_ON_STARTUP_DELAY);
 	}
 
-	protected void reindex(Indexer<?> indexer) throws Exception {
-		StopWatch stopWatch = new StopWatch();
-
-		stopWatch.start();
-
-		if (_log.isInfoEnabled()) {
-			_log.info(
-				"Reindexing of " + indexer.getClassName() +
-					" entities started");
-		}
-
-		indexer.reindexCompany(_companyId);
-
-		if (_log.isInfoEnabled()) {
-			_log.info(
-				StringBundler.concat(
-					"Reindexing of ", indexer.getClassName(),
-					" entities completed in ",
-					stopWatch.getTime() / Time.SECOND, " seconds"));
-		}
-	}
-
-	private SafeCloseable _configureIndexForBulkLoad(boolean fullMode)
-		throws Exception {
-
-		if (!fullMode) {
-			return () -> {
-			};
-		}
-
+	private SafeCloseable _configureIndexForBulkLoad() throws Exception {
 		String indexName = _indexNameBuilder.getIndexName(_companyId);
 
 		GetIndexIndexResponse getIndexIndexResponse =
@@ -174,10 +310,6 @@ public class SearchEngineInitializer implements Runnable {
 			return;
 		}
 
-		if (_log.isInfoEnabled()) {
-			_log.info("Reindexing started");
-		}
-
 		if (delay < 0) {
 			delay = 0;
 		}
@@ -193,115 +325,45 @@ public class SearchEngineInitializer implements Runnable {
 			}
 		}
 
-		StopWatch stopWatch = new StopWatch();
-
-		stopWatch.start();
-
 		try {
-			Date date = null;
-
-			boolean fullMode = false;
-
-			if (_isExecuteConcurrentReindex()) {
-				SearchEngineHelperUtil.initialize(_companyId);
-
-				_concurrentReindexManager.createNextIndex(_companyId);
-			}
-			else if (_isExecuteSyncReindex()) {
-				date = new Date();
-
-				Thread.sleep(1000);
+			if (_indexers.size() == 1) {
+				reindexIndexer(_indexers.get(0));
 			}
 			else {
-				fullMode = true;
+				long backgroundTaskId =
+					BackgroundTaskThreadLocal.getBackgroundTaskId();
+				List<FutureTask<Void>> futureTasks = new ArrayList<>();
 
-				SearchEngineHelperUtil.removeCompany(_companyId);
+				for (Indexer<?> indexer : _indexers) {
+					FutureTask<Void> futureTask = new FutureTask<>(
+						new Callable<Void>() {
 
-				SearchEngineHelperUtil.initialize(_companyId);
-			}
+							@Override
+							public Void call() throws Exception {
+								try (SafeCloseable safeCloseable1 =
+										BackgroundTaskThreadLocal.
+											setBackgroundTaskIdWithSafeCloseable(
+												backgroundTaskId)) {
 
-			boolean finalFullMode = fullMode;
+									reindexIndexer(indexer);
 
-			Set<String> indexerClassNames = new HashSet<>();
-			Map<String, Object> sharedReindexCacheMap =
-				new ConcurrentHashMap<>();
-
-			try (SafeCloseable safeCloseable = _configureIndexForBulkLoad(
-					fullMode)) {
-
-				if (_indexers.size() == 1) {
-					Indexer<?> indexer = _indexers.get(0);
-
-					indexerClassNames.add(indexer.getClassName());
-
-					try (SafeCloseable safeCloseable1 =
-							ReindexCacheThreadLocal.openReindexMode(
-								finalFullMode, sharedReindexCacheMap);
-						SafeCloseable safeCloseable2 =
-							SearchContext.openBatchMode(false)) {
-
-						reindex(indexer);
-					}
-				}
-				else {
-					long backgroundTaskId =
-						BackgroundTaskThreadLocal.getBackgroundTaskId();
-					List<FutureTask<Void>> futureTasks = new ArrayList<>();
-
-					for (Indexer<?> indexer : _indexers) {
-						indexerClassNames.add(indexer.getClassName());
-
-						FutureTask<Void> futureTask = new FutureTask<>(
-							new Callable<Void>() {
-
-								@Override
-								public Void call() throws Exception {
-									try (SafeCloseable safeCloseable1 =
-											BackgroundTaskThreadLocal.
-												setBackgroundTaskIdWithSafeCloseable(
-													backgroundTaskId);
-										SafeCloseable safeCloseable2 =
-											ReindexCacheThreadLocal.
-												openReindexMode(
-													finalFullMode,
-													sharedReindexCacheMap);
-										SafeCloseable safeCloseable3 =
-											SearchContext.openBatchMode(
-												false)) {
-
-										reindex(indexer);
-
-										return null;
-									}
+									return null;
 								}
+							}
 
-							});
+						});
 
-						_executorService.submit(futureTask);
+					_executorService.submit(futureTask);
 
-						futureTasks.add(futureTask);
-					}
+					futureTasks.add(futureTask);
+				}
 
-					for (FutureTask<Void> futureTask : futureTasks) {
-						futureTask.get();
-					}
+				for (FutureTask<Void> futureTask : futureTasks) {
+					futureTask.get();
 				}
 			}
 
-			if (_isExecuteConcurrentReindex()) {
-				_concurrentReindexManager.replaceCurrentIndexWithNextIndex(
-					_companyId);
-			}
-			else if (_isExecuteSyncReindex()) {
-				_syncReindexManager.deleteStaleDocuments(
-					_companyId, date, indexerClassNames);
-			}
-
-			if (_log.isInfoEnabled()) {
-				_log.info(
-					"Reindexing completed in " +
-						(stopWatch.getTime() / Time.SECOND) + " seconds");
-			}
+			complete();
 		}
 		catch (Exception exception) {
 			if (_isExecuteConcurrentReindex()) {
@@ -313,9 +375,9 @@ public class SearchEngineInitializer implements Runnable {
 			if (_log.isInfoEnabled()) {
 				_log.info("Reindexing failed");
 			}
-		}
 
-		_finished = true;
+			_finished = true;
+		}
 	}
 
 	private void _updateIndexSettings(String indexName, String settings) {
@@ -351,15 +413,20 @@ public class SearchEngineInitializer implements Runnable {
 	private static final Log _log = LogFactoryUtil.getLog(
 		SearchEngineInitializer.class);
 
+	private final SafeCloseable _bulkLoadSafeCloseable;
 	private final long _companyId;
 	private final ConcurrentReindexManager _concurrentReindexManager;
+	private final Date _date;
 	private final String _executionMode;
 	private final ExecutorService _executorService;
 	private boolean _finished;
+	private final boolean _fullMode;
 	private final List<Indexer<?>> _indexers;
 	private final IndexNameBuilder _indexNameBuilder;
 	private final JSONFactory _jsonFactory;
 	private final SearchEngineAdapter _searchEngineAdapter;
+	private final Map<String, Object> _sharedReindexCacheMap;
+	private final StopWatch _stopWatch;
 	private final SyncReindexManager _syncReindexManager;
 
 }

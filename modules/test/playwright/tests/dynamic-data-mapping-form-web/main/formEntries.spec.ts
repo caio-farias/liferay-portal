@@ -16,13 +16,13 @@ import {getRandomInt} from '../../../utils/getRandomInt';
 import getRandomString from '../../../utils/getRandomString';
 import performLogin, {performLogout} from '../../../utils/performLogin';
 import {waitForAlert} from '../../../utils/waitForAlert';
-import {generateObjectFields} from '../../object-web/main/utils/generateObjectFields';
+import {generateObjectFields} from '../../object-web/utils/generateObjectFields';
 import {deleteItems} from './utils/deleteItems';
 
 export const test = mergeTests(
 	dataApiHelpersTest,
 	featureFlagsTest({
-		'LPD-36105': {enabled: true},
+		'LPD-11235': {enabled: true},
 	}),
 	formsPagesTest,
 	isolatedSiteTest,

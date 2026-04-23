@@ -14,7 +14,10 @@ import React from 'react';
 import StatusLabel from '../../common/components/StatusLabel';
 import {openAssetUsageListModal} from '../../common/components/asset_usage/utils';
 import {AssetLibrary} from '../../common/types/AssetLibrary';
-import {ISearchAssetObjectEntry} from '../../common/types/AssetType';
+import {
+	IBreadcrumbItem,
+	ISearchAssetObjectEntry,
+} from '../../common/types/AssetType';
 import {OBJECT_ENTRY_FOLDER_CLASS_NAME} from '../../common/utils/constants';
 import {getFormattedLabel} from '../../common/utils/getFormattedText';
 import {getScopeExternalReferenceCode} from '../../common/utils/getScopeExternalReferenceCode';
@@ -29,7 +32,7 @@ import {handleFindAndReplace} from '../find_and_replace/utils/handleFindAndRepla
 import AssetTypeInfoPanel from '../info_panel/AssetTypeInfoPanelContent';
 import ExportTranslationModalContent from '../modal/ExportTranslationModalContent';
 import AssetNavigationModalContent from '../modal/asset_navigation_view/AssetNavigationModalContent';
-import copyBulkAction from './actions/copyBulkAction';
+import copyOrMoveBulkAction from './actions/copyOrMoveBulkAction';
 import ACTIONS from './actions/creationMenuActions';
 import deleteAssetEntriesBulkAction, {
 	executeBulkDeleteAction,
@@ -37,6 +40,7 @@ import deleteAssetEntriesBulkAction, {
 import deleteItemAction from './actions/deleteItemAction';
 import executeResetPermissionObjectBulkSelectionAction from './actions/executeResetPermissionObjectBulkSelectionAction';
 import expireEntriesBulkAction from './actions/expireEntriesBulkAction';
+import exportTranslationBulkAction from './actions/exportTranslationBulkAction';
 import openFolderItemSelectorAction from './actions/openFolderItemSelectorAction';
 import shareAction from './actions/shareAction';
 import {triggerAssetDownloadBulkAction} from './actions/triggerAssetDownloadBulkAction';
@@ -49,12 +53,84 @@ import addOnClickToCreationMenuItems from './utils/addOnClickToCreationMenuItems
 import transformViewsItemsProps from './utils/transformViewsItemProps';
 import GalleryView from './views/GalleryView';
 
+/**
+ * Transforms additionalAPIURLParameters to remove folderId filter when searching at root folder.
+ * Hoisted outside component to avoid recreation
+ */
+export interface AdditionalAPIURLParametersTransformerArgs {
+	additionalAPIURLParameters: string;
+	rootFolder?: boolean;
+	searchParam: string;
+}
+const additionalAPIURLParametersTransformer = (
+	args: AdditionalAPIURLParametersTransformerArgs
+): string | undefined => {
+	const {additionalAPIURLParameters, rootFolder, searchParam} = args;
+
+	if (!additionalAPIURLParameters) {
+		return additionalAPIURLParameters;
+	}
+
+	if (!searchParam || !searchParam.trim().length) {
+		return additionalAPIURLParameters;
+	}
+
+	const filterPrefix = 'filter=';
+	const startIndex = additionalAPIURLParameters.indexOf(filterPrefix);
+
+	if (startIndex === -1) {
+		return additionalAPIURLParameters;
+	}
+
+	const prefixPart = additionalAPIURLParameters.substring(
+		0,
+		startIndex + filterPrefix.length
+	);
+	const filterContent = additionalAPIURLParameters.substring(
+		startIndex + filterPrefix.length
+	);
+
+	const cleanedFilters = filterContent
+		.split(/\s+and\s+/i)
+		.map((part) => part.trim())
+		.filter((part) => {
+			if (part === 'cmsRoot eq true') {
+				return false;
+			}
+
+			if (rootFolder && part.startsWith('folderId eq')) {
+				return false;
+			}
+
+			return part !== '';
+		});
+
+	if (!cleanedFilters.length) {
+		const beforeFilter = additionalAPIURLParameters.substring(
+			0,
+			startIndex
+		);
+
+		return beforeFilter.replace(/&$/, '').trim() || undefined;
+	}
+
+	return `${prefixPart}${cleanedFilters.join(' and ')}`.trim();
+};
+
+export interface IBreadcrumbProps {
+	breadcrumbItems: IBreadcrumbItem[];
+	displayType: string;
+	size: string;
+}
+
 export type AdditionalProps = {
+	additionalAPIURLParameters: string | undefined;
 	assetLibraries: AssetLibrary[];
 	autocompleteURL: string;
 	availableExportFileFormats: any[];
 	availableLocales: any[];
 	baseFolderViewURL: string;
+	breadcrumbProps?: IBreadcrumbProps;
 	brokenLinksCheckerEnabled: boolean;
 	candidateAssetLibraries: AssetLibrary[];
 	cmsGroupId?: number;
@@ -69,6 +145,7 @@ export type AdditionalProps = {
 	objectEntryFolderExternalReferenceCode: string;
 	parentObjectEntryFolderExternalReferenceCode: string;
 	redirect: string;
+	rootFolder?: boolean;
 	rootObjectEntryFolderExternalReferenceCode: string;
 	showAdditionalItemInfo?: boolean;
 };
@@ -116,8 +193,23 @@ export default function AssetsFDSPropsTransformer({
 		mergedViews = [...nonDefaultViews, galleryViewRenderer];
 	}
 
+	const {
+		additionalAPIURLParameters,
+		rootFolder,
+		...remainingAdditionalProps
+	} = additionalProps || {};
+
 	return {
 		...otherProps,
+		additionalAPIURLParameters,
+		additionalAPIURLParametersTransformer: (
+			args: AdditionalAPIURLParametersTransformerArgs
+		) =>
+			additionalAPIURLParametersTransformer({
+				...args,
+				rootFolder,
+			}),
+		additionalProps: remainingAdditionalProps,
 		creationMenu: {
 			...creationMenu,
 			primaryItems: addOnClickToCreationMenuItems(
@@ -564,6 +656,13 @@ export default function AssetsFDSPropsTransformer({
 					type: 'DownloadBulkAction',
 				});
 			}
+			else if (action?.data?.id === 'export-for-translation') {
+				exportTranslationBulkAction({
+					additionalProps,
+					apiURL: otherProps.apiURL,
+					selectedData,
+				});
+			}
 			else if (
 				action?.data?.id === 'edit-default-permissions-by-role'
 			) {
@@ -637,8 +736,12 @@ export default function AssetsFDSPropsTransformer({
 					},
 				});
 			}
-			else if (action?.data.id === 'copy-to') {
-				copyBulkAction({
+			else if (
+				action?.data.id === 'copy-to' ||
+				action?.data.id === 'move-to'
+			) {
+				copyOrMoveBulkAction({
+					action: action.data.id === 'copy-to' ? 'copy' : 'move',
 					additionalProps,
 					apiURL: otherProps.apiURL,
 					dataSetId: otherProps.id,

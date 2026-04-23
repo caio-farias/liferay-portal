@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import ClayLabel from '@clayui/label';
 import {FrontendDataSet} from '@liferay/frontend-data-set-web';
+import {openModal} from 'frontend-js-components-web';
 import {fetch} from 'frontend-js-web';
 import React, {
 	createContext,
@@ -19,11 +19,14 @@ import React, {
 import {DEFAULT_FETCH_HEADERS, FDS_DEFAULT_PROPS} from './utils/constants';
 import getDataSetResourceURL from './utils/getDataSetResourceURL';
 import getDataSetSnapshotResourceURL from './utils/getDataSetSnapshotResourceURL';
+import openDefaultFailureToast from './utils/openDefaultFailureToast';
+import openDefaultSuccessToast from './utils/openDefaultSuccessToast';
 
 import '../css/DataSets.scss';
 
 interface IManageUserViewsProps {
 	currentURL: string;
+	fdsEntryFDSSelectionFilterItemsDataProviderURL: string;
 	namespace: string;
 	portletId: string;
 	systemDataSetEntries: Array<{name: string; title: string}>;
@@ -32,7 +35,6 @@ interface IManageUserViewsProps {
 interface IDataSetLabelsContextValue {
 	dataSetLabels: Record<string, string>;
 	requestLabel: (fdsName: string) => void;
-	systemDataSetNamesSet: Set<string>;
 }
 
 const DataSetLabelsContext = createContext<IDataSetLabelsContextValue | null>(
@@ -45,10 +47,7 @@ const views = {
 	name: 'table',
 	schema: {
 		fields: [
-			{
-				fieldName: 'label',
-				label: Liferay.Language.get('user-view-name'),
-			},
+			{fieldName: 'label', label: Liferay.Language.get('user-view-name')},
 			{
 				fieldName: 'creator.name',
 				label: Liferay.Language.get('created-by'),
@@ -57,11 +56,6 @@ const views = {
 				contentRenderer: 'dataSetNameRenderer',
 				fieldName: 'dataSetName',
 				label: Liferay.Language.get('data-set'),
-			},
-			{
-				contentRenderer: 'dataSetTypeRenderer',
-				fieldName: 'dataSetType',
-				label: Liferay.Language.get('data-set-type'),
 			},
 			{
 				contentRenderer: 'dateTime',
@@ -97,30 +91,15 @@ const DataSetNameRenderer = ({itemData}: {itemData: {fdsName?: string}}) => {
 	return cachedLabel || fdsName;
 };
 
-const DataSetTypeRenderer = ({itemData}: {itemData: {fdsName?: string}}) => {
-	const context = useContext(DataSetLabelsContext);
-	const fdsName = itemData.fdsName || '';
-	const isSystem =
-		!!fdsName && context
-			? context.systemDataSetNamesSet.has(fdsName)
-			: false;
-	const dataSetType = isSystem ? 'system' : 'custom';
-	const displayType = isSystem ? 'info' : 'warning';
-
-	return (
-		<ClayLabel displayType={displayType}>
-			{Liferay.Language.get(dataSetType)}
-		</ClayLabel>
-	);
-};
-
 export default function ManageUserViews({
 	currentURL,
+	fdsEntryFDSSelectionFilterItemsDataProviderURL,
 	namespace,
 	portletId,
 	systemDataSetEntries = [],
 }: IManageUserViewsProps) {
 	const apiURL = getDataSetSnapshotResourceURL();
+
 	const initialSystemDataSetLabels = useMemo(() => {
 		return systemDataSetEntries.reduce<Record<string, string>>(
 			(accumulator, entry) => {
@@ -133,14 +112,80 @@ export default function ManageUserViews({
 			{}
 		);
 	}, [systemDataSetEntries]);
+
 	const [dataSetLabels, setDataSetLabels] = useState<Record<string, string>>(
 		() => initialSystemDataSetLabels
 	);
 	const labelRequestsRef = useRef<Set<string>>(new Set());
-	const systemDataSetNamesSet = useMemo(
-		() => new Set(systemDataSetEntries.map((entry) => entry.name)),
-		[systemDataSetEntries]
+
+	const deleteUserViews = useCallback(
+		({
+			loadData,
+			snapshotERCs,
+		}: {
+			loadData: Function;
+			snapshotERCs: Array<string>;
+		}) => {
+			openModal({
+				bodyHTML: Liferay.Language.get(
+					'deleting-a-user-view-is-an-action-that-cannot-be-reversed'
+				),
+				buttons: [
+					{
+						autoFocus: true,
+						displayType: 'secondary',
+						label: Liferay.Language.get('cancel'),
+						type: 'cancel',
+					},
+					{
+						displayType: 'danger',
+						label: Liferay.Language.get('delete'),
+						onClick: async ({
+							processClose,
+						}: {
+							processClose: Function;
+						}) => {
+							processClose();
+
+							const responses = await Promise.allSettled(
+								snapshotERCs.map((snapshotERC) =>
+									fetch(
+										getDataSetSnapshotResourceURL({
+											snapshotERC,
+										}),
+										{
+											headers: DEFAULT_FETCH_HEADERS,
+											method: 'DELETE',
+										}
+									)
+								)
+							);
+
+							if (
+								responses.every(
+									(response) =>
+										response.status === 'fulfilled' &&
+										response.value.ok
+								)
+							) {
+								openDefaultSuccessToast();
+
+								loadData();
+
+								return;
+							}
+
+							openDefaultFailureToast();
+						},
+					},
+				],
+				status: 'danger',
+				title: Liferay.Language.get('delete-user-view'),
+			});
+		},
+		[]
 	);
+
 	const requestLabel = useCallback(
 		(fdsName: string) => {
 			if (dataSetLabels[fdsName] !== undefined) {
@@ -178,22 +223,66 @@ export default function ManageUserViews({
 		[dataSetLabels]
 	);
 
+	const filters = useMemo(
+		() => [
+			{
+				apiURL: '/o/headless-admin-user/v1.0/user-accounts?sort=name:asc',
+				autocompleteEnabled: true,
+				entityFieldType: 'integer',
+				id: 'creatorId',
+				inputPlaceholder: Liferay.Language.get('search'),
+				itemKey: 'id',
+				itemLabel: 'name',
+				items: [],
+				label: Liferay.Language.get('created-by'),
+				multiple: true,
+				type: 'selection',
+			},
+			{
+				apiURL: fdsEntryFDSSelectionFilterItemsDataProviderURL,
+				autocompleteEnabled: true,
+				entityFieldType: 'string',
+				id: 'fdsName',
+				inputPlaceholder: Liferay.Language.get('search'),
+				itemKey: 'itemKey',
+				itemLabel: 'itemLabel',
+				items: [],
+				label: Liferay.Language.get('data-set'),
+				multiple: true,
+				type: 'selection',
+			},
+			{
+				entityFieldType: 'date-time',
+				id: 'dateModified',
+				label: Liferay.Language.get('date'),
+				type: 'dateRange',
+			},
+		],
+		[fdsEntryFDSSelectionFilterItemsDataProviderURL]
+	);
+
 	return (
 		<DataSetLabelsContext.Provider
 			value={{
 				dataSetLabels,
 				requestLabel,
-				systemDataSetNamesSet,
 			}}
 		>
 			<div className="data-sets manage-user-views">
 				<FrontendDataSet
 					{...FDS_DEFAULT_PROPS}
 					apiURL={apiURL}
+					bulkActions={[
+						{
+							href: getDataSetSnapshotResourceURL(),
+							icon: 'trash',
+							label: Liferay.Language.get('delete'),
+							method: 'delete',
+						},
+					]}
 					currentURL={currentURL}
 					customDataRenderers={{
 						dataSetNameRenderer: DataSetNameRenderer,
-						dataSetTypeRenderer: DataSetTypeRenderer,
 					}}
 					emptyState={{
 						description: Liferay.Language.get(
@@ -202,6 +291,7 @@ export default function ManageUserViews({
 						image: '/states/empty_state.svg',
 						title: Liferay.Language.get('no-results-found'),
 					}}
+					filters={filters}
 					id={`${namespace}ManageUserViews`}
 					itemsActions={[
 						{
@@ -227,7 +317,22 @@ export default function ManageUserViews({
 							target: 'headless',
 						},
 					]}
+					onBulkActionItemClick={({
+						loadData,
+						selectedData: {keyValues},
+					}: {
+						loadData: Function;
+						selectedData: {keyValues: Array<string>};
+					}) => {
+						deleteUserViews({
+							loadData,
+							snapshotERCs: keyValues,
+						});
+					}}
 					portletId={portletId}
+					selectedItemsKey="externalReferenceCode"
+					selectionType="multiple"
+					style="fluid"
 					views={[views]}
 				/>
 			</div>

@@ -4,27 +4,259 @@
  */
 
 import '@testing-library/jest-dom';
-import {fireEvent, render, screen} from '@testing-library/react';
+import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import React from 'react';
 
+import SpaceService from '../../../../src/main/resources/META-INF/resources/js/common/services/SpaceService';
+import {
+	ViewDashboardContext,
+	initialLanguage,
+	initialSpace,
+} from '../../../../src/main/resources/META-INF/resources/js/main_view/dashboard/ViewDashboardContext';
 import {
 	LanguagesDropdown,
 	localizations,
 } from '../../../../src/main/resources/META-INF/resources/js/main_view/dashboard/components/LanguagesDropdown';
 
+jest.mock(
+	'../../../../src/main/resources/META-INF/resources/js/common/services/SpaceService'
+);
+
+const mockedSpaceService = SpaceService as jest.Mocked<typeof SpaceService>;
+
+const mockedContext = {
+	changeLanguage: jest.fn(),
+	changeSpace: jest.fn(),
+	constants: {},
+	filters: {
+		language: initialLanguage,
+		space: initialSpace,
+	},
+};
+
 describe('[CMS Dashboard] Components: LanguagesDropdown', () => {
-	it('renders correctly', () => {
-		render(<LanguagesDropdown />);
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('renders correctly with all languages when all spaces is selected', async () => {
+		render(
+			<ViewDashboardContext.Provider value={mockedContext}>
+				<LanguagesDropdown />
+			</ViewDashboardContext.Provider>
+		);
+
+		const button = screen.getByRole('button', {name: 'all-languages'});
+
+		expect(button).toBeInTheDocument();
+
+		fireEvent.click(button);
 
 		expect(
-			screen.getByRole('button', {name: 'all-languages'})
+			screen.getByRole('menuitem', {name: 'all-languages'})
 		).toBeInTheDocument();
+
+		const availableLanguages = Object.values(localizations);
+
+		availableLanguages.forEach((translation) => {
+			expect(
+				screen.getByRole('menuitem', {name: translation})
+			).toBeInTheDocument();
+		});
+	});
+
+	it('filters languages when searching and restores them when backspacing or reopening', async () => {
+		render(
+			<ViewDashboardContext.Provider value={mockedContext}>
+				<LanguagesDropdown />
+			</ViewDashboardContext.Provider>
+		);
+
+		const button = screen.getByRole('button', {name: 'all-languages'});
+
+		fireEvent.click(button);
+
+		const searchInput = screen.getByPlaceholderText('search');
+
+		// Search for English
+
+		fireEvent.change(searchInput, {target: {value: localizations.en_US}});
+
+		await waitFor(() => {
+			expect(
+				screen.getByRole('menuitem', {name: localizations.en_US})
+			).toBeInTheDocument();
+
+			expect(
+				screen.queryByRole('menuitem', {name: localizations.es_ES})
+			).not.toBeInTheDocument();
+		});
+
+		// Search for something that doesn't exist
+
+		fireEvent.change(searchInput, {target: {value: 'NonExistentLanguage'}});
+
+		await waitFor(() => {
+			expect(
+				screen.queryByRole('menuitem', {name: localizations.en_US})
+			).not.toBeInTheDocument();
+		});
+
+		// Backspace (simulated by searching for a prefix)
+
+		fireEvent.change(searchInput, {
+			target: {value: localizations.en_US.substring(0, 3)},
+		});
+
+		await waitFor(() => {
+			expect(
+				screen.getByRole('menuitem', {name: localizations.en_US})
+			).toBeInTheDocument();
+		});
+
+		// Close the dropdown
+
+		fireEvent.click(button);
+
+		// Reopen the dropdown
+
+		fireEvent.click(button);
+
+		// Should show all languages again
+
+		await waitFor(() => {
+			expect(
+				screen.getByRole('menuitem', {name: localizations.en_US})
+			).toBeInTheDocument();
+
+			expect(
+				screen.getByRole('menuitem', {name: localizations.es_ES})
+			).toBeInTheDocument();
+		});
+	});
+
+	it('filters languages when a specific space is selected', async () => {
+		const spaceWithLimitedLanguages = {
+			...initialSpace,
+			externalReferenceCode: 'SPACE_ERC',
+			value: '123',
+		};
+
+		mockedSpaceService.getSpace.mockResolvedValue({
+			settings: {
+				availableLanguageIds: ['en-US', 'es-ES'],
+			},
+		} as any);
+
+		render(
+			<ViewDashboardContext.Provider
+				value={{
+					...mockedContext,
+					filters: {
+						...mockedContext.filters,
+						space: spaceWithLimitedLanguages,
+					},
+				}}
+			>
+				<LanguagesDropdown />
+			</ViewDashboardContext.Provider>
+		);
+
+		await waitFor(() =>
+			expect(mockedSpaceService.getSpace).toHaveBeenCalledWith(
+				'SPACE_ERC'
+			)
+		);
 
 		fireEvent.click(screen.getByRole('button', {name: 'all-languages'}));
 
 		expect(
 			screen.getByRole('menuitem', {name: 'all-languages'})
 		).toBeInTheDocument();
+
+		expect(
+			screen.getByRole('menuitem', {name: localizations.en_US})
+		).toBeInTheDocument();
+
+		expect(
+			screen.getByRole('menuitem', {name: localizations.es_ES})
+		).toBeInTheDocument();
+
+		// Should not show other languages
+
+		expect(
+			screen.queryByRole('menuitem', {name: localizations.pt_BR})
+		).not.toBeInTheDocument();
+	});
+
+	it('resets language selection if the current language is not available in the new space', async () => {
+		const spaceWithLimitedLanguages = {
+			...initialSpace,
+			externalReferenceCode: 'SPACE_ERC',
+			value: '123',
+		};
+
+		// Current selected language is Portuguese (pt_BR)
+
+		const mockedContextWithSelection = {
+			...mockedContext,
+			filters: {
+				language: {label: localizations.pt_BR, value: 'pt_BR'},
+				space: spaceWithLimitedLanguages,
+			},
+		};
+
+		// New space only supports English and Spanish
+
+		mockedSpaceService.getSpace.mockResolvedValue({
+			settings: {
+				availableLanguageIds: ['en-US', 'es-ES'],
+			},
+		} as any);
+
+		render(
+			<ViewDashboardContext.Provider value={mockedContextWithSelection}>
+				<LanguagesDropdown />
+			</ViewDashboardContext.Provider>
+		);
+
+		await waitFor(() =>
+			expect(mockedContext.changeLanguage).toHaveBeenCalledWith(
+				initialLanguage
+			)
+		);
+	});
+
+	it('shows all languages if space settings does not have availableLanguageIds', async () => {
+		const spaceWithoutSettings = {
+			...initialSpace,
+			externalReferenceCode: 'SPACE_ERC',
+			value: '123',
+		};
+
+		mockedSpaceService.getSpace.mockResolvedValue({
+			settings: {},
+		} as any);
+
+		render(
+			<ViewDashboardContext.Provider
+				value={{
+					...mockedContext,
+					filters: {
+						...mockedContext.filters,
+						space: spaceWithoutSettings,
+					},
+				}}
+			>
+				<LanguagesDropdown />
+			</ViewDashboardContext.Provider>
+		);
+
+		await waitFor(() =>
+			expect(mockedSpaceService.getSpace).toHaveBeenCalled()
+		);
+
+		fireEvent.click(screen.getByRole('button', {name: 'all-languages'}));
 
 		const availableLanguages = Object.values(localizations);
 

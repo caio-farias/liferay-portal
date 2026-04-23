@@ -8,13 +8,25 @@ export interface ActionItem {
 	href?: string;
 }
 
-export interface DesignLibraryItem {
-	creatorUserId: number;
+interface Creator {
+	additionalName: string;
+	contentType: string;
+	externalReferenceCode: string;
+	familyName: string;
+	givenName: string;
+	id: number;
+	name: string;
+}
+
+export interface DesignLibrary {
+	assetLibraryKey: string;
+	creator: Creator;
 	dateModified: string;
 	description: string;
 	externalReferenceCode: string;
 	id: number;
 	name: string;
+	siteId: number;
 }
 
 export interface Site {

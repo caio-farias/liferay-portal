@@ -29,9 +29,7 @@ test(
 		});
 
 		const valueInput = formGroup.locator('input');
-		const unitButton = formGroup.getByRole('button', {
-			name: 'Select a unit',
-		});
+		const unitButton = formGroup.getByTitle('Select a Unit');
 
 		await test.step('Assert that a token with unit only accepts numeric values', async () => {
 			await styleBooksPage.selectTokenCategory('Spacing');
@@ -55,7 +53,7 @@ test(
 			await test.step(`Change unit to "CUSTOM", set value to "${inputValue}", and assert it identifies the unit`, async () => {
 				await clickAndExpectToBeVisible({
 					autoClick: true,
-					target: page.getByRole('menuitem', {name: 'CUSTOM'}),
+					target: page.getByRole('option', {name: 'CUSTOM'}),
 					trigger: unitButton,
 				});
 

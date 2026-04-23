@@ -5,6 +5,7 @@
 
 package com.liferay.portal.tools.rest.builder.internal.yaml;
 
+import com.liferay.portal.tools.rest.builder.internal.util.FileUtil;
 import com.liferay.portal.tools.rest.builder.internal.yaml.config.ConfigYAML;
 import com.liferay.portal.tools.rest.builder.internal.yaml.config.Security;
 import com.liferay.portal.tools.rest.builder.internal.yaml.exception.InvalidYAMLException;
@@ -16,8 +17,12 @@ import com.liferay.portal.tools.rest.builder.internal.yaml.openapi.PathItem;
 import com.liferay.portal.tools.rest.builder.internal.yaml.openapi.Schema;
 import com.liferay.portal.tools.rest.builder.internal.yaml.openapi.XML;
 
+import java.io.File;
+import java.io.IOException;
+
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
@@ -33,33 +38,81 @@ import org.yaml.snakeyaml.representer.Representer;
  */
 public class YAMLUtil {
 
-	public static ConfigYAML loadConfigYAML(String yamlString) {
-		try {
-			return _YAML_CONFIG.loadAs(yamlString, ConfigYAML.class);
-		}
-		catch (MarkedYAMLException markedYAMLException) {
-			throw new InvalidYAMLException(markedYAMLException);
-		}
+	public static ConfigYAML loadConfigYAML(String baseDir, File file) {
+		String filePath = file.getPath();
+
+		ConfigYAML configYAML = _configYAMLs.computeIfAbsent(
+			filePath,
+			key -> {
+				try {
+					synchronized (_YAML_CONFIG) {
+						return _YAML_CONFIG.loadAs(
+							FileUtil.read(file), ConfigYAML.class);
+					}
+				}
+				catch (IOException ioException) {
+					throw new RuntimeException(ioException);
+				}
+				catch (MarkedYAMLException markedYAMLException) {
+					throw new InvalidYAMLException(markedYAMLException);
+				}
+			});
+
+		ConfigYAML clonedConfigYAML = configYAML.clone();
+
+		clonedConfigYAML.setBaseDir(baseDir);
+
+		return clonedConfigYAML;
+	}
+
+	public static OpenAPIYAML loadOpenAPIYAML(File file) {
+		return _openAPIYAMLs.computeIfAbsent(
+			file.getPath(),
+			key -> {
+				try {
+					synchronized (_YAML_OPEN_API) {
+						return _YAML_OPEN_API.loadAs(
+							FileUtil.read(file), OpenAPIYAML.class);
+					}
+				}
+				catch (IOException ioException) {
+					throw new RuntimeException(ioException);
+				}
+				catch (MarkedYAMLException markedYAMLException) {
+					throw new InvalidYAMLException(markedYAMLException);
+				}
+			});
 	}
 
 	public static OpenAPIYAML loadOpenAPIYAML(String yamlString) {
-		try {
-			return _YAML_OPEN_API.loadAs(yamlString, OpenAPIYAML.class);
-		}
-		catch (MarkedYAMLException markedYAMLException) {
-			throw new InvalidYAMLException(markedYAMLException);
-		}
+		return _openAPIYAMLs.computeIfAbsent(
+			yamlString,
+			key -> {
+				try {
+					synchronized (_YAML_OPEN_API) {
+						return _YAML_OPEN_API.loadAs(key, OpenAPIYAML.class);
+					}
+				}
+				catch (MarkedYAMLException markedYAMLException) {
+					throw new InvalidYAMLException(markedYAMLException);
+				}
+			});
 	}
 
 	public static void validateOpenAPIYAML(String fileName, String yamlString)
 		throws OpenAPIValidatorException {
 
-		OpenAPIValidator.validate(fileName, yamlString, _YAML_OPEN_API);
+		OpenAPIValidator.validate(fileName, loadOpenAPIYAML(yamlString));
 	}
 
 	private static final Yaml _YAML_CONFIG;
 
 	private static final Yaml _YAML_OPEN_API;
+
+	private static final Map<String, ConfigYAML> _configYAMLs =
+		new ConcurrentHashMap<>();
+	private static final Map<String, OpenAPIYAML> _openAPIYAMLs =
+		new ConcurrentHashMap<>();
 
 	static {
 		Representer representer = new Representer(new DumperOptions());

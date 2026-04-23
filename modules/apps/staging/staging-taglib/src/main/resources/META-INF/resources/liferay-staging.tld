@@ -48,6 +48,13 @@
 			<rtexprvalue>true</rtexprvalue>
 		</attribute>
 		<attribute>
+			<description></description>
+			<name>data</name>
+			<required>false</required>
+			<rtexprvalue>true</rtexprvalue>
+			<type>java.util.Map</type>
+		</attribute>
+		<attribute>
 			<description>The number of deletions. It is displayed after the label when it is greater than zero.</description>
 			<name>deletions</name>
 			<required>false</required>

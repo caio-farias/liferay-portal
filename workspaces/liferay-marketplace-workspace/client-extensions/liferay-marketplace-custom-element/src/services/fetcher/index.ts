@@ -16,17 +16,42 @@ function changeResource(resource: RequestInfo) {
 	return `${liferayHost}/${resource}`;
 }
 
+function getHeaders(options?: RequestInit): Record<string, string> {
+	const defaultHeaders = options?.headers;
+
+	const normalizedHeaders = defaultHeaders
+		? defaultHeaders instanceof Headers || Array.isArray(defaultHeaders)
+			? Object.fromEntries(defaultHeaders as any)
+			: (defaultHeaders as Record<string, string>)
+		: {};
+
+	const hasContentType = Object.keys(normalizedHeaders).some(
+		(name) => name.toLowerCase() === 'content-type'
+	);
+
+	const isFormData = options?.body instanceof FormData;
+
+	const headers: Record<string, string> = {
+		'x-csrf-token': Liferay.authToken,
+		...normalizedHeaders,
+	};
+
+	if (!hasContentType && !isFormData) {
+		headers['Content-Type'] = 'application/json';
+	}
+
+	return headers;
+}
+
 const fetcher = async <T = any>(
 	resource: RequestInfo,
 	options?: RequestInit
 ): Promise<T> => {
+	const headers = getHeaders(options);
+
 	const response = await fetch(changeResource(resource), {
 		...options,
-		headers: {
-			'Content-Type': 'application/json',
-			'x-csrf-token': Liferay.authToken,
-			...options?.headers,
-		},
+		headers,
 	});
 
 	if (!response.ok) {
@@ -70,17 +95,24 @@ fetcher.post = <T = any>(
 	resource: RequestInfo,
 	data?: unknown,
 	options?: RequestInit & {shouldStringify?: boolean}
-) =>
-	fetcher<T>(resource, {
+): Promise<T> => {
+	const shouldStringify = options?.shouldStringify ?? true;
+
+	let body: BodyInit | null = null;
+
+	if (data instanceof FormData) {
+		body = data;
+	}
+	else if (data !== null) {
+		body = shouldStringify ? JSON.stringify(data) : (data as BodyInit);
+	}
+
+	return fetcher<T>(resource, {
 		...options,
-		body:
-			options?.shouldStringify ?? true
-				? data
-					? JSON.stringify(data)
-					: null
-				: (data as BodyInit),
+		body,
 		method: 'POST',
-	}) as Promise<T>;
+	});
+};
 
 fetcher.put = (resource: RequestInfo, data: unknown, options?: RequestInit) =>
 	fetcher(resource, {

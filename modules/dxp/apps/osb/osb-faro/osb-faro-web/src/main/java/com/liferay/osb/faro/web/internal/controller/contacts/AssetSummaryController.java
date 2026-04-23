@@ -39,22 +39,23 @@ public class AssetSummaryController extends BaseFaroController {
 			@QueryParam("channelId") long channelId,
 			@QueryParam("filter") String filterString,
 			@QueryParam("search") String search,
-			@QueryParam("rangeKey") int rangeKey, @QueryParam("cur") int cur,
-			@DefaultValue("20") @QueryParam("delta") int delta,
-			@DefaultValue(StringPool.BLANK) @QueryParam("sort") String sort)
+			@QueryParam("rangeKey") int rangeKey, @QueryParam("page") int page,
+			@DefaultValue("20") @QueryParam("pageSize") int pageSize,
+			@DefaultValue(StringPool.BLANK) @QueryParam("sort") String
+				sortString)
 		throws Exception {
 
 		FaroProject faroProject =
 			faroProjectLocalService.getFaroProjectByGroupId(groupId);
 
 		Results<AssetSummary> results = contactsEngineClient.getAssetSummaries(
-			faroProject, channelId, filterString, search, rangeKey, cur, delta,
-			sort);
+			faroProject, channelId, filterString, search, rangeKey, page,
+			pageSize, sortString);
 
 		Function<AssetSummary, AssetSummaryDisplay> function =
 			AssetSummaryDisplay::new;
 
-		return new FaroFDSResultsDisplay(results, function, cur, delta);
+		return new FaroFDSResultsDisplay(results, function, page, pageSize);
 	}
 
 }

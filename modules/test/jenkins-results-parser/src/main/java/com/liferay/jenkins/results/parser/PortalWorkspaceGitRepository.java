@@ -133,9 +133,41 @@ public class PortalWorkspaceGitRepository extends BaseWorkspaceGitRepository {
 
 	@Override
 	public synchronized void setUp() {
-		super.setUp();
+		if (isSetUp()) {
+			return;
+		}
 
-		_setUpBinariesCache();
+		System.out.println(toString());
+
+		try {
+			if (JenkinsResultsParserUtil.isBuildCachingEnabled(
+					System.getenv("JOB_NAME"),
+					System.getenv("CI_TEST_SUITE"))) {
+
+				checkAvailableGitArchive();
+			}
+
+			if (!isSnapshot()) {
+				prepareGitWorkingDirectory();
+
+				_setUpBinariesCache();
+
+				prepareGitArchive();
+
+				setSetUp(true);
+			}
+
+			if (!isSetUp() && isSnapshot()) {
+				useGitArchive();
+
+				_setUpBinariesCache();
+			}
+		}
+		catch (IOException ioException) {
+			throw new RuntimeException(ioException);
+		}
+
+		setSetUp(true);
 	}
 
 	public void setUpPortalProfile() {

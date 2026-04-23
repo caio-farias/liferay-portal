@@ -82,7 +82,6 @@ function EnterpriseModal() {
 
 	return (
 		<CardStyleModal
-			badgeText={Liferay.Language.get('enterprise')}
 			body={Liferay.Language.get(
 				'editor-customization-is-available-on-the-enterprise-subscription'
 			)}
@@ -93,13 +92,14 @@ function EnterpriseModal() {
 				},
 				{
 					displayType: 'primary',
-					href: 'https://www.liferay.com/en/contact-sales',
+					href: 'https://www.liferay.com/web/lr/cms-upgrade',
 					icon: 'shortcut',
 					label: Liferay.Language.get('contact-sales'),
 				},
 			]}
 			imageSrc={`${config.imagesPath}/editor_customizer.svg`}
 			onCloseModal={() => setVisible(false)}
+			showEnterpriseIndicator
 			title={Liferay.Language.get(
 				'upgrade-to-unlock-the-editor-customization'
 			)}

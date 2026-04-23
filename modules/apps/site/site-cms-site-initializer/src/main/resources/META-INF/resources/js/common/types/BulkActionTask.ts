@@ -79,6 +79,8 @@ export interface IBulkActionTaskStarterDTO<T extends keyof IBulkActionType> {
 	apiURL?: string;
 	dataSetId?: string;
 	entryClassName?: string;
+	folderId?: string;
+	groupIds?: string;
 	keyValues?: IBulkActionType[T];
 	onCreateError?:
 		| ((response: RequestResult<IBulkActionTaskPage>) => void)
@@ -132,6 +134,11 @@ export interface IBulkActionType {
 		keywordsToRemove?: string[];
 	};
 	ExpireObjectBulkSelectionAction: {};
+	ExportTranslationBulkAction: {
+		sourceLanguageId: string;
+		targetLanguageIds: string[];
+		xliffMimeType: string;
+	};
 	MoveObjectBulkSelectionAction: {
 		objectEntryFolderId: number;
 	};
@@ -161,6 +168,7 @@ export interface IBulkActionTaskType {
 	EditObjectCategoriesBulkSelectionAction: string;
 	EditObjectTagsBulkSelectionAction: string;
 	ExpireObjectBulkSelectionAction: string;
+	ExportTranslationBulkAction: string;
 	MoveObjectBulkSelectionAction: string;
 	PermissionObjectBulkSelectionAction: string;
 	ResetPermissionObjectBulkSelectionAction: string;

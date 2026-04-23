@@ -215,7 +215,7 @@ else {
 		showRemoveButton();
 	}
 
-	const defaultLanguageId = themeDisplay.getDefaultLanguageId();
+	const defaultLanguageId = input.attributes.defaultLanguageId;
 	const inputElement = fileInput;
 
 	let currentLanguageId = defaultLanguageId;
@@ -260,6 +260,7 @@ else {
 					input.attributes.selectFromDocumentLibrary;
 
 				const {onChange} = registerLocalizedInput({
+					availableLanguageIds: input.attributes.availableLanguageIds,
 					changeTextDirection: false,
 					customLocaleChangeHandler: true,
 					defaultLanguageId,

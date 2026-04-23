@@ -32,6 +32,7 @@ export class FDSSamplePage {
 		items: Locator;
 	};
 	readonly creatorFilterSearchInput: Locator;
+	readonly dropdownMenu: Locator;
 	readonly emptyStateContainer: Locator;
 	readonly fdsWrapper: Locator;
 	readonly fileDropModal: Locator;
@@ -40,7 +41,6 @@ export class FDSSamplePage {
 	readonly filterMenuSearchInput: Locator;
 	readonly filterShowResultsOrAddButton: Locator;
 	readonly infoPanel: Locator;
-	readonly itemActionButton: Locator;
 	readonly itemActionsButtons: Locator;
 	readonly list: {
 		container: Locator;
@@ -57,6 +57,7 @@ export class FDSSamplePage {
 	readonly paginator: {
 		itemsPerPageSelector: Locator;
 	};
+	readonly resubmitButton: Locator;
 	readonly sidePanel: Locator;
 	readonly sidePanelFrame: FrameLocator;
 	readonly selectAllCheckbox: Locator;
@@ -119,6 +120,7 @@ export class FDSSamplePage {
 		this.creatorFilterSearchInput = page
 			.locator('.data-set-filter')
 			.getByRole('textbox', {name: 'Search'});
+		this.dropdownMenu = page.locator('.dropdown-menu.show');
 		this.emptyStateContainer = page.locator('.fds .c-empty-state');
 		this.fdsWrapper = page.locator('div.data-set-wrapper').first();
 		this.fileDropModal = page.getByRole('dialog', {
@@ -174,6 +176,8 @@ export class FDSSamplePage {
 			}),
 		};
 
+		this.resubmitButton = page.getByRole('button', {name: 'Resubmit'});
+
 		this.selectAllCheckbox = page.getByText('Select All');
 
 		const selectionToolbarContainer = page.getByTestId('selectionToolbar');
@@ -226,6 +230,14 @@ export class FDSSamplePage {
 		this.visualizationModeSelector = page.getByLabel(/View Selected/);
 	}
 
+	async assignTaskToMe() {
+		const assignToMeButton = this.page
+			.locator('.fds-roles-tasks')
+			.getByLabel('Assign to Me');
+
+		await assignToMeButton.click();
+	}
+
 	async changeItemsPerPage({delta}: {delta: string}) {
 		await this.paginator.itemsPerPageSelector.click();
 
@@ -270,10 +282,8 @@ export class FDSSamplePage {
 		await waitForFDS({page, visualizationMode});
 	}
 
-	async checkDropdownMenuIconsAreVisible(itemActionButton: Locator) {
-		const dropdownMenu = await this.getDropdownId(itemActionButton);
-
-		const menuItems = dropdownMenu.getByRole('menuitem');
+	async checkDropdownMenuIconsAreVisible() {
+		const menuItems = this.dropdownMenu.getByRole('menuitem');
 
 		for (const menuItem of await menuItems.all()) {
 			await expect
@@ -285,19 +295,9 @@ export class FDSSamplePage {
 	}
 
 	async clickItemAction(action: string, item: number = 0) {
-		const dropdownId = await this.itemActionsButtons
-			.nth(item)
-			.getAttribute('aria-controls');
-
 		await this.itemActionsButtons.nth(item).click();
 
-		await this.page
-			.locator(`#${dropdownId}`)
-			.filter({has: this.page.getByRole('menu')})
-			.waitFor();
-
-		await this.page
-			.locator(`#${dropdownId}`)
+		await this.dropdownMenu
 			.getByRole('menuitem', {
 				exact: true,
 				name: action,
@@ -305,16 +305,22 @@ export class FDSSamplePage {
 			.click();
 	}
 
-	async getDropdownId(itemActionButton: Locator) {
-		await itemActionButton.click();
+	async fillAndSaveWorkflowModal({
+		comment,
+		name,
+	}: {
+		comment: string;
+		name: string;
+	}) {
+		const workflowModal = this.page.getByRole('dialog', {name});
 
-		const dropdownId = await itemActionButton.getAttribute('aria-controls');
+		await workflowModal.waitFor({state: 'visible'});
 
-		const dropdownMenu = this.page.locator(`#${dropdownId}`);
+		await this.page.getByRole('textbox', {name: 'Comment'}).fill(comment);
 
-		await dropdownMenu.filter({has: this.page.getByRole('menu')}).waitFor();
+		await workflowModal.getByRole('button', {name: 'Save'}).click();
 
-		return dropdownMenu;
+		await workflowModal.waitFor({state: 'hidden'});
 	}
 
 	async search(value: string) {
@@ -390,7 +396,15 @@ export class FDSSamplePage {
 		await expect(navLink).toHaveClass(/active/);
 	}
 
-	async setupFDSSampleWidget({fragmentKeys = [], locale = 'en', site}) {
+	async setupFDSSampleWidget({
+		fragmentKeys = [],
+		locale = 'en',
+		site,
+	}: {
+		fragmentKeys?: Array<string>;
+		locale?: string;
+		site: Site;
+	}) {
 		const layout = await this.apiHelpers.headlessDelivery.createSitePage({
 			pageDefinition: getPageDefinition([
 				...fragmentKeys.map((fragmentKey) =>

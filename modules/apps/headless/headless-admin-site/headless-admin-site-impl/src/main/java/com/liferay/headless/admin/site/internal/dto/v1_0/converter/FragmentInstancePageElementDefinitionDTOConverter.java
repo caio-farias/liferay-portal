@@ -29,6 +29,8 @@ import com.liferay.headless.admin.site.internal.dto.v1_0.util.WidgetInstanceUtil
 import com.liferay.info.item.InfoItemServiceRegistry;
 import com.liferay.layout.util.structure.FragmentStyledLayoutStructureItem;
 import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.portlet.PortletIdCodec;
 import com.liferay.portal.kernel.util.ArrayUtil;
@@ -81,12 +83,21 @@ public class FragmentInstancePageElementDefinitionDTOConverter
 			throw new UnsupportedOperationException();
 		}
 
+		long fragmentEntryLinkId =
+			fragmentStyledLayoutStructureItem.getFragmentEntryLinkId();
+
 		FragmentEntryLink fragmentEntryLink =
 			_fragmentEntryLinkLocalService.fetchFragmentEntryLink(
-				fragmentStyledLayoutStructureItem.getFragmentEntryLinkId());
+				fragmentEntryLinkId);
 
 		if (fragmentEntryLink == null) {
-			throw new UnsupportedOperationException();
+			if (_log.isWarnEnabled()) {
+				_log.warn(
+					"No fragment entry link exists with ID " +
+						fragmentEntryLinkId);
+			}
+
+			return null;
 		}
 
 		JSONObject editableValuesJSONObject =
@@ -386,6 +397,9 @@ public class FragmentInstancePageElementDefinitionDTOConverter
 
 		return widgetInstances.toArray(new WidgetInstance[0]);
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		FragmentInstancePageElementDefinitionDTOConverter.class);
 
 	@Reference(
 		target = "(component.name=com.liferay.headless.admin.site.internal.dto.v1_0.converter.FragmentConfigurationFieldValueDTOConverter)"

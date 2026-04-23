@@ -29,7 +29,6 @@ import com.liferay.object.constants.ObjectRelationshipConstants;
 import com.liferay.object.field.setting.util.ObjectFieldSettingUtil;
 import com.liferay.object.field.util.ObjectFieldUtil;
 import com.liferay.object.info.field.converter.ObjectFieldInfoFieldConverter;
-import com.liferay.object.info.field.type.util.ObjectFieldInfoFieldTypeUtil;
 import com.liferay.object.info.item.ObjectEntryInfoItemFields;
 import com.liferay.object.info.item.util.ObjectEntryInfoItemUtil;
 import com.liferay.object.model.ObjectAction;
@@ -50,8 +49,6 @@ import com.liferay.object.service.ObjectRelationshipLocalService;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.json.JSONFactoryUtil;
-import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.BaseModel;
@@ -66,6 +63,7 @@ import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -78,7 +76,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * @author Carolina Barbosa
@@ -113,7 +110,8 @@ public class ObjectEntryInfoItemValuesProviderUtil {
 	}
 
 	public static List<InfoFieldValue<Object>> getInfoFieldValues(
-			DLAppLocalService dlAppLocalService, DLURLHelper dlURLHelper,
+			String defaultLanguageId, DLAppLocalService dlAppLocalService,
+			DLURLHelper dlURLHelper,
 			FriendlyURLEntryLocalService friendlyURLEntryLocalService,
 			ListTypeEntryLocalService listTypeEntryLocalService,
 			ObjectActionLocalService objectActionLocalService,
@@ -144,8 +142,9 @@ public class ObjectEntryInfoItemValuesProviderUtil {
 			}
 
 			_addInfoFieldValue(
-				dlAppLocalService, dlURLHelper, infoFieldValues,
-				listTypeEntryLocalService, objectEntryLocalService, objectField,
+				defaultLanguageId, dlAppLocalService, dlURLHelper,
+				infoFieldValues, listTypeEntryLocalService,
+				objectEntryLocalService, objectField,
 				objectFieldInfoFieldConverter,
 				ObjectField.class.getSimpleName(),
 				objectRelationshipLocalService, themeDisplay, value);
@@ -155,8 +154,6 @@ public class ObjectEntryInfoItemValuesProviderUtil {
 
 				continue;
 			}
-
-			Map<String, Object> properties = new HashMap<>();
 
 			ObjectRelationship objectRelationship =
 				objectRelationshipLocalService.
@@ -174,8 +171,13 @@ public class ObjectEntryInfoItemValuesProviderUtil {
 					GetterUtil.getLong(values.get(objectField.getName()))),
 				themeDisplay);
 
+			Map<String, Object> properties = new HashMap<>();
+			String relatedObjectEntryDefaultLanguageId = defaultLanguageId;
+
 			if (objectEntry != null) {
 				properties = objectEntry.getProperties();
+				relatedObjectEntryDefaultLanguageId =
+					objectEntry.getDefaultLanguageId();
 			}
 
 			for (ObjectField relatedObjectField :
@@ -198,11 +200,11 @@ public class ObjectEntryInfoItemValuesProviderUtil {
 				}
 
 				_addInfoFieldValue(
-					dlAppLocalService, dlURLHelper, infoFieldValues,
-					listTypeEntryLocalService, objectEntryLocalService,
-					relatedObjectField, objectFieldInfoFieldConverter,
-					namespace, objectRelationshipLocalService, themeDisplay,
-					value);
+					relatedObjectEntryDefaultLanguageId, dlAppLocalService,
+					dlURLHelper, infoFieldValues, listTypeEntryLocalService,
+					objectEntryLocalService, relatedObjectField,
+					objectFieldInfoFieldConverter, namespace,
+					objectRelationshipLocalService, themeDisplay, value);
 
 				infoFieldValues.add(
 					new InfoFieldValue<>(
@@ -306,7 +308,8 @@ public class ObjectEntryInfoItemValuesProviderUtil {
 	}
 
 	private static void _addInfoFieldValue(
-			DLAppLocalService dlAppLocalService, DLURLHelper dlURLHelper,
+			String defaultLanguageId, DLAppLocalService dlAppLocalService,
+			DLURLHelper dlURLHelper,
 			List<InfoFieldValue<Object>> infoFieldValues,
 			ListTypeEntryLocalService listTypeEntryLocalService,
 			ObjectEntryLocalService objectEntryLocalService,
@@ -338,9 +341,15 @@ public class ObjectEntryInfoItemValuesProviderUtil {
 		if (objectField.isLocalized() && (value instanceof Map)) {
 			Map<String, Object> map = (Map<String, Object>)value;
 
+			Locale defaultLocale = null;
+
+			if (Validator.isNotNull(defaultLanguageId)) {
+				defaultLocale = LocaleUtil.fromLanguageId(defaultLanguageId);
+			}
+
 			infoFieldValue = InfoLocalizedValue.builder(
 			).defaultLocale(
-				LocaleUtil.fromLanguageId(objectField.getDefaultLanguageId())
+				defaultLocale
 			).value(
 				consumer -> {
 					for (Map.Entry<String, Object> entry : map.entrySet()) {
@@ -401,24 +410,22 @@ public class ObjectEntryInfoItemValuesProviderUtil {
 
 					mimeTypeInfoFieldValue = mimeType;
 
+					WebImage fileURLWebImage = new WebImage(
+						dlURLHelper.getPreviewURL(
+							fileEntry, fileEntry.getFileVersion(), themeDisplay,
+							StringPool.BLANK),
+						new InfoItemReference(
+							FileEntry.class.getName(),
+							new ClassPKInfoItemIdentifier(
+								fileEntry.getFileEntryId())));
+
+					fileURLWebImage.setAlt(fileEntry.getDescription());
+
 					if (mimeType.startsWith("image")) {
-						WebImage fileURLWebImage = new WebImage(
-							dlURLHelper.getPreviewURL(
-								fileEntry, fileEntry.getFileVersion(),
-								themeDisplay, StringPool.BLANK),
-							new InfoItemReference(
-								FileEntry.class.getName(),
-								new ClassPKInfoItemIdentifier(
-									fileEntry.getFileEntryId())));
-
-						fileURLWebImage.setAlt(fileEntry.getDescription());
-
 						fileURLInfoFieldValue = fileURLWebImage;
 					}
 
-					previewURLInfoFieldValue = dlURLHelper.getPreviewURL(
-						fileEntry, fileEntry.getFileVersion(), themeDisplay,
-						StringPool.BLANK);
+					previewURLInfoFieldValue = fileURLWebImage;
 					sizeInfoFieldValue = fileEntry.getSize();
 				}
 				else if (infoFieldValue instanceof InfoLocalizedValue) {
@@ -467,18 +474,18 @@ public class ObjectEntryInfoItemValuesProviderUtil {
 
 						String mimeType = fileEntry.getMimeType();
 
+						WebImage fileURLWebImage = new WebImage(
+							dlURLHelper.getPreviewURL(
+								fileEntry, fileEntry.getFileVersion(),
+								themeDisplay, StringPool.BLANK),
+							new InfoItemReference(
+								FileEntry.class.getName(),
+								new ClassPKInfoItemIdentifier(
+									fileEntry.getFileEntryId())));
+
+						fileURLWebImage.setAlt(fileEntry.getDescription());
+
 						if (mimeType.startsWith("image")) {
-							WebImage fileURLWebImage = new WebImage(
-								dlURLHelper.getPreviewURL(
-									fileEntry, fileEntry.getFileVersion(),
-									themeDisplay, StringPool.BLANK),
-								new InfoItemReference(
-									FileEntry.class.getName(),
-									new ClassPKInfoItemIdentifier(
-										fileEntry.getFileEntryId())));
-
-							fileURLWebImage.setAlt(fileEntry.getDescription());
-
 							fileURLInfoFieldValueBuilder.value(
 								entry.getKey(), fileURLWebImage);
 
@@ -486,10 +493,7 @@ public class ObjectEntryInfoItemValuesProviderUtil {
 						}
 
 						previewURLInfoFieldValueBuilder.value(
-							entry.getKey(),
-							dlURLHelper.getPreviewURL(
-								fileEntry, fileEntry.getFileVersion(),
-								themeDisplay, StringPool.BLANK));
+							entry.getKey(), fileURLWebImage);
 						sizeInfoFieldValueBuilder.value(
 							entry.getKey(), fileEntry.getSize());
 					}
@@ -661,30 +665,8 @@ public class ObjectEntryInfoItemValuesProviderUtil {
 			return null;
 		}
 
-		if (Objects.equals(
-				ObjectFieldInfoFieldTypeUtil.getInfoFieldType(objectField),
-				ImageInfoFieldType.INSTANCE)) {
-
-			try {
-				JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
-					new String((byte[])value));
-
-				WebImage webImage = new WebImage(jsonObject.getString("url"));
-
-				webImage.setAlt(jsonObject.getString("alt"));
-
-				return webImage;
-			}
-			catch (Exception exception) {
-				if (_log.isDebugEnabled()) {
-					_log.debug(exception);
-
-					return null;
-				}
-			}
-		}
-		else if (objectField.compareBusinessType(
-					ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT)) {
+		if (objectField.compareBusinessType(
+				ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT)) {
 
 			if (value instanceof Long) {
 				return value;

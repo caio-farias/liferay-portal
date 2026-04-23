@@ -6,8 +6,13 @@
 		"esModuleInterop": true,
 		"experimentalDecorators": true,
 		"jsx": "react",
+		"lib": [
+			"DOM",
+			"ES2019",
+		],
 		"module": "esnext",
 		"moduleResolution": "node",
+		"outDir": "build",
 		"skipLibCheck": true,
 		"sourceMap": true,
 		"target": "ES5"

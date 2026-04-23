@@ -29,7 +29,6 @@ export const test = mergeTests(
 	commercePagesTest,
 	dataApiHelpersTest,
 	featureFlagsTest({
-		'LPD-36105': {enabled: true},
 		'LPS-178052': {enabled: true},
 	}),
 	isolatedSiteTest,
@@ -241,6 +240,10 @@ test(
 		await expect(
 			organizationManagementPage.organizationNode(organization3.name)
 		).toHaveCount(1);
+
+		await organizationManagementPage
+			.organizationNode(organization3.name)
+			.click();
 
 		await organizationManagementPage
 			.menuButton(

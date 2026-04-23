@@ -4,7 +4,6 @@
  */
 
 import Badge from '@clayui/badge';
-import ClayLink from '@clayui/link';
 import {
 	ILearnResourceContext,
 	LearnMessage,
@@ -12,8 +11,8 @@ import {
 } from 'frontend-js-components-web';
 import React from 'react';
 
-import {ENTERPRISE_URL} from '../utils/constants';
 import {getImage} from '../utils/getImage';
+import EnterpriseLink from './EnterpriseLink';
 
 interface EnterpriseOnlyPlaceholderProps {
 	learnResources: ILearnResourceContext;
@@ -60,9 +59,7 @@ export default function EnterpriseOnlyPlaceholder({
 			</div>
 
 			<div className="c-empty-state-footer">
-				<ClayLink className="btn btn-primary" href={ENTERPRISE_URL}>
-					{Liferay.Language.get('get-enterprise-details')}
-				</ClayLink>
+				<EnterpriseLink className="btn btn-primary" />
 			</div>
 		</div>
 	);
