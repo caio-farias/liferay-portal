@@ -9,6 +9,8 @@ import com.liferay.petra.io.BigEndianCodec;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.SystemProperties;
 
+import java.security.NoSuchAlgorithmException;
+import java.security.Provider;
 import java.security.SecureRandom;
 
 import java.util.Random;
@@ -40,6 +42,14 @@ public class SecureRandomUtil {
 		}
 
 		return (byte)_reload();
+	}
+
+	public static void nextBytes(byte[] bytes, String algorithm, Provider provider)
+		throws NoSuchAlgorithmException {
+
+		SecureRandom secureRandom = SecureRandom.getInstance(algorithm, provider);
+
+		secureRandom.nextBytes(bytes);
 	}
 
 	public static double nextDouble() {
