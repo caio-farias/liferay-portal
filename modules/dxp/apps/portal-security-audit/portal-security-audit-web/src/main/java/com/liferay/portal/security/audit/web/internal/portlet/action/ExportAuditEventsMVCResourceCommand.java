@@ -8,18 +8,22 @@ package com.liferay.portal.security.audit.web.internal.portlet.action;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.dao.search.SearchContainer;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.portlet.LiferayResourceResponse;
 import com.liferay.portal.kernel.portlet.PortletResponseUtil;
 import com.liferay.portal.kernel.portlet.bridges.mvc.BaseMVCResourceCommand;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCResourceCommand;
+import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.servlet.SessionErrors;
 import com.liferay.portal.kernel.servlet.SessionMessages;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.CSVUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LinkedHashMapBuilder;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Portal;
@@ -27,6 +31,7 @@ import com.liferay.portal.kernel.util.ProgressTracker;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.security.audit.AuditEvent;
+import com.liferay.portal.security.audit.router.configuration.CSVLogMessageFormatterConfiguration;
 import com.liferay.portal.security.audit.web.internal.constants.AuditPortletKeys;
 import com.liferay.portal.security.audit.web.internal.display.context.AuditDisplayContext;
 
@@ -35,9 +40,11 @@ import jakarta.portlet.ResourceResponse;
 
 import java.sql.Timestamp;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import org.osgi.service.component.annotations.Component;
@@ -62,13 +69,31 @@ public class ExportAuditEventsMVCResourceCommand
 		throws Exception {
 
 		try {
+			CSVLogMessageFormatterConfiguration
+				csvLogMessageFormatterConfiguration =
+					_configurationProvider.getSystemConfiguration(
+						CSVLogMessageFormatterConfiguration.class);
+
+			List<String> columns = new ArrayList<>();
+
+			for (String column :
+					csvLogMessageFormatterConfiguration.columns()) {
+
+				String key = _toFunctionKeyMap.get(column);
+
+				if (key != null) {
+					columns.add(key);
+				}
+			}
+
 			SessionMessages.add(
 				resourceRequest,
 				_portal.getPortletId(resourceRequest) +
 					SessionMessages.KEY_SUFFIX_HIDE_DEFAULT_ERROR_MESSAGE);
 
 			String auditEventsCSV = _getAuditEventsCSV(
-				resourceRequest, resourceResponse);
+				columns.toArray(new String[0]), resourceRequest,
+				resourceResponse);
 
 			PortletResponseUtil.sendFile(
 				resourceRequest, resourceResponse, "audit_events.csv",
@@ -115,7 +140,8 @@ public class ExportAuditEventsMVCResourceCommand
 	}
 
 	private String _getAuditEventsCSV(
-			ResourceRequest resourceRequest, ResourceResponse resourceResponse)
+			String[] columns, ResourceRequest resourceRequest,
+			ResourceResponse resourceResponse)
 		throws Exception {
 
 		List<AuditEvent> auditEvents = _getAuditEvents(
@@ -142,7 +168,7 @@ public class ExportAuditEventsMVCResourceCommand
 		sb.append(StringPool.QUOTE);
 		sb.append(
 			StringUtil.merge(
-				_functions.keySet(),
+				columns,
 				StringPool.QUOTE + StringPool.COMMA + StringPool.QUOTE));
 		sb.append(StringPool.QUOTE);
 		sb.append(StringPool.NEW_LINE);
@@ -154,8 +180,18 @@ public class ExportAuditEventsMVCResourceCommand
 			sb.append(
 				StringUtil.merge(
 					TransformUtil.transform(
-						_functions.values(),
-						function -> function.apply(auditEvent)),
+						columns,
+						column -> {
+							Function<AuditEvent, String> function =
+								_functions.get(column);
+
+							if (function == null) {
+								return StringPool.BLANK;
+							}
+
+							return function.apply(auditEvent);
+						},
+						String.class),
 					StringPool.QUOTE + StringPool.COMMA + StringPool.QUOTE));
 			sb.append(StringPool.QUOTE);
 			sb.append(StringPool.NEW_LINE);
@@ -170,8 +206,66 @@ public class ExportAuditEventsMVCResourceCommand
 		return sb.toString();
 	}
 
+	private String _getUserEmailAddress(AuditEvent auditEvent) {
+		User user = _userLocalService.fetchUser(auditEvent.getUserId());
+
+		if (user == null) {
+			return StringPool.BLANK;
+		}
+
+		return user.getEmailAddress();
+	}
+
+	private String _getUserLogin(AuditEvent auditEvent) {
+		User user = _userLocalService.fetchUser(auditEvent.getUserId());
+
+		if (user == null) {
+			return StringPool.BLANK;
+		}
+
+		return user.getScreenName();
+	}
+
 	private static final Log _log = LogFactoryUtil.getLog(
 		ExportAuditEventsMVCResourceCommand.class);
+
+	private static final Map<String, String> _toFunctionKeyMap =
+		HashMapBuilder.put(
+			"additionalInfo", "additional-information"
+		).put(
+			"className", "resource-name"
+		).put(
+			"classPK", "resource-id"
+		).put(
+			"clientHost", "client-host"
+		).put(
+			"clientIP", "client-ip"
+		).put(
+			"companyId", "company-id"
+		).put(
+			"eventType", "resource-action"
+		).put(
+			"message", "message"
+		).put(
+			"serverName", "server-name"
+		).put(
+			"serverPort", "server-port"
+		).put(
+			"sessionID", "session-id"
+		).put(
+			"timestamp", "create-date"
+		).put(
+			"userEmailAddress", "user-email-address"
+		).put(
+			"userId", "user-id"
+		).put(
+			"userLogin", "user-login"
+		).put(
+			"userName", "user-name"
+		).build();
+
+	@Reference
+	private ConfigurationProvider _configurationProvider;
 
 	private final LinkedHashMap<String, Function<AuditEvent, String>>
 		_functions =
@@ -207,9 +301,24 @@ public class ExportAuditEventsMVCResourceCommand
 				auditEvent -> StringUtil.removeFirst(
 					CSVUtil.encode(auditEvent.getAdditionalInfo()),
 					StringPool.QUOTE)
+			).put(
+				"company-id",
+				auditEvent -> String.valueOf(auditEvent.getCompanyId())
+			).put(
+				"message", AuditEvent::getMessage
+			).put(
+				"server-port",
+				auditEvent -> String.valueOf(auditEvent.getServerPort())
+			).put(
+				"user-email-address", this::_getUserEmailAddress
+			).put(
+				"user-login", this::_getUserLogin
 			).build();
 
 	@Reference
 	private Portal _portal;
+
+	@Reference
+	private UserLocalService _userLocalService;
 
 }
