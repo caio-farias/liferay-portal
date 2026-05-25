@@ -106,6 +106,60 @@ public class ExportAuditEventsMVCResourceCommand
 		}
 	}
 
+	private String _buildCSV(
+		String[] columns, List<AuditEvent> auditEvents,
+		ProgressTracker progressTracker) {
+
+		int percentage = 10;
+		int total = auditEvents.size();
+
+		if (progressTracker != null) {
+			progressTracker.setPercent(percentage);
+		}
+
+		StringBundler sb = new StringBundler((auditEvents.size() * 4) + 4);
+
+		sb.append(StringPool.QUOTE);
+		sb.append(
+			StringUtil.merge(
+				columns,
+				StringPool.QUOTE + StringPool.COMMA + StringPool.QUOTE));
+		sb.append(StringPool.QUOTE);
+		sb.append(StringPool.NEW_LINE);
+
+		for (int i = 0; i < auditEvents.size(); i++) {
+			AuditEvent auditEvent = auditEvents.get(i);
+
+			sb.append(StringPool.QUOTE);
+			sb.append(
+				StringUtil.merge(
+					TransformUtil.transform(
+						columns,
+						column -> {
+							Function<AuditEvent, String> function =
+								_functions.get(column);
+
+							if (function == null) {
+								return StringPool.BLANK;
+							}
+
+							return function.apply(auditEvent);
+						},
+						String.class),
+					StringPool.QUOTE + StringPool.COMMA + StringPool.QUOTE));
+			sb.append(StringPool.QUOTE);
+			sb.append(StringPool.NEW_LINE);
+
+			percentage = Math.min(10 + ((i * 90) / total), 99);
+
+			if (progressTracker != null) {
+				progressTracker.setPercent(percentage);
+			}
+		}
+
+		return sb.toString();
+	}
+
 	private String _formatDate(Date date) {
 		if (date instanceof Timestamp) {
 			date = new Date(date.getTime());
@@ -158,52 +212,11 @@ public class ExportAuditEventsMVCResourceCommand
 
 		progressTracker.start(resourceRequest);
 
-		int percentage = 10;
-		int total = auditEvents.size();
-
-		progressTracker.setPercent(percentage);
-
-		StringBundler sb = new StringBundler((auditEvents.size() * 3) + 4);
-
-		sb.append(StringPool.QUOTE);
-		sb.append(
-			StringUtil.merge(
-				columns,
-				StringPool.QUOTE + StringPool.COMMA + StringPool.QUOTE));
-		sb.append(StringPool.QUOTE);
-		sb.append(StringPool.NEW_LINE);
-
-		for (int i = 0; i < auditEvents.size(); i++) {
-			AuditEvent auditEvent = auditEvents.get(i);
-
-			sb.append(StringPool.QUOTE);
-			sb.append(
-				StringUtil.merge(
-					TransformUtil.transform(
-						columns,
-						column -> {
-							Function<AuditEvent, String> function =
-								_functions.get(column);
-
-							if (function == null) {
-								return StringPool.BLANK;
-							}
-
-							return function.apply(auditEvent);
-						},
-						String.class),
-					StringPool.QUOTE + StringPool.COMMA + StringPool.QUOTE));
-			sb.append(StringPool.QUOTE);
-			sb.append(StringPool.NEW_LINE);
-
-			percentage = Math.min(10 + ((i * 90) / total), 99);
-
-			progressTracker.setPercent(percentage);
-		}
+		String csv = _buildCSV(columns, auditEvents, progressTracker);
 
 		progressTracker.finish(resourceRequest);
 
-		return sb.toString();
+		return csv;
 	}
 
 	private String _getUserEmailAddress(AuditEvent auditEvent) {
@@ -270,49 +283,49 @@ public class ExportAuditEventsMVCResourceCommand
 	private final LinkedHashMap<String, Function<AuditEvent, String>>
 		_functions =
 			LinkedHashMapBuilder.<String, Function<AuditEvent, String>>put(
-				"event-id",
-				auditEvent -> String.valueOf(auditEvent.getAuditEventId())
-			).put(
-				"create-date",
-				auditEvent -> _formatDate(auditEvent.getCreateDate())
-			).put(
-				"group-id",
-				auditEvent -> String.valueOf(auditEvent.getGroupId())
-			).put(
-				"resource-id", AuditEvent::getClassPK
-			).put(
-				"resource-name", AuditEvent::getClassName
-			).put(
-				"resource-action", AuditEvent::getEventType
-			).put(
-				"user-id", auditEvent -> String.valueOf(auditEvent.getUserId())
-			).put(
-				"user-name", AuditEvent::getUserName
-			).put(
-				"client-host", AuditEvent::getClientHost
-			).put(
-				"client-ip", AuditEvent::getClientIP
-			).put(
-				"server-name", AuditEvent::getServerName
-			).put(
-				"session-id", AuditEvent::getSessionID
-			).put(
 				"additional-information",
 				auditEvent -> StringUtil.removeFirst(
 					CSVUtil.encode(auditEvent.getAdditionalInfo()),
 					StringPool.QUOTE)
 			).put(
+				"client-host", AuditEvent::getClientHost
+			).put(
+				"client-ip", AuditEvent::getClientIP
+			).put(
 				"company-id",
 				auditEvent -> String.valueOf(auditEvent.getCompanyId())
 			).put(
+				"create-date",
+				auditEvent -> _formatDate(auditEvent.getCreateDate())
+			).put(
+				"event-id",
+				auditEvent -> String.valueOf(auditEvent.getAuditEventId())
+			).put(
+				"group-id",
+				auditEvent -> String.valueOf(auditEvent.getGroupId())
+			).put(
 				"message", AuditEvent::getMessage
+			).put(
+				"resource-action", AuditEvent::getEventType
+			).put(
+				"resource-id", AuditEvent::getClassPK
+			).put(
+				"resource-name", AuditEvent::getClassName
+			).put(
+				"server-name", AuditEvent::getServerName
 			).put(
 				"server-port",
 				auditEvent -> String.valueOf(auditEvent.getServerPort())
 			).put(
+				"session-id", AuditEvent::getSessionID
+			).put(
 				"user-email-address", this::_getUserEmailAddress
 			).put(
+				"user-id", auditEvent -> String.valueOf(auditEvent.getUserId())
+			).put(
 				"user-login", this::_getUserLogin
+			).put(
+				"user-name", AuditEvent::getUserName
 			).build();
 
 	@Reference
