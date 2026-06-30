@@ -12,10 +12,10 @@ import {
 import {expect, mergeTests} from '@playwright/test';
 
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
-import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {isolatedSiteTest} from '../../../fixtures/isolatedSiteTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {objectPagesTest} from '../../../fixtures/objectPagesTest';
+import {liferayConfig} from '../../../liferay.config';
 import {getRandomInt} from '../../../utils/getRandomInt';
 import {waitForAlert} from '../../../utils/waitForAlert';
 import {getFilePath} from '../utils/fileHelpers';
@@ -24,9 +24,6 @@ import {generateObjectFields} from '../utils/generateObjectFields';
 
 const test = mergeTests(
 	dataApiHelpersTest,
-	featureFlagsTest({
-		'LPD-36105': {enabled: true},
-	}),
 	isolatedSiteTest,
 	loginTest(),
 	objectPagesTest
@@ -174,7 +171,7 @@ test.describe('Manage export/import object definitions through UI', () => {
 				objectActionTriggerKey: 'onAfterAdd',
 				parameters: {
 					secret: '',
-					url: 'http://localhost:8080',
+					url: liferayConfig.environment.baseUrl,
 				},
 			}
 		);

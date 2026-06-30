@@ -409,13 +409,15 @@ public class FaroSubscriptionDisplay {
 
 	private boolean _isBasicSubscription(String subscriptionProductName) {
 		if (StringUtil.equals(
-				subscriptionProductName, ProductConstants.BASIC_PRODUCT_NAME) ||
+				subscriptionProductName,
+				ProductConstants.BASIC_PRODUCT_ENTRY_NAME) ||
 			StringUtil.equals(
 				subscriptionProductName,
-				ProductConstants.DATA_PLATFORM_PRODUCT_NAME) ||
+				ProductConstants.
+					DATA_PLATFORM_PRIVATE_BETA_PRODUCT_ENTRY_NAME) ||
 			StringUtil.equals(
 				subscriptionProductName,
-				ProductConstants.LXC_PRO_PRODUCT_NAME)) {
+				ProductConstants.LXC_PRO_PRODUCT_ENTRY_NAME)) {
 
 			return true;
 		}

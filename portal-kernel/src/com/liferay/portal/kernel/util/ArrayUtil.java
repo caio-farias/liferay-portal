@@ -1451,6 +1451,16 @@ public class ArrayUtil {
 	}
 
 	public static byte[] sortedUnique(byte[] array) {
+		if (array == null) {
+			return new byte[0];
+		}
+
+		array = clone(array);
+
+		if (array.length < 2) {
+			return array;
+		}
+
 		Arrays.sort(array);
 
 		int index = 0;
@@ -1469,6 +1479,16 @@ public class ArrayUtil {
 	}
 
 	public static double[] sortedUnique(double[] array) {
+		if (array == null) {
+			return new double[0];
+		}
+
+		array = clone(array);
+
+		if (array.length < 2) {
+			return array;
+		}
+
 		Arrays.sort(array);
 
 		int index = 0;
@@ -1487,6 +1507,16 @@ public class ArrayUtil {
 	}
 
 	public static float[] sortedUnique(float[] array) {
+		if (array == null) {
+			return new float[0];
+		}
+
+		array = clone(array);
+
+		if (array.length < 2) {
+			return array;
+		}
+
 		Arrays.sort(array);
 
 		int index = 0;
@@ -1505,6 +1535,16 @@ public class ArrayUtil {
 	}
 
 	public static int[] sortedUnique(int[] array) {
+		if (array == null) {
+			return new int[0];
+		}
+
+		array = clone(array);
+
+		if (array.length < 2) {
+			return array;
+		}
+
 		Arrays.sort(array);
 
 		int index = 0;
@@ -1523,6 +1563,16 @@ public class ArrayUtil {
 	}
 
 	public static long[] sortedUnique(long[] array) {
+		if (array == null) {
+			return new long[0];
+		}
+
+		array = clone(array);
+
+		if (array.length < 2) {
+			return array;
+		}
+
 		Arrays.sort(array);
 
 		int index = 0;
@@ -1541,6 +1591,16 @@ public class ArrayUtil {
 	}
 
 	public static short[] sortedUnique(short[] array) {
+		if (array == null) {
+			return new short[0];
+		}
+
+		array = clone(array);
+
+		if (array.length < 2) {
+			return array;
+		}
+
 		Arrays.sort(array);
 
 		int index = 0;
@@ -1559,6 +1619,16 @@ public class ArrayUtil {
 	}
 
 	public static String[] sortedUnique(String[] array) {
+		if (array == null) {
+			return new String[0];
+		}
+
+		array = clone(array);
+
+		if (array.length < 2) {
+			return array;
+		}
+
 		Arrays.sort(array, Comparator.nullsLast(Comparator.naturalOrder()));
 
 		int index = 0;

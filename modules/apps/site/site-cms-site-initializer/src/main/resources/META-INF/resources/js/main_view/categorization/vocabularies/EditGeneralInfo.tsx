@@ -36,31 +36,35 @@ const VISIBILITY_OPTIONS = [
 export default function EditGeneralInfo({
 	assetLibraries,
 	defaultLanguageId,
+	externalReferenceCodeInputError,
+	externalReferenceCodeMaxLength,
 	isNew,
 	locales,
 	nameInputError,
 	onChangeVocabulary,
+	setExternalReferenceCodeInputError,
 	setNameInputError,
 	setSpaceChange,
 	setSpaceInputError,
 	setVocabularyPermissions,
 	showPermissions,
-	spaceInputError,
 	spritemap,
 	vocabulary,
 }: {
 	assetLibraries: AssetLibraryType[];
 	defaultLanguageId: string;
+	externalReferenceCodeInputError: string;
+	externalReferenceCodeMaxLength: number;
 	isNew: boolean;
 	locales: any[];
 	nameInputError: string;
 	onChangeVocabulary: Function;
+	setExternalReferenceCodeInputError: (value: string) => void;
 	setNameInputError: Function;
 	setSpaceChange: (value: boolean) => void;
 	setSpaceInputError: (value: string) => void;
 	setVocabularyPermissions: Function;
 	showPermissions: boolean;
-	spaceInputError: string;
 	spritemap: string;
 	vocabulary: IVocabulary;
 }) {
@@ -142,7 +146,7 @@ export default function EditGeneralInfo({
 				role="group"
 			>
 				<ClayForm.Group className="c-gap-4 d-flex flex-column p-4">
-					<ClayLayout.Row className="form-title" justify="between">
+					<ClayLayout.Row className="mx-0" justify="between">
 						<h2 className="mb-0 py-2 text-6 text-dark">
 							{Liferay.Language.get('basic-info')}
 						</h2>
@@ -181,6 +185,7 @@ export default function EditGeneralInfo({
 
 						<ClayInput
 							aria-label={Liferay.Language.get('name')}
+							disabled={vocabulary.system}
 							onBlur={handleNameBlur}
 							onChange={({target: {value}}) =>
 								onChangeName(value)
@@ -201,12 +206,65 @@ export default function EditGeneralInfo({
 						)}
 					</div>
 
+					<div
+						className={
+							externalReferenceCodeInputError ? 'has-error' : ''
+						}
+					>
+						<label>
+							{Liferay.Language.get('external-reference-code')}
+						</label>
+
+						<ClayInput
+							aria-label={Liferay.Language.get(
+								'external-reference-code'
+							)}
+							disabled={vocabulary.system}
+							onChange={({target: {value}}) => {
+								if (
+									value.length >
+									externalReferenceCodeMaxLength
+								) {
+									setExternalReferenceCodeInputError(
+										sub(
+											Liferay.Language.get(
+												'external-reference-code-cannot-exceed-x-characters'
+											),
+											String(
+												externalReferenceCodeMaxLength
+											)
+										)
+									);
+								}
+								else if (externalReferenceCodeInputError) {
+									setExternalReferenceCodeInputError('');
+								}
+
+								onChangeVocabulary(
+									(prevVocabulary: IVocabulary) => ({
+										...prevVocabulary,
+										externalReferenceCode: value,
+									})
+								);
+							}}
+							type="text"
+							value={vocabulary.externalReferenceCode || ''}
+						/>
+
+						{externalReferenceCodeInputError && (
+							<ClayAlert displayType="danger" variant="feedback">
+								{externalReferenceCodeInputError}
+							</ClayAlert>
+						)}
+					</div>
+
 					<div>
 						<label>{Liferay.Language.get('description')}</label>
 
 						<ClayInput
 							aria-label={Liferay.Language.get('description')}
 							component="textarea"
+							disabled={vocabulary.system}
 							onChange={({target: {value}}) =>
 								onChangeDescription(value)
 							}
@@ -295,10 +353,10 @@ export default function EditGeneralInfo({
 					<CategorizationSpaces
 						assetLibraries={assetLibraries}
 						checkboxText="vocabulary"
+						disabled={vocabulary.system}
 						setSelectedSpaces={onChangeSelectedSpaces}
 						setSpaceChange={setSpaceChange}
 						setSpaceInputError={setSpaceInputError}
-						spaceInputError={spaceInputError}
 					/>
 				</ClayForm.Group>
 			</ClayPanel>

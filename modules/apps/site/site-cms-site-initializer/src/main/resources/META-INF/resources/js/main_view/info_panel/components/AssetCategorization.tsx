@@ -12,8 +12,7 @@ import {
 	ITaxonomyCategoryBrief,
 } from '../../../common/types/AssetType';
 import ObjectEntryService from '../services/ObjectEntryService';
-import AssetCategories from './AssetCategories';
-import AssetTags from './AssetTags';
+import AssetCategorizationSections from './AssetCategorizationSections';
 
 type Categorization = Pick<
 	IAssetObjectEntry,
@@ -26,6 +25,7 @@ export type CategorizationInputSize = ComponentProps<
 
 export default function AssetCategorization({
 	assetLibraryId,
+	categoriesErrorMessage,
 	categorization,
 	cmsGroupId,
 	getObjectEntryURL,
@@ -34,6 +34,7 @@ export default function AssetCategorization({
 	onUpdateCategorization,
 }: {
 	assetLibraryId: number | string;
+	categoriesErrorMessage?: string;
 	categorization: Categorization;
 	cmsGroupId: number | string;
 	getObjectEntryURL: string;
@@ -148,25 +149,15 @@ export default function AssetCategorization({
 	}
 
 	return (
-		<>
-			<AssetCategories
-				cmsGroupId={cmsGroupId}
-				hasUpdatePermission={hasUpdatePermission}
-				inputSize={inputSize}
-				objectEntry={objectEntry}
-				updateObjectEntry={updateObjectEntry}
-			/>
-
-			<AssetTags
-				assetLibraryId={assetLibraryId}
-				cmsGroupId={cmsGroupId}
-				hasUpdatePermission={hasUpdatePermission}
-				inputSize={inputSize}
-				key={objectEntry.keywords?.join(',') || 'tags'}
-				objectEntry={objectEntry}
-				updateObjectEntry={updateObjectEntry}
-			/>
-		</>
+		<AssetCategorizationSections
+			assetLibraryId={assetLibraryId}
+			cmsGroupId={cmsGroupId}
+			errorMessage={categoriesErrorMessage}
+			hasUpdatePermission={hasUpdatePermission}
+			inputSize={inputSize}
+			objectEntry={objectEntry}
+			updateObjectEntry={updateObjectEntry}
+		/>
 	);
 }
 

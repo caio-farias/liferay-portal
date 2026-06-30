@@ -110,6 +110,10 @@ public class DLFileEntryTypeModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table DLFileEntryType";
 
+	public static final String ENTITY_ALIAS = "dlFileEntryType";
+
+	public static final String FILTER_PK_COLUMN_NAME = "fileEntryTypeId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY dlFileEntryType.fileEntryTypeId ASC";
 
@@ -1547,4 +1551,4 @@ public class DLFileEntryTypeModelImpl
 	private DLFileEntryType _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-952603058
+// LIFERAY-SERVICE-BUILDER-HASH:661168555

@@ -12,9 +12,19 @@ function main {
 	if [ "${#}" -ne 2 ]
 	then
 		echo "Usage: ${0} <configuration-json-file> <versions-tfvars-file>" >&2
+		echo "" >&2
+		echo "See cloud/scripts/config.json.example_aws for a sample." >&2
 
 		exit 1
 	fi
+
+	_check_utils aws jq kubectl terraform
+
+	_check_terraform_version "1.10.0"
+
+	_validate_config_json "${1}"
+
+	_validate_versions_tfvars "${2}"
 
 	_generate_tfvars "${1}" "${_SCRIPTS_DIR}/global_terraform.tfvars"
 
@@ -22,45 +32,219 @@ function main {
 
 	aws sso login
 
-	local terraform_args
+	local bucket_name=""
+	local deployment_name=""
+	local region=""
 
-	terraform_args="$(_get_terraform_apply_args "${1}" "${2}")"
+	local terraform_args=()
+
+	while IFS= read -r terraform_arg
+	do
+		terraform_args+=("${terraform_arg}")
+	done < <(_get_terraform_apply_args "${1}" "${2}")
+
+	if jq --exit-status '.variables.tfstate_bucket_name' "${1}" &> /dev/null
+	then
+		if ! jq --exit-status '.variables.deployment_name' "${1}" &> /dev/null
+		then
+			echo "The configuration JSON file must contain a key named \"variables.deployment_name\"." >&2
+
+			exit 1
+		fi
+
+		if ! jq --exit-status '.variables.region' "${1}" &> /dev/null
+		then
+			echo "The configuration JSON file must contain a key named \"variables.region\"." >&2
+
+			exit 1
+		fi
+
+		bucket_name="$(jq --raw-output '.variables.tfstate_bucket_name' "${1}")"
+		deployment_name="$(jq --raw-output '.variables.deployment_name' "${1}")"
+		region="$(jq --raw-output '.variables.region' "${1}")"
+
+		_create_tfstate_bucket "${bucket_name}" "${region}"
+	fi
 
 	_set_up_aws_service_linked_roles
 
-	_set_up_aws_eks "${terraform_args}"
+	_set_up_aws_eks "${bucket_name}" "${region}" "${deployment_name}" "${terraform_args[@]}"
 
-	_set_up_aws_grafana "${terraform_args}"
-
-	_set_up_aws_gitops "${terraform_args}"
+	_set_up_aws_gitops "${bucket_name}" "${region}" "${deployment_name}" "${terraform_args[@]}"
 
 	_port_forward_argo_cd
 }
 
+function _check_terraform_version {
+	local found_version
+
+	found_version=$(terraform --version | awk '/^Terraform v/ {print $2; exit}')
+	found_version="${found_version#v}"
+
+	local required_version="${1}"
+
+	local lowest_version
+
+	lowest_version=$(printf "%s\n%s\n" "${required_version}" "${found_version}" | sort --version-sort | head -n 1)
+
+	if [ "${lowest_version}" != "${required_version}" ]
+	then
+		echo "The installed Terraform version ${found_version} is older than ${required_version}." >&2
+
+		exit 1
+	fi
+}
+
+function _check_utils {
+	for util in "${@}"
+	do
+		if (! command -v "${util}" &> /dev/null)
+		then
+			echo "The utility ${util} is not installed."
+
+			exit 1
+		fi
+	done
+}
+
+function _configure_s3_bucket {
+	local alias_name="alias/tfstate-${bucket_name}"
+	local bucket_name="${1}"
+	local region="${2}"
+
+	local account_id
+
+	account_id="$(aws sts get-caller-identity --output text --query "Account")"
+
+	local kms_key_id
+
+	if ! kms_key_id=$( \
+		aws kms describe-key --key-id "${alias_name}" \
+			--output text \
+			--query 'KeyMetadata.KeyId' \
+			--region "${region}" 2>/dev/null)
+	then
+		_log "Creating KMS key for bucket ${bucket_name}."
+
+		kms_key_id=$( \
+			aws kms create-key \
+				--description "Terraform State Storage Key" \
+				--output text \
+				--policy "{
+					\"Statement\": [{
+						\"Action\": \"kms:*\",
+						\"Effect\": \"Allow\",
+						\"Principal\": {\"AWS\": \"arn:aws:iam::${account_id}:root\"},
+						\"Resource\": \"*\"
+					}],
+					\"Version\": \"2012-10-17\"
+				}" \
+				--query 'KeyMetadata.KeyId' \
+				--region "${region}")
+
+		aws kms create-alias \
+			--alias-name "${alias_name}" \
+			--region "${region}" \
+			--target-key-id "${kms_key_id}"
+
+		_log "KMS key for bucket ${bucket_name} was created successfully."
+	else
+		_log "KMS key for bucket ${bucket_name} already exists. Skipping creation process."
+	fi
+
+	aws s3api put-bucket-encryption \
+		--bucket "${bucket_name}" \
+		--region "${region}" \
+		--server-side-encryption-configuration "{
+			\"Rules\": [
+				{
+					\"ApplyServerSideEncryptionByDefault\": {
+						\"KMSMasterKeyID\": \"${kms_key_id}\",
+						\"SSEAlgorithm\": \"aws:kms\"
+					}
+				}
+			]
+		}"
+
+	aws s3api put-object-lock-configuration \
+		--bucket "${bucket_name}" \
+		--object-lock-configuration '{
+			"ObjectLockEnabled": "Enabled",
+			"Rule": {
+				"DefaultRetention": {
+					"Days": 90,
+					"Mode": "GOVERNANCE"
+				}
+			}
+		}'\
+		--region "${region}"
+
+	aws s3api put-public-access-block \
+		--bucket "${bucket_name}" \
+		--public-access-block-configuration '{
+			"BlockPublicAcls": true,
+			"BlockPublicPolicy": true,
+			"IgnorePublicAcls": true,
+			"RestrictPublicBuckets": true
+		}' \
+		--region "${region}"
+}
+
+function _create_tfstate_bucket {
+	local bucket_name="${1}"
+	local region="${2}"
+
+	if ! aws s3api head-bucket --bucket "${bucket_name}" --region "${region}" &> /dev/null
+	then
+		_log "Creating bucket ${bucket_name}."
+
+		_create_s3_bucket "${bucket_name}" "${region}"
+
+		_log "Bucket ${bucket_name} was created successfully."
+	else
+		_log "Bucket ${bucket_name} already exists. Skipping creation process."
+	fi
+
+	_log "Configuring bucket ${bucket_name}."
+
+	_configure_s3_bucket "${bucket_name}" "${region}"
+
+	_log "Bucket ${bucket_name} was configured successfully."
+}
+
+function _create_s3_bucket {
+	local bucket_name="${1}"
+	local region="${2}"
+
+	if [ "${region}" == "us-east-1" ]
+	then
+		aws s3api create-bucket \
+			--bucket "${bucket_name}" \
+			--object-lock-enabled-for-bucket \
+			--region "${region}" 1> /dev/null
+	else
+		aws s3api create-bucket \
+			--bucket "${bucket_name}" \
+			--create-bucket-configuration LocationConstraint="${region}" \
+			--object-lock-enabled-for-bucket \
+			--region "${region}" 1> /dev/null
+	fi
+
+	aws s3api put-bucket-versioning \
+		--bucket "${bucket_name}" \
+		--region "${region}" \
+		--versioning-configuration Status=Enabled
+}
+
 function _generate_tfvars {
 	local configuration_json_file="${1}"
-
-	if [ ! -f "${configuration_json_file}" ]
-	then
-		echo "Configuration JSON file ${configuration_json_file} does not exist." >&2
-
-		exit 1
-	fi
-
-	if ! jq --exit-status '.variables | objects' "${configuration_json_file}" > /dev/null
-	then
-		echo "The configuration JSON file must contain a root object named \"variables\"." >&2
-
-		exit 1
-	fi
-
 	local tfvars_file="${2}"
 
 	echo "Generating ${tfvars_file} from ${configuration_json_file}."
 
 	local tfvars_content
 
-	tfvars_content=$(
+	tfvars_content=$( \
 		jq --raw-output '.variables
 		| to_entries[]
 		| if (.value | type) == "string"
@@ -97,16 +281,9 @@ function _get_terraform_apply_args {
 
 	local versions_tfvars_file="${2}"
 
-	if [ ! -f "${versions_tfvars_file}" ]
-	then
-		echo "${versions_tfvars_file} does not exist." >&2
-
-		exit 1
-	fi
-
 	local versions_tfvars_file_path
 
-	versions_tfvars_file_path=$(realpath "${versions_tfvars_file}")
+	versions_tfvars_file_path=$(_resolve_path "${versions_tfvars_file}")
 
 	local apply_args=(
 		"-var-file=${versions_tfvars_file_path}"
@@ -126,7 +303,11 @@ function _get_terraform_apply_args {
 		apply_args+=("-parallelism=${parallelism}")
 	fi
 
-	echo "${apply_args[@]}"
+	printf '%s\n' "${apply_args[@]}"
+}
+
+function _log {
+	echo "[Tfstate bucket configuration] ${1}"
 }
 
 function _popd {
@@ -153,13 +334,13 @@ function _port_forward_argo_cd {
 
 	echo "Port-forwarding the ArgoCD service at http://localhost:8080."
 	echo ""
-	echo "Login with username and password \"${argocd_password}\" to continue monitoring setup."
+	echo "Login with username \"admin\" and password \"${argocd_password}\" to continue monitoring setup."
 	echo ""
 	echo "Use CTRL+C to exit when finished."
 
 	kubectl \
 		port-forward \
-		--namespace ${argocd_namespace} \
+		--namespace "${argocd_namespace}" \
 		service/argocd-server \
 		8080:443
 
@@ -170,12 +351,38 @@ function _pushd {
 	pushd "${1}" > /dev/null
 }
 
+function _resolve_path {
+	local file_path="${1}"
+
+	if [ ! -e "${file_path}" ]
+	then
+		echo "Path ${file_path} does not exist." >&2
+
+		exit 1
+	fi
+
+	local dir_path
+
+	if ! dir_path=$(cd "$(dirname "${file_path}")" && pwd)
+	then
+		echo "Failed to resolve directory for ${file_path}." >&2
+
+		exit 1
+	fi
+
+	printf '%s/%s\n' "${dir_path}" "$(basename "${file_path}")"
+}
+
 function _set_up_aws_eks {
+	local bucket_name="${1}"
+	local deployment_name="${3}"
+	local region="${2}"
+
 	_pushd "${_ROOT_CLOUD_DIR}/terraform/aws/eks"
 
 	echo "Setting up the AWS EKS cluster."
 
-	_terraform_init_and_apply "." "${1}"
+	_terraform_init_and_apply "." "eks" "${bucket_name}" "${deployment_name}" "${region}" "${@:4}"
 
 	export KUBE_CONFIG_PATH="${HOME}/.kube/config"
 
@@ -191,47 +398,19 @@ function _set_up_aws_eks {
 }
 
 function _set_up_aws_gitops {
+	local bucket_name="${1}"
+	local deployment_name="${3}"
+	local region="${2}"
+
 	_pushd "${_ROOT_CLOUD_DIR}/terraform/aws/gitops"
 
 	echo "Setting up GitOps infrastructure."
 
-	_terraform_init_and_apply "./platform" "${1}"
+	_terraform_init_and_apply "./platform" "gitops/platform" "${bucket_name}" "${deployment_name}" "${region}" "${@:4}"
 
-	_terraform_init_and_apply "./resources" "${1}"
+	_terraform_init_and_apply "./resources" "gitops/resources" "${bucket_name}" "${deployment_name}" "${region}" "${@:4}"
 
 	echo "GitOps infrastructure setup complete."
-
-	_popd
-}
-
-function _set_up_aws_grafana {
-	_pushd "${_ROOT_CLOUD_DIR}/terraform/aws/eks"
-
-	local grafana_enabled
-
-	grafana_enabled=$(terraform output -raw "grafana_enabled")
-
-	if [[ "${grafana_enabled}" != "true" ]]
-	then
-		echo "Observability disabled. Skipping Grafana setup."
-
-		return
-	fi
-
-	echo "Setting up Amazon Managed Grafana."
-
-	TF_VAR_grafana_workspace_api_key=$(terraform output -raw "grafana_workspace_api_key")
-
-	export TF_VAR_grafana_workspace_api_key
-
-	_terraform_init_and_apply \
-		"../grafana" \
-		${1} \
-		"-var=grafana_workspace_endpoint=$(terraform output -raw "grafana_workspace_endpoint")" \
-		"-var=grafana_workspace_role_arn=$(terraform output -raw "grafana_workspace_role_arn")" \
-		"-var=prometheus_workspace_endpoint=$(terraform output -raw "prometheus_workspace_endpoint")"
-
-	echo "Amazon Managed Grafana setup complete."
 
 	_popd
 }
@@ -249,7 +428,7 @@ function _set_up_aws_service_linked_roles {
 		local role_name="${service_linked_role##*:}"
 		local service_name="${service_linked_role%%:*}"
 
-		if ! aws iam get-role --role-name "${role_name}" >/dev/null 2>&1
+		if ! aws iam get-role --role-name "${role_name}" &> /dev/null
 		then
 			echo "Setting up AWS service-linked role for ${service_name}."
 
@@ -265,13 +444,69 @@ function _set_up_aws_service_linked_roles {
 }
 
 function _terraform_init_and_apply {
+	local bucket_name="${3}"
+	local deployment_name="${4}"
+	local folder_separator="${2}"
+	local region="${5}"
+
 	_pushd "${1}"
 
-	terraform init -upgrade
+	if [ -n "${bucket_name}" ]
+	then
+	terraform init \
+		-backend-config="bucket=${bucket_name}" \
+		-backend-config="encrypt=true" \
+		-backend-config="key=${deployment_name}/${region}/${folder_separator}/terraform.tfstate" \
+		-backend-config="region=${region}" \
+		-backend-config="use_lockfile=true"
+	else
+			cat > backend_override.tf <<EOF
+terraform {
+	backend "local" {}
+}
+EOF
+			terraform init
+	fi
 
-	terraform apply ${@:2}
+	terraform apply "${@:6}"
 
 	_popd
+}
+
+function _validate_config_json {
+	local configuration_json_file="${1}"
+
+	if [ ! -f "${configuration_json_file}" ]
+	then
+		echo "Configuration JSON file ${configuration_json_file} does not exist." >&2
+
+		exit 1
+	fi
+
+	if ! jq empty "${configuration_json_file}" &> /dev/null
+	then
+		echo "Configuration JSON file ${configuration_json_file} is not valid JSON." >&2
+
+		exit 1
+	fi
+
+	if ! jq --exit-status '.variables | objects' "${configuration_json_file}" > /dev/null
+	then
+		echo "The configuration JSON file must contain a root object named \"variables\"." >&2
+
+		exit 1
+	fi
+}
+
+function _validate_versions_tfvars {
+	local versions_tfvars_file="${1}"
+
+	if [ ! -f "${versions_tfvars_file}" ]
+	then
+		echo "Versions tfvars file ${versions_tfvars_file} does not exist." >&2
+
+		exit 1
+	fi
 }
 
 main "${@}"

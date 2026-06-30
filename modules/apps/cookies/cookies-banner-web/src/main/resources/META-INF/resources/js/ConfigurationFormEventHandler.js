@@ -51,6 +51,10 @@ export default function ({namespace}) {
 				`${namespace}forcedReconsentButton`
 			);
 
+			const globalPrivacyControlEnabled = document.querySelector(
+				`input[type='checkbox'][name='${namespace}globalPrivacyControlEnabled']`
+			);
+
 			const logoSelectorContainer = document.getElementById(
 				`${namespace}logoSelectorContainer`
 			);
@@ -77,6 +81,7 @@ export default function ({namespace}) {
 					floatingIconEnabled.removeAttribute('disabled');
 					forcedReconsentButton.removeAttribute('disabled');
 					forcedReconsentButton.classList.remove('disabled');
+					globalPrivacyControlEnabled.removeAttribute('disabled');
 					storeConsent.removeAttribute('disabled');
 
 					floatingIcons.forEach((iconInput) => {
@@ -116,6 +121,7 @@ export default function ({namespace}) {
 					floatingIconEnabled.setAttribute('disabled', '');
 					forcedReconsentButton.classList.add('disabled');
 					forcedReconsentButton.setAttribute('disabled', '');
+					globalPrivacyControlEnabled.setAttribute('disabled', '');
 					storeConsent.checked = false;
 					storeConsent.setAttribute('disabled', '');
 

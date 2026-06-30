@@ -9,6 +9,7 @@ import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.document.library.configuration.DLConfiguration;
 import com.liferay.frontend.data.set.model.FDSActionDropdownItem;
+import com.liferay.frontend.data.set.model.FDSActionDropdownItemBuilder;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.CreationMenu;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItem;
 import com.liferay.info.constants.InfoDisplayWebKeys;
@@ -17,7 +18,6 @@ import com.liferay.object.constants.ObjectFolderConstants;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntryFolder;
 import com.liferay.object.service.ObjectDefinitionService;
-import com.liferay.object.service.ObjectDefinitionSettingLocalService;
 import com.liferay.object.service.ObjectEntryFolderLocalServiceUtil;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringBundler;
@@ -34,7 +34,6 @@ import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.portlet.LiferayWindowState;
-import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.ArrayUtil;
@@ -72,11 +71,7 @@ public abstract class BaseSectionDisplayContext {
 		DepotEntryLocalService depotEntryLocalService,
 		DLConfiguration dlConfiguration, GroupLocalService groupLocalService,
 		HttpServletRequest httpServletRequest, Language language,
-		ObjectDefinitionService objectDefinitionService,
-		ObjectDefinitionSettingLocalService objectDefinitionSettingLocalService,
-		ModelResourcePermission<ObjectEntryFolder>
-			objectEntryFolderModelResourcePermission,
-		Portal portal,
+		ObjectDefinitionService objectDefinitionService, Portal portal,
 		TranslationInfoItemFieldValuesExporterRegistry
 			translationInfoItemFieldValuesExporterRegistry) {
 
@@ -100,31 +95,33 @@ public abstract class BaseSectionDisplayContext {
 		objectEntryFolder = _getObjectEntryFolder(
 			themeDisplay.getCompanyId(),
 			httpServletRequest.getAttribute(InfoDisplayWebKeys.INFO_ITEM));
-
-		_sectionDisplayContextHelper = new SectionDisplayContextHelper(
-			depotEntryLocalService, groupLocalService, language,
-			objectDefinitionSettingLocalService,
-			objectEntryFolderModelResourcePermission, portal);
 	}
 
 	public String getAdditionalAPIURLParameters() {
-		return _sectionDisplayContextHelper.getAdditionalAPIURLParameters(
+		return SectionDisplayContextUtil.getAdditionalAPIURLParameters(
 			getCMSSectionFilterString(), httpServletRequest,
 			getRootObjectEntryFolderExternalReferenceCode());
 	}
 
 	public Map<String, Object> getAdditionalProps() {
 		return HashMapBuilder.<String, Object>put(
-			"additionalAPIURLParameters", getAdditionalAPIURLParameters()
+			"additionalAPIURLParameters",
+			() -> {
+				if (isFolderSearchEnabled()) {
+					return getAdditionalAPIURLParameters();
+				}
+
+				return null;
+			}
 		).put(
 			"assetLibraries",
-			_sectionDisplayContextHelper.getDepotEntriesJSONArray(
+			SectionDisplayContextUtil.getDepotEntriesJSONArray(
 				httpServletRequest)
 		).put(
 			"autocompleteURL",
 			() -> StringBundler.concat(
-				"/o/search/v1.0/search?emptySearch=",
-				"true&entryClassNames=com.liferay.portal.kernel.model.User,",
+				"/o/search/v1.0/search?emptySearch=true&entryClassNames=",
+				"com.liferay.portal.kernel.model.User,",
 				"com.liferay.portal.kernel.model.UserGroup&nestedFields=",
 				"embedded")
 		).put(
@@ -148,7 +145,7 @@ public abstract class BaseSectionDisplayContext {
 				PropsUtil.get(PropsKeys.CMS_BROKEN_LINKS_CHECKER_ENABLED))
 		).put(
 			"candidateAssetLibraries",
-			_sectionDisplayContextHelper.getDepotEntriesJSONArray(
+			SectionDisplayContextUtil.getDepotEntriesJSONArray(
 				httpServletRequest,
 				getRootObjectEntryFolderExternalReferenceCode())
 		).put(
@@ -193,14 +190,13 @@ public abstract class BaseSectionDisplayContext {
 				return collaboratorURLs;
 			}
 		).put(
-			"commentsProps",
-			CommentUtil.getCommentsProps(httpServletRequest, themeDisplay)
+			"commentsProps", CommentUtil.getCommentsProps(httpServletRequest)
 		).put(
 			"contentViewURL",
 			StringBundler.concat(
 				themeDisplay.getPortalURL(), themeDisplay.getPathMain(),
 				GroupConstants.CMS_FRIENDLY_URL,
-				"/edit_content_item?&p_l_mode=read&p_p_state=",
+				"/edit_content_item?p_l_mode=read&p_p_state=",
 				LiferayWindowState.POP_UP, "&redirect=",
 				themeDisplay.getURLCurrent(), "&objectEntryId={embedded.id}")
 		).put(
@@ -265,7 +261,11 @@ public abstract class BaseSectionDisplayContext {
 	}
 
 	public String getAPIURL() {
-		return "/o/search/v1.0/search";
+		if (isFolderSearchEnabled()) {
+			return "/o/search/v1.0/search";
+		}
+
+		return "/o/search/v1.0/search?" + getAdditionalAPIURLParameters();
 	}
 
 	public Map<String, Object> getBreadcrumbProps() throws PortalException {
@@ -282,14 +282,19 @@ public abstract class BaseSectionDisplayContext {
 
 	public List<DropdownItem> getBulkActionDropdownItems() {
 		return ListUtil.fromArray(
-			new FDSActionDropdownItem(
-				"#", "trash", "delete",
-				LanguageUtil.get(httpServletRequest, "delete"), null, null,
-				null));
+			FDSActionDropdownItemBuilder.setHref(
+				"#"
+			).setIcon(
+				"trash"
+			).setLabel(
+				LanguageUtil.get(httpServletRequest, "delete")
+			).build(
+				"delete"
+			));
 	}
 
 	public CreationMenu getCreationMenu() {
-		return _sectionDisplayContextHelper.getCreationMenu(
+		return SectionDisplayContextUtil.getCreationMenu(
 			getCreationMenuDropdownItems(), httpServletRequest,
 			getRootObjectEntryFolderExternalReferenceCode());
 	}
@@ -301,7 +306,7 @@ public abstract class BaseSectionDisplayContext {
 	public abstract Map<String, Object> getEmptyState();
 
 	public List<FDSActionDropdownItem> getFDSActionDropdownItems() {
-		return _sectionDisplayContextHelper.getFDSActionDropdownItems(
+		return SectionDisplayContextUtil.getFDSActionDropdownItems(
 			httpServletRequest);
 	}
 
@@ -319,12 +324,12 @@ public abstract class BaseSectionDisplayContext {
 	}
 
 	protected String appendGroupIds(String filterString) {
-		return _sectionDisplayContextHelper.appendGroupIds(
+		return SectionDisplayContextUtil.appendGroupIds(
 			filterString, httpServletRequest);
 	}
 
 	protected String appendStatus(String filterString) {
-		return _sectionDisplayContextHelper.appendStatus(filterString);
+		return SectionDisplayContextUtil.appendStatus(filterString);
 	}
 
 	protected abstract String getCMSSectionFilterString();
@@ -338,6 +343,10 @@ public abstract class BaseSectionDisplayContext {
 
 	protected String getRootObjectEntryFolderExternalReferenceCode() {
 		return null;
+	}
+
+	protected boolean isFolderSearchEnabled() {
+		return false;
 	}
 
 	protected final DepotEntryLocalService depotEntryLocalService;
@@ -534,7 +543,6 @@ public abstract class BaseSectionDisplayContext {
 
 	private final DLConfiguration _dlConfiguration;
 	private final ObjectDefinitionService _objectDefinitionService;
-	private final SectionDisplayContextHelper _sectionDisplayContextHelper;
 	private final TranslationInfoItemFieldValuesExporterRegistry
 		_translationInfoItemFieldValuesExporterRegistry;
 

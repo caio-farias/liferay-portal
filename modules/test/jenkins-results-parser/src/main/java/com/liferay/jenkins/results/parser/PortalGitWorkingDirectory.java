@@ -394,7 +394,7 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 		try {
 			Map<String, String> filteredEnv = new HashMap<>();
 
-			Map<String, String> env = System.getenv();
+			Map<String, String> env = Environment.getAll();
 
 			for (Map.Entry<String, String> entry : env.entrySet()) {
 				String key = entry.getKey();
@@ -406,6 +406,24 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 				}
 
 				filteredEnv.put(key, entry.getValue());
+			}
+
+			String antOptsDefault = JenkinsResultsParserUtil.getBuildProperty(
+				"ant.opts.default", getUpstreamBranchName());
+
+			if (!JenkinsResultsParserUtil.isNullOrEmpty(antOptsDefault)) {
+				filteredEnv.put("ANT_OPTS", antOptsDefault);
+				filteredEnv.put("JAVA_OPTS", antOptsDefault);
+			}
+
+			String javaJDKDefaultRuntime =
+				JenkinsResultsParserUtil.getBuildProperty(
+					"java.jdk.default.runtime", getUpstreamBranchName());
+
+			if (!JenkinsResultsParserUtil.isNullOrEmpty(
+					javaJDKDefaultRuntime)) {
+
+				filteredEnv.put("JAVA_HOME", javaJDKDefaultRuntime);
 			}
 
 			Properties properties = new Properties();
@@ -428,7 +446,7 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 				new File(
 					getWorkingDirectory(),
 					JenkinsResultsParserUtil.combine(
-						"build.", System.getenv("HOSTNAME"), ".properties")),
+						"build.", Environment.get("HOSTNAME"), ".properties")),
 				properties, true);
 
 			AntUtil.callTarget(

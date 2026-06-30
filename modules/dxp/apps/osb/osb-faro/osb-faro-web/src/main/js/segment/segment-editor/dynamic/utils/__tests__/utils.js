@@ -1,3 +1,5 @@
+jest.unmock('react-dom');
+
 import * as data from 'test/data';
 import * as utils from '../utils';
 import {
@@ -47,6 +49,14 @@ describe('utils', () => {
 			expect(criterionGroup.items).toBe(items);
 			expect(criterionGroup.conjunctionName).toBe(And);
 			expect(criterionGroup.criteriaGroupId).toBeTruthy();
+		});
+
+		it('should create a new CriterionGroup with the supplied conjunction', () => {
+			const items = [];
+
+			const criterionGroup = utils.createNewGroup(items, 'or');
+
+			expect(criterionGroup.conjunctionName).toBe('or');
 		});
 	});
 
@@ -147,6 +157,139 @@ describe('utils', () => {
 
 		it('should return false when value is not an instance of ImmutableMap', () => {
 			expect(utils.isMap({})).toBeFalse();
+		});
+	});
+
+	describe('getNestedOrLimitState', () => {
+		const orWith = count => ({
+			conjunctionName: Conjunctions.Or,
+			criteriaGroupId: 'group-1',
+			items: Array.from({length: count}, (_, i) => ({rowId: `r${i}`}))
+		});
+
+		it('should return null for missing criteria', () => {
+			expect(utils.getNestedOrLimitState(null)).toBeNull();
+			expect(utils.getNestedOrLimitState(undefined)).toBeNull();
+		});
+
+		it('should return null for an AND group regardless of items', () => {
+			const andGroup = {
+				conjunctionName: Conjunctions.And,
+				criteriaGroupId: 'group-1',
+				items: Array.from({length: 5}, (_, i) => ({rowId: `r${i}`}))
+			};
+
+			expect(utils.getNestedOrLimitState(andGroup)).toBeNull();
+		});
+
+		it('should return null for an OR group below the limit', () => {
+			expect(utils.getNestedOrLimitState(orWith(2))).toBeNull();
+		});
+
+		it('should return reachedLimit for an OR group at the limit', () => {
+			expect(utils.getNestedOrLimitState(orWith(3))).toBe('reachedLimit');
+		});
+
+		it('should return exceedsLimit for an OR group past the limit', () => {
+			expect(utils.getNestedOrLimitState(orWith(4))).toBe('exceedsLimit');
+		});
+	});
+
+	describe('hasNestedOrExceeded', () => {
+		const makeRow = rowId => ({rowId});
+
+		it('should return false for missing criteria', () => {
+			expect(utils.hasNestedOrExceeded(null)).toBeFalse();
+			expect(utils.hasNestedOrExceeded(undefined)).toBeFalse();
+		});
+
+		it('should return false for a root group with no nested children', () => {
+			const root = {
+				conjunctionName: Conjunctions.And,
+				criteriaGroupId: 'root',
+				items: [makeRow('r0'), makeRow('r1')]
+			};
+
+			expect(utils.hasNestedOrExceeded(root)).toBeFalse();
+		});
+
+		it('should ignore the size of the root OR group itself', () => {
+			const rootOr = {
+				conjunctionName: Conjunctions.Or,
+				criteriaGroupId: 'root',
+				items: [
+					makeRow('r0'),
+					makeRow('r1'),
+					makeRow('r2'),
+					makeRow('r3')
+				]
+			};
+
+			expect(utils.hasNestedOrExceeded(rootOr)).toBeFalse();
+		});
+
+		it('should return false when a nested OR group is at the limit', () => {
+			const root = {
+				conjunctionName: Conjunctions.And,
+				criteriaGroupId: 'root',
+				items: [
+					{
+						conjunctionName: Conjunctions.Or,
+						criteriaGroupId: 'nested',
+						items: [makeRow('r0'), makeRow('r1'), makeRow('r2')]
+					}
+				]
+			};
+
+			expect(utils.hasNestedOrExceeded(root)).toBeFalse();
+		});
+
+		it('should return true when a nested OR group has more than 3 items', () => {
+			const root = {
+				conjunctionName: Conjunctions.And,
+				criteriaGroupId: 'root',
+				items: [
+					{
+						conjunctionName: Conjunctions.Or,
+						criteriaGroupId: 'nested',
+						items: [
+							makeRow('r0'),
+							makeRow('r1'),
+							makeRow('r2'),
+							makeRow('r3')
+						]
+					}
+				]
+			};
+
+			expect(utils.hasNestedOrExceeded(root)).toBeTrue();
+		});
+
+		it('should return true for an exceeded OR group deeper in the tree', () => {
+			const root = {
+				conjunctionName: Conjunctions.And,
+				criteriaGroupId: 'root',
+				items: [
+					{
+						conjunctionName: Conjunctions.And,
+						criteriaGroupId: 'mid',
+						items: [
+							{
+								conjunctionName: Conjunctions.Or,
+								criteriaGroupId: 'leaf',
+								items: [
+									makeRow('r0'),
+									makeRow('r1'),
+									makeRow('r2'),
+									makeRow('r3')
+								]
+							}
+						]
+					}
+				]
+			};
+
+			expect(utils.hasNestedOrExceeded(root)).toBeTrue();
 		});
 	});
 
@@ -342,6 +485,120 @@ describe('utils', () => {
 
 			expect(property).toBe(mockProperty);
 		});
+
+		it('should return a Vocabulary Property whose label uses the name extracted from the criterion group when not in the cache', () => {
+			const criterion = data.generateCriterion({
+				operatorName: CustomFunctionOperators.VocabulariesFilter,
+				propertyName: 'vocab-id',
+				value: fromJS({
+					criterionGroup: {
+						conjunctionName: And,
+						criteriaGroupId: 'group_0',
+						items: [
+							{
+								operatorName: EQ,
+								propertyName: 'vocabularies/id',
+								value: 'vocab-id'
+							},
+							{
+								operatorName: EQ,
+								propertyName: 'vocabularies/name',
+								value: 'My Vocabulary'
+							}
+						]
+					}
+				})
+			});
+
+			const property = utils.findPropertyByCriterion(criterion, Map());
+
+			expect(property).toBeInstanceOf(Property);
+			expect(property.name).toBe('vocab-id');
+			expect(property.label).toBe('My Vocabulary');
+			expect(property.propertyKey).toBe('vocabulary');
+		});
+
+		it('should return the cached Vocabulary Property when present in referencedPropertiesIMap', () => {
+			const criterion = data.generateCriterion({
+				operatorName: CustomFunctionOperators.VocabulariesFilter,
+				propertyName: 'vocab-id',
+				value: fromJS({criterionGroup: {items: []}})
+			});
+
+			const cachedProperty = new Property({
+				label: 'Cached Vocabulary',
+				name: 'vocab-id',
+				propertyKey: 'vocabulary'
+			});
+
+			const referencedPropertiesIMap = fromJS({
+				vocabulary: {'vocab-id': cachedProperty}
+			});
+
+			const property = utils.findPropertyByCriterion(
+				criterion,
+				referencedPropertiesIMap
+			);
+
+			expect(property).toBe(cachedProperty);
+		});
+
+		it('should return a Tag Property whose label uses the name extracted from the criterion group when not in the cache', () => {
+			const criterion = data.generateCriterion({
+				operatorName: CustomFunctionOperators.TagsFilter,
+				propertyName: 'tag-id',
+				value: fromJS({
+					criterionGroup: {
+						conjunctionName: And,
+						criteriaGroupId: 'group_0',
+						items: [
+							{
+								operatorName: EQ,
+								propertyName: 'tags/id',
+								value: 'tag-id'
+							},
+							{
+								operatorName: EQ,
+								propertyName: 'tags/name',
+								value: 'My Tag'
+							}
+						]
+					}
+				})
+			});
+
+			const property = utils.findPropertyByCriterion(criterion, Map());
+
+			expect(property).toBeInstanceOf(Property);
+			expect(property.name).toBe('tag-id');
+			expect(property.label).toBe('My Tag');
+			expect(property.propertyKey).toBe('tag');
+		});
+
+		it('should return the cached Tag Property when present in referencedPropertiesIMap', () => {
+			const criterion = data.generateCriterion({
+				operatorName: CustomFunctionOperators.TagsFilter,
+				propertyName: 'tag-id',
+				value: fromJS({criterionGroup: {items: []}})
+			});
+
+			const cachedProperty = new Property({
+				label: 'Cached Tag',
+				name: 'tag-id',
+				propertyKey: 'tag'
+			});
+
+			const referencedPropertiesIMap = fromJS({
+				tag: {'tag-id': cachedProperty}
+			});
+
+			const property = utils.findPropertyByCriterion(
+				criterion,
+				referencedPropertiesIMap
+			);
+
+			expect(property).toBe(cachedProperty);
+		});
 	});
 
 	describe('isValid', () => {
@@ -420,15 +677,15 @@ describe('utils', () => {
 		};
 
 		it('should convert fieldMapping to an Account Property Record', () => {
-			expect(
-				utils.convertFieldMappingToAccountProperty(accountFieldMapping)
-			).toMatchSnapshot();
-		});
+			const result =
+				utils.convertFieldMappingToAccountProperty(accountFieldMapping);
 
-		it('should convert fieldMappingIMap to an Account Property Record', () => {
-			expect(
-				utils.convertFieldMappingToAccountProperty(accountFieldMapping)
-			).toMatchSnapshot();
+			expect(result).toBeInstanceOf(Property);
+			expect(result.id).toBe('345606994945962466');
+			expect(result.name).toBe('345606994945962466');
+			expect(result.label).toBe('accountName');
+			expect(result.propertyKey).toBe('account');
+			expect(result.type).toBe('account-text');
 		});
 	});
 
@@ -442,19 +699,16 @@ describe('utils', () => {
 		};
 
 		it('should convert fieldMapping to an Individual Property Record', () => {
-			expect(
-				utils.convertFieldMappingToIndividualProperty(
-					individualFieldMapping
-				)
-			).toMatchSnapshot();
-		});
+			const result = utils.convertFieldMappingToIndividualProperty(
+				individualFieldMapping
+			);
 
-		it('should convert fieldMappingIMap to an Individual Property Record', () => {
-			expect(
-				utils.convertFieldMappingToIndividualProperty(
-					individualFieldMapping
-				)
-			).toMatchSnapshot();
+			expect(result).toBeInstanceOf(Property);
+			expect(result.id).toBe('335454102264596251');
+			expect(result.name).toBe('demographics/335454102264596251/value');
+			expect(result.label).toBe('additionalName');
+			expect(result.propertyKey).toBe('individual');
+			expect(result.type).toBe('text');
 		});
 	});
 
@@ -505,9 +759,27 @@ describe('utils', () => {
 				}
 			});
 
-			expect(
-				utils.convertFieldMappingsToProperties(fieldMappingsIMap)
-			).toMatchSnapshot();
+			const result =
+				utils.convertFieldMappingsToProperties(fieldMappingsIMap);
+
+			const accountProp = result.getIn([
+				'account',
+				'organization',
+				'accountName'
+			]);
+			expect(accountProp).toBeInstanceOf(Property);
+			expect(accountProp.id).toBe('345606994945962466');
+			expect(accountProp.propertyKey).toBe('account');
+			expect(accountProp.type).toBe('account-text');
+
+			const individualProp = result.getIn([
+				'individual',
+				'demographics',
+				'additionaName'
+			]);
+			expect(individualProp).toBeInstanceOf(Property);
+			expect(individualProp.id).toBe('335454102264596251');
+			expect(individualProp.propertyKey).toBe('individual');
 		});
 	});
 

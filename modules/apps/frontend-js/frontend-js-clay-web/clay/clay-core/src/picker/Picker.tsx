@@ -6,6 +6,7 @@
 import Button from '@clayui/button';
 import Icon from '@clayui/icon';
 import {
+	ClayPortal,
 	InternalDispatch,
 	Keys,
 	Overlay,
@@ -24,10 +25,12 @@ import classNames from 'classnames';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 
 import {Collection, useCollection} from '../collection';
+import {KeyboardArrowsIndicator} from '../keyboard-arrows-indicator';
 import {LiveAnnouncer} from '../live-announcer';
 import {Search} from './Search';
 import {PickerContext} from './context';
 import {useSearch} from './useSearch';
+import {useTriggerLabel} from './useTriggerLabel';
 
 import type {ICollectionProps} from '../collection';
 import type {AnnouncerAPI} from '../live-announcer';
@@ -108,6 +111,15 @@ type Props<T> = {
 	 * Flag to indicate that the component is disabled.
 	 */
 	'disabled'?: boolean;
+
+	/**
+	 * Flag to render the `KeyboardArrowsIndicator` alongside the Picker
+	 * trigger, hinting that up and down arrow keys can be used to navigate
+	 * the option list. The indicator floats to the right of the trigger
+	 * and flips to the left when it would overflow the viewport. It is
+	 * only rendered while the menu is open.
+	 */
+	'displayKeyboardArrowsIndicator'?: boolean;
 
 	/**
 	 * Defines the name of the property key that is used in the items filter
@@ -195,6 +207,7 @@ export function Picker<T extends Record<string, any> | string | number>({
 	defaultSelectedKey,
 	direction = 'bottom',
 	disabled,
+	displayKeyboardArrowsIndicator = false,
 	filterKey,
 	id,
 	items,
@@ -411,6 +424,41 @@ export function Picker<T extends Record<string, any> | string | number>({
 			listRef.current?.removeEventListener('scroll', onScroll, true);
 	}, [active]);
 
+	useEffect(() => {
+		if (!active || !listRef.current) {
+			return;
+		}
+
+		const key = selectedKey ?? activeDescendant;
+
+		if (key === undefined) {
+			return;
+		}
+
+		const list = listRef.current;
+
+		const item = list.querySelector<HTMLElement>(
+			`[id="${CSS.escape(String(key))}"]`
+		);
+
+		if (!item) {
+			return;
+		}
+
+		const itemRect = item.getBoundingClientRect();
+		const listRect = list.getBoundingClientRect();
+
+		const itemOffsetInList = itemRect.top - listRect.top + list.scrollTop;
+
+		const centeredTop =
+			itemOffsetInList - (list.clientHeight - itemRect.height) / 2;
+
+		list.scrollTop = Math.max(
+			0,
+			Math.min(centeredTop, list.scrollHeight - list.clientHeight)
+		);
+	}, [active]);
+
 	const onMoveFocus = useCallback(
 		(
 			key: 'PageUp' | 'PageDown',
@@ -446,6 +494,11 @@ export function Picker<T extends Record<string, any> | string | number>({
 		},
 		selectedKey,
 	};
+
+	const selectedItem =
+		selectedKey !== undefined ? collection.getItem(selectedKey) : undefined;
+
+	const triggerLabel = useTriggerLabel(selectedKey, selectedItem);
 
 	if (context.isMobile) {
 		return (
@@ -576,9 +629,7 @@ export function Picker<T extends Record<string, any> | string | number>({
 				tabIndex={0}
 				type="button"
 			>
-				{selectedKey
-					? collection.getItem(selectedKey)?.value
-					: placeholder}
+				{triggerLabel ?? placeholder}
 			</As>
 
 			{active && (
@@ -739,6 +790,15 @@ export function Picker<T extends Record<string, any> | string | number>({
 							)}
 					</div>
 				</Overlay>
+			)}
+
+			{active && displayKeyboardArrowsIndicator && (
+				<ClayPortal>
+					<KeyboardArrowsIndicator
+						anchorRef={triggerRef}
+						direction="vertical"
+					/>
+				</ClayPortal>
 			)}
 		</>
 	);

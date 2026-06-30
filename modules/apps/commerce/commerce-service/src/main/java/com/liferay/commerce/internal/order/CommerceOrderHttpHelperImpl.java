@@ -30,6 +30,7 @@ import com.liferay.commerce.product.constants.CommerceChannelConstants;
 import com.liferay.commerce.product.model.CommerceChannel;
 import com.liferay.commerce.product.service.CPInstanceLocalService;
 import com.liferay.commerce.product.service.CommerceChannelLocalService;
+import com.liferay.commerce.service.CommerceOrderAttachmentService;
 import com.liferay.commerce.service.CommerceOrderItemLocalService;
 import com.liferay.commerce.service.CommerceOrderItemService;
 import com.liferay.commerce.service.CommerceOrderLocalService;
@@ -248,9 +249,7 @@ public class CommerceOrderHttpHelperImpl implements CommerceOrderHttpHelper {
 			CommerceOrder commerceOrder)
 		throws PortalException {
 
-		if ((commerceOrder != null) &&
-			FeatureFlagManagerUtil.isEnabled("LPD-20379")) {
-
+		if (commerceOrder != null) {
 			LayoutDisplayPageObjectProvider<?> layoutDisplayPageObjectProvider =
 				_getLayoutDisplayPageObjectProvider(commerceOrder);
 
@@ -438,24 +437,6 @@ public class CommerceOrderHttpHelperImpl implements CommerceOrderHttpHelper {
 			else {
 				portletURL.setParameter(
 					"continueAsGuest", Boolean.TRUE.toString());
-
-				Cookie cookie = new Cookie(
-					CookiesConstants.NAME_COMMERCE_CONTINUE_AS_GUEST,
-					Boolean.TRUE.toString());
-
-				String domain = CookiesManagerUtil.getDomain(
-					httpServletRequest);
-
-				if (Validator.isNotNull(domain)) {
-					cookie.setDomain(domain);
-				}
-
-				cookie.setMaxAge(CookiesConstants.MAX_AGE);
-
-				CookiesManagerUtil.addCookie(
-					CookiesConstants.CONSENT_TYPE_NECESSARY, cookie,
-					httpServletRequest, themeDisplay.getResponse());
-
 				portletURL.setParameter(
 					"redirect", checkoutPortletURL.toString());
 			}
@@ -602,6 +583,36 @@ public class CommerceOrderHttpHelperImpl implements CommerceOrderHttpHelper {
 		_setCurrentCommerceOrder(commerceOrder);
 
 		return commerceOrder;
+	}
+
+	@Override
+	public boolean hasCommerceOrderAttachments(
+			HttpServletRequest httpServletRequest)
+		throws PortalException {
+
+		if (!FeatureFlagManagerUtil.isEnabled(
+				_portal.getCompanyId(httpServletRequest), "LPD-6252")) {
+
+			return false;
+		}
+
+		CommerceOrder commerceOrder =
+			CommerceOrderInfoItemUtil.getCommerceOrder(
+				_commerceOrderService, httpServletRequest);
+
+		if (commerceOrder == null) {
+			return false;
+		}
+
+		int count =
+			_commerceOrderAttachmentService.getCommerceOrderAttachmentsCount(
+				commerceOrder.getCommerceOrderId());
+
+		if (count > 0) {
+			return true;
+		}
+
+		return false;
 	}
 
 	@Override
@@ -1165,6 +1176,9 @@ public class CommerceOrderHttpHelperImpl implements CommerceOrderHttpHelper {
 
 	@Reference
 	private CommerceCheckoutStepRegistry _commerceCheckoutStepRegistry;
+
+	@Reference
+	private CommerceOrderAttachmentService _commerceOrderAttachmentService;
 
 	@Reference
 	private CommerceOrderItemLocalService _commerceOrderItemLocalService;

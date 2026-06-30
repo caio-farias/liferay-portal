@@ -26,6 +26,8 @@ public class ObjectFieldConstants {
 
 	public static final String BUSINESS_TYPE_DECIMAL = "Decimal";
 
+	public static final String BUSINESS_TYPE_EMAIL_ADDRESS = "EmailAddress";
+
 	public static final String BUSINESS_TYPE_ENCRYPTED = "Encrypted";
 
 	public static final String BUSINESS_TYPE_FORMULA = "Formula";
@@ -40,6 +42,8 @@ public class ObjectFieldConstants {
 
 	public static final String BUSINESS_TYPE_MULTISELECT_PICKLIST =
 		"MultiselectPicklist";
+
+	public static final String BUSINESS_TYPE_PHONE_NUMBER = "PhoneNumber";
 
 	public static final String BUSINESS_TYPE_PICKLIST = "Picklist";
 

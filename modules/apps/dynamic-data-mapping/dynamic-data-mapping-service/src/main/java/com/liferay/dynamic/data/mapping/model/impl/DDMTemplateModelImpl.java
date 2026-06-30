@@ -132,6 +132,10 @@ public class DDMTemplateModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table DDMTemplate";
 
+	public static final String ENTITY_ALIAS = "ddmTemplate";
+
+	public static final String FILTER_PK_COLUMN_NAME = "templateId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY ddmTemplate.templateId ASC";
 
@@ -1606,6 +1610,13 @@ public class DDMTemplateModelImpl
 	}
 
 	@Override
+	public void copyCacheFields(DDMTemplate source) {
+		DDMTemplateModelImpl sourceModelImpl = (DDMTemplateModelImpl)source;
+
+		setResourceClassName(sourceModelImpl.getResourceClassName());
+	}
+
+	@Override
 	public boolean equals(Object object) {
 		if (this == object) {
 			return true;
@@ -2113,4 +2124,4 @@ public class DDMTemplateModelImpl
 	private DDMTemplate _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1014827064
+// LIFERAY-SERVICE-BUILDER-HASH:1610487170

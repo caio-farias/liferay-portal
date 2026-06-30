@@ -112,6 +112,10 @@ public class SegmentsEntryModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table SegmentsEntry";
 
+	public static final String ENTITY_ALIAS = "segmentsEntry";
+
+	public static final String FILTER_PK_COLUMN_NAME = "segmentsEntryId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY segmentsEntry.modifiedDate DESC";
 
@@ -1599,4 +1603,4 @@ public class SegmentsEntryModelImpl
 	private SegmentsEntry _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:897123193
+// LIFERAY-SERVICE-BUILDER-HASH:713573806

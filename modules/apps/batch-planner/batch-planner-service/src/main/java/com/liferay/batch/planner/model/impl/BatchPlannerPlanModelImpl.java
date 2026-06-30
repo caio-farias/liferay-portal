@@ -103,6 +103,10 @@ public class BatchPlannerPlanModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table BatchPlannerPlan";
 
+	public static final String ENTITY_ALIAS = "batchPlannerPlan";
+
+	public static final String FILTER_PK_COLUMN_NAME = "batchPlannerPlanId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY batchPlannerPlan.modifiedDate DESC";
 
@@ -1267,4 +1271,4 @@ public class BatchPlannerPlanModelImpl
 	private BatchPlannerPlan _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-528203674
+// LIFERAY-SERVICE-BUILDER-HASH:-1770750681

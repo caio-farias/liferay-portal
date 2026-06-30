@@ -1,4 +1,6 @@
-$c: '.sidebar-container';
+@import 'atlas-custom-properties/_variables';
+
+$c: '.lfr-de__form-report-sidebar';
 
 #{$c} {
 	bottom: 0;
@@ -15,7 +17,7 @@ $c: '.sidebar-container';
 	}
 
 	.list-group-item:hover {
-		background-color: #f0f5ff;
+		background-color: $blue-l5;
 	}
 
 	.navbar-collapse {
@@ -35,6 +37,6 @@ $c: '.sidebar-container';
 	}
 
 	.sidebar-light {
-		background-color: #fff;
+		background-color: $white;
 	}
 }

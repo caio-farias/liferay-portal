@@ -2,145 +2,60 @@ import * as API from 'shared/api';
 import BasePage from 'shared/components/base-page';
 import Card from 'shared/components/Card';
 import ClayIcon from '@clayui/icon';
+import ClayLayout from '@clayui/layout';
 import ClayLink from '@clayui/link';
 import IndividualMetricsQuery from 'shared/queries/IndividualMetricsQuery';
 import IndividualsList from './IndividualsList';
 import Loading from 'shared/components/Loading';
+import MetricCard from 'shared/components/MetricCard';
 import NoResultsDisplay from 'shared/components/NoResultsDisplay';
 import React from 'react';
 import URLConstants from 'shared/util/url-constants';
 import {Text as ClayText} from '@clayui/core';
 import {CSVType} from 'shared/components/download-report/utils';
 import {DownloadStaticCSVReport} from 'shared/components/download-report/DownloadStaticCSVReport';
-import {getIcon, getStatsColor} from 'shared/util/metrics';
 import {INTERVAL_KEY_MAP} from 'shared/util/time';
 import {isNil} from 'lodash';
-import {RangeKeyTimeRanges, Sizes} from 'shared/util/constants';
 import {Routes, toRoute} from 'shared/util/router';
+import {SectionHeader} from 'shared/components/SectionHeader';
+import {Sizes} from 'shared/util/constants';
 import {sub} from 'shared/util/lang';
-import {toRounded, toThousands} from 'shared/util/numbers';
-import {TrendClassification} from 'segment/types';
+import {toThousands} from 'shared/util/numbers';
 import {useCurrentUser} from 'shared/hooks/useCurrentUser';
-import {useDataSource} from 'shared/hooks/useDataSource';
+import {useDataSources} from 'shared/context/dataSources';
 import {useParams} from 'react-router-dom';
-import {useQuery} from '@apollo/react-hooks';
+import {useQuery} from '@apollo/client';
 import {useRequest} from 'shared/hooks/useRequest';
-
-type IndividualsMetricCard = {
-	trend: {
-		percentage: number | null;
-		trendClassification: TrendClassification;
-	};
-	value: number;
-};
-
-interface IIndividualsMetricsCardProps {
-	data: IndividualsMetricCard;
-	description: string;
-	title: string;
-}
 
 interface IIndividualsOverviewEmptyStateProps {
 	authorized: boolean;
-	dataSourceData: {total?: number} | null;
-	dataSourceLoading: boolean;
+	data: {total?: number} | null;
 	groupId: string;
+	loading: boolean;
 }
 
-const IndividualsMetricsCard: React.FC<IIndividualsMetricsCardProps> = ({
-	data,
-	description,
-	title
-}) => {
-	const rawValue = data?.value || 0;
+const renderIndividualsValue = (value?: number) => {
+	const rawValue = value || 0;
 
-	const individuals = toThousands(rawValue);
-
-	return (
-		<>
-			<Card.Header>
-				<ClayText weight='semi-bold'>{title.toUpperCase()}</ClayText>
-			</Card.Header>
-
-			<Card.Body className='d-flex flex-column'>
-				<div className='flex-grow-1'>
-					<span className='text-secondary'>{description}</span>
-				</div>
-
-				<h2 className='mt-2'>
-					{
-						sub(
-							rawValue === 1
-								? Liferay.Language.get('x-individual')
-								: Liferay.Language.get('x-individuals'),
-							[individuals]
-						) as string
-					}
-				</h2>
-
-				<div>
-					{!!data?.trend.trendClassification &&
-						data?.trend.trendClassification !==
-							TrendClassification.Neutral && (
-							<span
-								style={{
-									color: getStatsColor(
-										data?.trend?.trendClassification
-									)
-								}}
-							>
-								<ClayIcon
-									symbol={getIcon(
-										data?.trend?.percentage ?? 0
-									)}
-								/>
-							</span>
-						)}
-
-					<span className='text-secondary'>
-						{sub(
-							Liferay.Language.get('x-vs-previous-30-days'),
-							[
-								<span
-									className='mr-1'
-									key='percentage'
-									style={{
-										color:
-											getStatsColor(
-												data?.trend?.trendClassification
-											) || TrendClassification.Neutral
-									}}
-								>
-									{`${toRounded(
-										data?.trend?.percentage ?? 0,
-										2
-									)}%`}
-								</span>
-							],
-							false
-						)}
-					</span>
-				</div>
-			</Card.Body>
-		</>
-	);
+	return sub(
+		rawValue === 1
+			? Liferay.Language.get('x-individual')
+			: Liferay.Language.get('x-individuals'),
+		[toThousands(rawValue)]
+	) as string;
 };
 
-const IndividualsOverviewEmptyState: React.FC<IIndividualsOverviewEmptyStateProps> = ({
-	authorized,
-	dataSourceData,
-	dataSourceLoading,
-	groupId
-}) => {
-	if (dataSourceLoading) {
-		return (
-			<NoResultsDisplay>
-				<Loading key='LOADING' />
-			</NoResultsDisplay>
-		);
+const renderTrendLabel = (percentageNode: React.ReactNode) =>
+	sub(Liferay.Language.get('x-vs-last-30-days'), [percentageNode], false);
+
+const IndividualsOverviewEmptyState: React.FC<
+	IIndividualsOverviewEmptyStateProps
+> = ({authorized, data, groupId, loading}) => {
+	if (loading) {
+		return <Loading key='LOADING' />;
 	}
 
-	if (isNil(dataSourceData?.total) || dataSourceData?.total === 0) {
+	if (isNil(data?.total) || data?.total === 0) {
 		return (
 			<Card pageDisplay>
 				<NoResultsDisplay
@@ -185,7 +100,7 @@ const IndividualsOverviewEmptyState: React.FC<IIndividualsOverviewEmptyStateProp
 					primary
 					title={Liferay.Language.get('no-data-source-synced')}
 				>
-					{authorized && (
+					{authorized ? (
 						<ClayLink
 							button
 							className='button-root'
@@ -196,7 +111,7 @@ const IndividualsOverviewEmptyState: React.FC<IIndividualsOverviewEmptyStateProp
 						>
 							{Liferay.Language.get('connect-data-source')}
 						</ClayLink>
-					)}
+					) : undefined}
 				</NoResultsDisplay>
 			</Card>
 		);
@@ -206,11 +121,14 @@ const IndividualsOverviewEmptyState: React.FC<IIndividualsOverviewEmptyStateProp
 };
 
 const IndividualsOverviewCDP = () => {
-	const {channelId, groupId} = useParams();
+	const {channelId = '', groupId = ''} = useParams<{
+		channelId: string;
+		groupId: string;
+	}>();
 
 	const currentUser = useCurrentUser();
 
-	const dataSourceStates = useDataSource();
+	const dataSourceStates = useDataSources();
 
 	const authorized = currentUser.isAdmin();
 
@@ -226,7 +144,7 @@ const IndividualsOverviewCDP = () => {
 		variables: {
 			channelId,
 			interval: INTERVAL_KEY_MAP.week,
-			rangeKey: Number(RangeKeyTimeRanges.Last30Days)
+			rangeKey: 30
 		}
 	});
 
@@ -235,7 +153,7 @@ const IndividualsOverviewCDP = () => {
 			<BasePage.SubHeader>
 				<div className='d-flex justify-content-end w-100'>
 					<DownloadStaticCSVReport
-						disabled={dataSourceStates.empty}
+						disabled={!!dataSourceStates.empty}
 						type={CSVType.Individual}
 						typeLang={Liferay.Language.get('individuals')}
 					/>
@@ -245,61 +163,85 @@ const IndividualsOverviewCDP = () => {
 			<BasePage.Body pageContainer>
 				<IndividualsOverviewEmptyState
 					authorized={authorized}
-					dataSourceData={dataSourceData}
-					dataSourceLoading={dataSourceLoading}
+					data={dataSourceData}
 					groupId={groupId}
+					loading={dataSourceLoading}
 				/>
 
 				{dataSourceData?.total > 0 && (
 					<>
-						<div className='d-flex flex-row justify-content-between'>
-							{loading && <Loading key='LOADING' />}
-
-							<Card className='w-100'>
-								<IndividualsMetricsCard
-									data={
-										data?.individualMetric
-											?.totalIndividualsMetric
-									}
+						<ClayLayout.Row>
+							<ClayLayout.Col lg={4} md={12}>
+								<MetricCard
 									description={Liferay.Language.get(
 										'this-is-the-total-number-of-individuals,-including-both-known-individuals-and-anonymous-individuals'
 									)}
+									loading={loading}
+									minHeight={198}
+									renderTrendLabel={renderTrendLabel}
 									title={Liferay.Language.get(
 										'total-individuals'
 									)}
-								/>
-							</Card>
-
-							<Card className='mx-3 w-100'>
-								<IndividualsMetricsCard
-									data={
+									trend={
 										data?.individualMetric
-											?.knownIndividualsMetric
+											?.totalIndividualsMetric?.trend
 									}
+									value={renderIndividualsValue(
+										data?.individualMetric
+											?.totalIndividualsMetric?.value
+									)}
+								/>
+							</ClayLayout.Col>
+
+							<ClayLayout.Col lg={4} sm={12}>
+								<MetricCard
 									description={Liferay.Language.get(
 										'this-is-the-total-number-of-known-individuals.-an-individual-is-considered-known-if-we-have-any-identifiable-information-about-the-individual'
 									)}
+									loading={loading}
+									minHeight={198}
+									renderTrendLabel={renderTrendLabel}
 									title={Liferay.Language.get(
 										'known-individuals'
 									)}
-								/>
-							</Card>
-
-							<Card className='w-100'>
-								<IndividualsMetricsCard
-									data={
+									trend={
 										data?.individualMetric
-											?.anonymousIndividualsMetric
+											?.knownIndividualsMetric?.trend
 									}
+									value={renderIndividualsValue(
+										data?.individualMetric
+											?.knownIndividualsMetric?.value
+									)}
+								/>
+							</ClayLayout.Col>
+
+							<ClayLayout.Col lg={4} sm={12}>
+								<MetricCard
 									description={Liferay.Language.get(
 										'this-is-the-total-number-of-anonymous-individuals.-anonymous-individuals-are-removed-after-30-days-of-inactivity'
 									)}
+									loading={loading}
+									minHeight={198}
+									renderTrendLabel={renderTrendLabel}
 									title={Liferay.Language.get(
 										'anonymous-individuals'
 									)}
+									trend={
+										data?.individualMetric
+											?.anonymousIndividualsMetric?.trend
+									}
+									value={renderIndividualsValue(
+										data?.individualMetric
+											?.anonymousIndividualsMetric?.value
+									)}
 								/>
-							</Card>
-						</div>
+							</ClayLayout.Col>
+						</ClayLayout.Row>
+
+						<SectionHeader
+							icon='box-container'
+							title={Liferay.Language.get('individuals')}
+						/>
 
 						<IndividualsList />
 					</>

@@ -309,13 +309,6 @@
 			<message key="company.local.service.use.sql" value="Use &quot;CompanyLocalService.forEachCompany&quot; instead of SQL" />
 			<message key="portal.instances.use" value="Use &quot;PortalInstancePool.getCompanyIds&quot; instead to fetch company IDs" />
 		</module>
-		<module name="com.liferay.source.formatter.checkstyle.check.CompanyThreadLocalCheck">
-			<property name="category" value="Bug Prevention" />
-			<property name="description" value="Checks usage of `CompanyThreadLocal`." />
-			<property name="enabled" value="false" />
-			<message key="close.call.missing" value="Missing calling &quot;close&quot; to variable &quot;{0}&quot;, use &quot;{1}.close&quot; or try-with-resources statement instead" />
-			<message key="set.company.id.call.avoid" value="Do not use &quot;CompanyThreadLocal.setCompanyId&quot;, use &quot;CompanyThreadLocal.setCompanyIdWithSafeCloseable&quot; instead" />
-		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.ComponentAnnotationCheck">
 			<property name="category" value="Bug Prevention" />
 			<property name="description" value="Performs several checks on classes with @Component annotation." />
@@ -817,6 +810,7 @@
 			<property name="description" value="Ensures using set calls with `UnsafeSupplier` parameter for REST DTO." />
 			<property name="enabled" value="false" />
 			<message key="set.method.use.instead" value="Use &quot;{0}(UnsafeSupplier)&quot; instead" />
+			<message key="statement.move" value="Instance initializers should only contain set calls" />
 		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.ResultSetGetCallCheck">
 			<property name="category" value="Bug Prevention" />
@@ -832,6 +826,11 @@
 			<property name="enabled" value="false" />
 			<message key="empty.line.missing.after.variable.definition" value="There should be an empty line after variable definition on line &quot;{0}&quot;" />
 			<message key="variable.declaration.move" value="Move the variable declaration for &quot;{0}&quot; on line &quot;{1}&quot;" />
+		</module>
+		<module name="com.liferay.source.formatter.checkstyle.check.SafeCloseableMissingCloseCheck">
+			<property name="category" value="Bug Prevention" />
+			<property name="description" value="Finds missing `close()` calls for `SafeCloseable` instances." />
+			<message key="close.call.missing" value="Missing calling &quot;close&quot; to variable &quot;{0}&quot;, use &quot;{1}.close&quot; or try-with-resources statement instead" />
 		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.SealedAndNonsealedModifierCheck">
 			<property name="category" value="Performance" />
@@ -928,10 +927,22 @@
 			<message key="parameter.incorrect" value="Do not pass &quot;DataAccess.getConnection()&quot; directly as parameter, use variable instead" />
 			<message key="try.with.resources.use" value="Use try-with-resources statement to declare variable &quot;{0}&quot;" />
 		</module>
+		<module name="com.liferay.source.formatter.checkstyle.check.TestClassHardcodedPortCheck">
+			<property name="category" value="Bug Prevention" />
+			<property name="description" value="Finds cases where `PortalUtil.getPortalServerPort` should be used." />
+			<property name="enabled" value="false" />
+			<message key="method.use" value="Use &quot;PortalUtil.getPortalServerPort&quot; instead of the hard-coded port &quot;8080&quot;" />
+		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.TestClassMissingLiferayUnitTestRuleCheck">
 			<property name="category" value="Bug Prevention" />
 			<property name="description" value="Finds missing LiferayUnitTestRule." />
 			<message key="test.rule.missing" value="Missing test rule &quot;LiferayUnitTestRule&quot;" />
+		</module>
+		<module name="com.liferay.source.formatter.checkstyle.check.TestClassStaticVariableCheck">
+			<property name="category" value="Performance" />
+			<property name="description" value="Finds unnecessary static modifiers in test classes." />
+			<property name="enabled" value="false" />
+			<message key="modifier.unnecessary" value="Private static variable &quot;{0}&quot; should be an instance variable, as it is not used by any static members" />
 		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.TextBlockCheck">
 			<property name="category" value="Styling" />

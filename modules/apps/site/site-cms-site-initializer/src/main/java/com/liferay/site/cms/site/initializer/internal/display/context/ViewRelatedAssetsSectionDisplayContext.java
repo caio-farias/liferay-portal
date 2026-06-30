@@ -13,14 +13,11 @@ import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItem;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItemBuilder;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
-import com.liferay.object.model.ObjectEntryFolder;
 import com.liferay.object.service.ObjectDefinitionService;
-import com.liferay.object.service.ObjectDefinitionSettingLocalService;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.language.LanguageUtil;
-import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
@@ -48,29 +45,19 @@ public class ViewRelatedAssetsSectionDisplayContext
 		HttpServletRequest httpServletRequest, Language language,
 		ObjectDefinition objectDefinition,
 		ObjectDefinitionService objectDefinitionService,
-		ObjectDefinitionSettingLocalService objectDefinitionSettingLocalService,
-		ObjectEntry objectEntry,
-		ModelResourcePermission<ObjectEntryFolder>
-			objectEntryFolderModelResourcePermission,
-		Portal portal,
+		ObjectEntry objectEntry, Portal portal,
 		TranslationInfoItemFieldValuesExporterRegistry
 			translationInfoItemFieldValuesExporterRegistry) {
 
 		super(
 			assetTagLocalService, depotEntryLocalService, dlConfiguration,
 			groupLocalService, httpServletRequest, language, objectDefinition,
-			objectDefinitionService, objectDefinitionSettingLocalService,
-			objectEntry, objectEntryFolderModelResourcePermission, portal,
+			objectDefinitionService, objectEntry, portal,
 			translationInfoItemFieldValuesExporterRegistry);
 
 		Set<String> tagNames = getTagNames(objectDefinition, objectEntry);
 
 		_keywords = tagNames.toArray(new String[0]);
-
-		_sectionDisplayContextHelper = new SectionDisplayContextHelper(
-			depotEntryLocalService, groupLocalService, language,
-			objectDefinitionSettingLocalService,
-			objectEntryFolderModelResourcePermission, portal);
 	}
 
 	@Override
@@ -107,16 +94,15 @@ public class ViewRelatedAssetsSectionDisplayContext
 				"searchAPIURL",
 				() -> {
 					String additionalAPIURLParameters =
-						_sectionDisplayContextHelper.
-							getAdditionalAPIURLParameters(
-								appendStatus(
-									StringBundler.concat(
-										"(cmsSection eq 'contents' or ",
-										"cmsSection eq 'files') and not ",
-										"(keywords/any(k:k in (",
-										getKeywordsFilterString(),
-										"))) and objectDefinitionId gt 0")),
-								httpServletRequest, null);
+						SectionDisplayContextUtil.getAdditionalAPIURLParameters(
+							appendStatus(
+								StringBundler.concat(
+									"(cmsSection eq 'contents' or cmsSection ",
+									"eq 'files') and not (keywords/any(k:k in ",
+									"(", getKeywordsFilterString(),
+									"))) and objectDefinitionId gt 0 and ",
+									"rootDescendantNode eq false")),
+							httpServletRequest, null);
 
 					return "/o/search/v1.0/search?" +
 						additionalAPIURLParameters;
@@ -160,6 +146,5 @@ public class ViewRelatedAssetsSectionDisplayContext
 	}
 
 	private final String[] _keywords;
-	private final SectionDisplayContextHelper _sectionDisplayContextHelper;
 
 }

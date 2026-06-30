@@ -5,6 +5,7 @@
 
 package com.liferay.site.cms.site.initializer.internal.frontend.data.set.filter;
 
+import com.liferay.frontend.data.set.constants.FDSEntityFieldTypes;
 import com.liferay.frontend.data.set.filter.BaseSelectionFDSFilter;
 import com.liferay.frontend.data.set.filter.FDSFilter;
 import com.liferay.site.cms.site.initializer.internal.constants.CMSSiteInitializerFDSNames;
@@ -31,7 +32,12 @@ public class SpaceSelectionFDSFilter extends BaseSelectionFDSFilter {
 	@Override
 	public String getAPIURL() {
 		return "/o/headless-asset-library/v1.0/asset-libraries?filter=type " +
-			"eq 'space'";
+			"eq 'Space'";
+	}
+
+	@Override
+	public String getEntityFieldType() {
+		return FDSEntityFieldTypes.INTEGER;
 	}
 
 	@Override

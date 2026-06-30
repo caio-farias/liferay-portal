@@ -334,9 +334,34 @@ public class SessionImpl implements Session {
 	}
 
 	@Override
-	public Serializable save(Object object) throws ORMException {
+	public void reassociateIfAbsent(
+		Class<?> clazz, Serializable id, Object object) {
+
 		try {
-			return _session.save(object);
+			EventSource eventSource = (EventSource)_session;
+
+			PersistenceContext persistenceContext =
+				eventSource.getPersistenceContext();
+
+			SessionFactoryImplementor sessionFactoryImplementor =
+				eventSource.getFactory();
+
+			MetamodelImplementor metamodelImplementor =
+				sessionFactoryImplementor.getMetamodel();
+
+			EntityPersister entityPersister =
+				metamodelImplementor.entityPersister(clazz);
+
+			Object currentObject = persistenceContext.getEntity(
+				new EntityKey(id, entityPersister));
+
+			if (currentObject == object) {
+				return;
+			}
+
+			if (currentObject == null) {
+				_session.lock(object, org.hibernate.LockMode.NONE);
+			}
 		}
 		catch (Exception exception) {
 			throw ExceptionTranslator.translate(exception);
@@ -344,12 +369,12 @@ public class SessionImpl implements Session {
 	}
 
 	@Override
-	public void saveOrUpdate(Object object) throws ORMException {
+	public Serializable save(Object object) throws ORMException {
 		try {
-			_session.saveOrUpdate(object);
+			return _session.save(object);
 		}
 		catch (Exception exception) {
-			throw ExceptionTranslator.translate(exception, _session, object);
+			throw ExceptionTranslator.translate(exception);
 		}
 	}
 

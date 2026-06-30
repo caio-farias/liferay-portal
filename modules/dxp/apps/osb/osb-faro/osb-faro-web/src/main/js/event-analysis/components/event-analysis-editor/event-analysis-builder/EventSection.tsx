@@ -13,7 +13,7 @@ import {Event} from 'event-analysis/utils/types';
 interface IEventSectionProps {
 	deleteAllAttributes: DeleteAllAttributes;
 	event: Event;
-	onEventChange: (event: Event) => void;
+	onEventChange: (event: Event | null) => void;
 }
 
 const EventSection: React.FC<IEventSectionProps> = ({
@@ -21,7 +21,7 @@ const EventSection: React.FC<IEventSectionProps> = ({
 	event,
 	onEventChange
 }) => {
-	const handleEventChange = (event: Event): void => {
+	const handleEventChange = (event: Event | null): void => {
 		onEventChange(event);
 
 		deleteAllAttributes();

@@ -13,6 +13,7 @@ import com.liferay.exportimport.kernel.lar.PortletDataHandlerKeys;
 import com.liferay.exportimport.kernel.model.ExportImportConfiguration;
 import com.liferay.exportimport.kernel.service.ExportImportConfigurationLocalService;
 import com.liferay.exportimport.kernel.service.ExportImportLocalService;
+import com.liferay.friendly.url.constants.FriendlyURLEntryConstants;
 import com.liferay.friendly.url.model.FriendlyURLEntry;
 import com.liferay.friendly.url.service.FriendlyURLEntryLocalService;
 import com.liferay.layout.friendly.url.LayoutFriendlyURLEntryHelper;
@@ -263,7 +264,7 @@ public class ExportImportLocalServiceTest {
 			LayoutConstants.TYPE_PORTLET, StringPool.BLANK, false,
 			Collections.emptyMap(), serviceContext);
 
-		_sites.mergeLayoutPrototypeLayout(layout.getGroup(), layout);
+		_sites.mergeLayoutPrototypeLayout(layout);
 
 		String newFriendlyURL = FriendlyURLNormalizerUtil.normalize(
 			RandomTestUtil.randomString());
@@ -279,6 +280,8 @@ public class ExportImportLocalServiceTest {
 		FriendlyURLEntry oldFriendlyURLEntry =
 			_friendlyURLEntryLocalService.fetchFriendlyURLEntry(
 				layout.getGroupId(), classNameId,
+				FriendlyURLEntryConstants.
+					FRIENDLY_URL_ENTRY_PARENT_CLASS_PK_DEFAULT,
 				StringPool.SLASH + oldFriendlyURL);
 
 		Assert.assertNotNull(oldFriendlyURLEntry);
@@ -406,9 +409,6 @@ public class ExportImportLocalServiceTest {
 	}
 
 	@Inject
-	private static FriendlyURLEntryLocalService _friendlyURLEntryLocalService;
-
-	@Inject
 	private CompanyLocalService _companyLocalService;
 
 	private ExportImportConfiguration _exportImportConfiguration;
@@ -427,6 +427,9 @@ public class ExportImportLocalServiceTest {
 
 	@Inject
 	private ExportImportLocalService _exportImportLocalService;
+
+	@Inject
+	private FriendlyURLEntryLocalService _friendlyURLEntryLocalService;
 
 	@Inject
 	private GroupLocalService _groupLocalService;

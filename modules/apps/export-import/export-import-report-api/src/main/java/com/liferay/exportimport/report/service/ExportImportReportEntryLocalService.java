@@ -52,19 +52,6 @@ public interface ExportImportReportEntryLocalService
 	 *
 	 * Never modify this interface directly. Add custom service methods to <code>com.liferay.exportimport.report.service.impl.ExportImportReportEntryLocalServiceImpl</code> and rerun ServiceBuilder to automatically copy the method declarations to this interface. Consume the export import report entry local service via injection or a <code>org.osgi.util.tracker.ServiceTracker</code>. Use {@link ExportImportReportEntryLocalServiceUtil} if injection and service tracking are not available.
 	 */
-	@Indexable(type = IndexableType.REINDEX)
-	public ExportImportReportEntry addEmptyExportImportReportEntry(
-		long groupId, long companyId, String classExternalReferenceCode,
-		long classNameId, long exportImportConfigurationId,
-		String modelNameLanguageKey);
-
-	@Indexable(type = IndexableType.REINDEX)
-	@Transactional(propagation = Propagation.REQUIRES_NEW)
-	public ExportImportReportEntry addErrorExportImportReportEntry(
-		long groupId, long companyId, String classExternalReferenceCode,
-		long classNameId, long classPK, long exportImportConfigurationId,
-		String errorMessage, String errorStacktrace,
-		String modelNameLanguageKey);
 
 	/**
 	 * Adds the export import report entry to the database. Also notifies the appropriate model listeners.
@@ -79,6 +66,14 @@ public interface ExportImportReportEntryLocalService
 	@Indexable(type = IndexableType.REINDEX)
 	public ExportImportReportEntry addExportImportReportEntry(
 		ExportImportReportEntry exportImportReportEntry);
+
+	@Indexable(type = IndexableType.REINDEX)
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public ExportImportReportEntry addExportImportReportEntry(
+		long groupId, long companyId, String classExternalReferenceCode,
+		long classNameId, long classPK, long exportImportConfigurationId,
+		int type, String message, String errorStacktrace,
+		String modelNameLanguageKey);
 
 	/**
 	 * Creates a new export import report entry with the primary key. Does not add the export import report entry to the database.
@@ -239,6 +234,10 @@ public interface ExportImportReportEntryLocalService
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public int getExportImportReportEntriesCount();
 
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public int getExportImportReportEntriesCount(
+		long companyId, long exportImportConfigurationId);
+
 	/**
 	 * Returns the export import report entry with the primary key.
 	 *
@@ -255,16 +254,10 @@ public interface ExportImportReportEntryLocalService
 	public IndexableActionableDynamicQuery getIndexableActionableDynamicQuery();
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public ExportImportReportEntry getOrAddEmptyExportImportReportEntry(
-		long groupId, long companyId, String classExternalReferenceCode,
-		long classNameId, long exportImportConfigurationId,
-		String modelNameLanguageKey);
-
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public ExportImportReportEntry getOrAddErrorExportImportReportEntry(
+	public ExportImportReportEntry getOrAddExportImportReportEntry(
 		long groupId, long companyId, String classExternalReferenceCode,
 		long classNameId, long classPK, long exportImportConfigurationId,
-		String errorMessage, String errorStacktrace,
+		int type, String message, String errorStacktrace,
 		String modelNameLanguageKey);
 
 	/**
@@ -302,4 +295,4 @@ public interface ExportImportReportEntryLocalService
 		ExportImportReportEntry exportImportReportEntry);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-274951497
+// LIFERAY-SERVICE-BUILDER-HASH:-761183844

@@ -74,13 +74,18 @@ public abstract class BaseAttachmentResourceImpl
 	 *
 	 * curl -X 'DELETE' 'http://localhost:8080/o/headless-commerce-delivery-order/v1.0/placed-orders/{placedOrderId}/attachments/{attachmentId}'  -u 'test@liferay.com:test'
 	 */
+	@io.swagger.v3.oas.annotations.Operation(
+		description = "Deletes the attachment addressed by id under the placed order addressed by id. When the feature flag is enabled the commerce order attachment record is removed; otherwise the underlying document-library file entry is detached from the order."
+	)
 	@io.swagger.v3.oas.annotations.Parameters(
 		value = {
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Internal identifier of an order attachment. Addresses a single attachment within the parent placed order.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
 				name = "attachmentId"
 			),
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Internal identifier of a placed order used as the path scope for nested attachment endpoints. Addresses the parent placed order under which the attachment is created, listed, or deleted.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
 				name = "placedOrderId"
 			)
@@ -112,13 +117,18 @@ public abstract class BaseAttachmentResourceImpl
 	 *
 	 * curl -X 'DELETE' 'http://localhost:8080/o/headless-commerce-delivery-order/v1.0/placed-orders/by-externalReferenceCode/{externalReferenceCode}/attachments/by-externalReferenceCode/{attachmentExternalReferenceCode}'  -u 'test@liferay.com:test'
 	 */
+	@io.swagger.v3.oas.annotations.Operation(
+		description = "Deletes the attachment addressed by ERC under the placed order addressed by ERC. When the feature flag is enabled the commerce order attachment record is removed; otherwise the underlying document-library file entry is detached from the order. Returns 404 when either ERC does not resolve."
+	)
 	@io.swagger.v3.oas.annotations.Parameters(
 		value = {
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "External reference code of the order attachment. Addresses a single attachment within the parent placed order ERC scope.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
 				name = "attachmentExternalReferenceCode"
 			),
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "External reference code that addresses the target resource on the by-externalReferenceCode paths. The code is the integration-supplied idempotency key, unique within the resource scope.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
 				name = "externalReferenceCode"
 			)
@@ -151,19 +161,40 @@ public abstract class BaseAttachmentResourceImpl
 	 *
 	 * curl -X 'GET' 'http://localhost:8080/o/headless-commerce-delivery-order/v1.0/placed-orders/{placedOrderId}/attachments'  -u 'test@liferay.com:test'
 	 */
+	@io.swagger.v3.oas.annotations.Operation(
+		description = "Lists the attachments uploaded against the placed order addressed by id. When the feature flag is enabled the attachments are searched against the commerce order attachment index with search, filter, sort, and pagination; otherwise the underlying document-library file entries are returned."
+	)
 	@io.swagger.v3.oas.annotations.Parameters(
 		value = {
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Internal identifier of a placed order used as the path scope for nested attachment endpoints. Addresses the parent placed order under which the attachment is created, listed, or deleted.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
 				name = "placedOrderId"
 			),
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "OData v4 filter expression that narrows the result set. Supported fields depend on the endpoint and are sourced from the matching entity model (for PlacedOrder typically account, author, createDate, externalReferenceCode, modifiedDate, name, orderStatus, orderType, purchaseOrderNumber).",
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "filter"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				description = "One-based page index. Combined with pageSize to paginate the result set; defaults to 1 when omitted.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
 				name = "page"
 			),
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Number of items per page. Defaults to the portal's configured page size when omitted; capped by the portal configuration to prevent unbounded reads.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
 				name = "pageSize"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Full-text search expression. Matched against the indexed fields of the target entity (for PlacedOrder typically account name, author, externalReferenceCode, name, orderType, and purchaseOrderNumber).",
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "search"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Sort expression in OData order syntax (field asc|desc, comma-separated). Sortable fields depend on the endpoint and are sourced from the matching entity model.",
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "sort"
 			)
 		}
 	)
@@ -179,7 +210,14 @@ public abstract class BaseAttachmentResourceImpl
 			@jakarta.validation.constraints.NotNull
 			@jakarta.ws.rs.PathParam("placedOrderId")
 			Long placedOrderId,
-			@jakarta.ws.rs.core.Context Pagination pagination)
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@jakarta.ws.rs.QueryParam("search")
+			String search,
+			@jakarta.ws.rs.core.Context
+				com.liferay.portal.kernel.search.filter.Filter filter,
+			@jakarta.ws.rs.core.Context Pagination pagination,
+			@jakarta.ws.rs.core.Context com.liferay.portal.kernel.search.Sort[]
+				sorts)
 		throws Exception {
 
 		return Page.of(Collections.emptyList());
@@ -190,19 +228,40 @@ public abstract class BaseAttachmentResourceImpl
 	 *
 	 * curl -X 'GET' 'http://localhost:8080/o/headless-commerce-delivery-order/v1.0/placed-orders/by-externalReferenceCode/{externalReferenceCode}/attachments'  -u 'test@liferay.com:test'
 	 */
+	@io.swagger.v3.oas.annotations.Operation(
+		description = "Lists the attachments uploaded against the placed order addressed by ERC. When the feature flag is enabled the attachments are searched against the commerce order attachment index (with search, filter, sort, and pagination); otherwise the underlying document-library file entries are returned in priority order. Returns 404 when the ERC does not resolve."
+	)
 	@io.swagger.v3.oas.annotations.Parameters(
 		value = {
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "External reference code that addresses the target resource on the by-externalReferenceCode paths. The code is the integration-supplied idempotency key, unique within the resource scope.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
 				name = "externalReferenceCode"
 			),
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "OData v4 filter expression that narrows the result set. Supported fields depend on the endpoint and are sourced from the matching entity model (for PlacedOrder typically account, author, createDate, externalReferenceCode, modifiedDate, name, orderStatus, orderType, purchaseOrderNumber).",
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "filter"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				description = "One-based page index. Combined with pageSize to paginate the result set; defaults to 1 when omitted.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
 				name = "page"
 			),
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Number of items per page. Defaults to the portal's configured page size when omitted; capped by the portal configuration to prevent unbounded reads.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
 				name = "pageSize"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Full-text search expression. Matched against the indexed fields of the target entity (for PlacedOrder typically account name, author, externalReferenceCode, name, orderType, and purchaseOrderNumber).",
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "search"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Sort expression in OData order syntax (field asc|desc, comma-separated). Sortable fields depend on the endpoint and are sourced from the matching entity model.",
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "sort"
 			)
 		}
 	)
@@ -221,7 +280,14 @@ public abstract class BaseAttachmentResourceImpl
 				@jakarta.validation.constraints.NotNull
 				@jakarta.ws.rs.PathParam("externalReferenceCode")
 				String externalReferenceCode,
-				@jakarta.ws.rs.core.Context Pagination pagination)
+				@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+				@jakarta.ws.rs.QueryParam("search")
+				String search,
+				@jakarta.ws.rs.core.Context
+					com.liferay.portal.kernel.search.filter.Filter filter,
+				@jakarta.ws.rs.core.Context Pagination pagination,
+				@jakarta.ws.rs.core.Context
+					com.liferay.portal.kernel.search.Sort[] sorts)
 		throws Exception {
 
 		return Page.of(Collections.emptyList());
@@ -230,11 +296,15 @@ public abstract class BaseAttachmentResourceImpl
 	/**
 	 * Invoke this method with the command line:
 	 *
-	 * curl -X 'POST' 'http://localhost:8080/o/headless-commerce-delivery-order/v1.0/placed-orders/{placedOrderId}/attachments/by-base64' -d $'{"attachment": ___, "externalReferenceCode": ___, "title": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
+	 * curl -X 'POST' 'http://localhost:8080/o/headless-commerce-delivery-order/v1.0/placed-orders/{placedOrderId}/attachments/by-base64' -d $'{"attachment": ___, "externalReferenceCode": ___, "priority": ___, "restricted": ___, "title": ___, "type": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
 	 */
+	@io.swagger.v3.oas.annotations.Operation(
+		description = "Creates a new attachment on the placed order addressed by id, with the file body supplied inline as Base64. When the feature flag is enabled the attachment is persisted as a commerce order attachment record; otherwise it is stored as a file entry directly on the order."
+	)
 	@io.swagger.v3.oas.annotations.Parameters(
 		value = {
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Internal identifier of a placed order used as the path scope for nested attachment endpoints. Addresses the parent placed order under which the attachment is created, listed, or deleted.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
 				name = "placedOrderId"
 			)
@@ -267,8 +337,24 @@ public abstract class BaseAttachmentResourceImpl
 	@io.swagger.v3.oas.annotations.Parameters(
 		value = {
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Internal identifier of a placed order used as the path scope for nested attachment endpoints. Addresses the parent placed order under which the attachment is created, listed, or deleted.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
 				name = "placedOrderId"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				description = "OData v4 filter expression that narrows the result set. Supported fields depend on the endpoint and are sourced from the matching entity model (for PlacedOrder typically account, author, createDate, externalReferenceCode, modifiedDate, name, orderStatus, orderType, purchaseOrderNumber).",
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "filter"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Full-text search expression. Matched against the indexed fields of the target entity (for PlacedOrder typically account name, author, externalReferenceCode, name, orderType, and purchaseOrderNumber).",
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "search"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Sort expression in OData order syntax (field asc|desc, comma-separated). Sortable fields depend on the endpoint and are sourced from the matching entity model.",
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "sort"
 			),
 			@io.swagger.v3.oas.annotations.Parameter(
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
@@ -299,6 +385,13 @@ public abstract class BaseAttachmentResourceImpl
 			@jakarta.validation.constraints.NotNull
 			@jakarta.ws.rs.PathParam("placedOrderId")
 			Long placedOrderId,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@jakarta.ws.rs.QueryParam("search")
+			String search,
+			@jakarta.ws.rs.core.Context
+				com.liferay.portal.kernel.search.filter.Filter filter,
+			@jakarta.ws.rs.core.Context com.liferay.portal.kernel.search.Sort[]
+				sorts,
 			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
 			@jakarta.ws.rs.QueryParam("callbackURL")
 			String callbackURL,
@@ -333,11 +426,15 @@ public abstract class BaseAttachmentResourceImpl
 	/**
 	 * Invoke this method with the command line:
 	 *
-	 * curl -X 'POST' 'http://localhost:8080/o/headless-commerce-delivery-order/v1.0/placed-orders/by-externalReferenceCode/{externalReferenceCode}/attachments/by-base64' -d $'{"attachment": ___, "externalReferenceCode": ___, "title": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
+	 * curl -X 'POST' 'http://localhost:8080/o/headless-commerce-delivery-order/v1.0/placed-orders/by-externalReferenceCode/{externalReferenceCode}/attachments/by-base64' -d $'{"attachment": ___, "externalReferenceCode": ___, "priority": ___, "restricted": ___, "title": ___, "type": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
 	 */
+	@io.swagger.v3.oas.annotations.Operation(
+		description = "Creates a new attachment on the placed order addressed by ERC, with the file body supplied inline as Base64. When the feature flag is enabled the attachment is persisted as a commerce order attachment record; otherwise it is stored as a file entry directly on the order. Returns 404 when the ERC does not resolve."
+	)
 	@io.swagger.v3.oas.annotations.Parameters(
 		value = {
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "External reference code that addresses the target resource on the by-externalReferenceCode paths. The code is the integration-supplied idempotency key, unique within the resource scope.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
 				name = "externalReferenceCode"
 			)
@@ -419,8 +516,8 @@ public abstract class BaseAttachmentResourceImpl
 
 		if (parameters.containsKey("placedOrderId")) {
 			return getPlacedOrderAttachmentsPage(
-				_parseLong((String)parameters.get("placedOrderId")),
-				pagination);
+				_parseLong((String)parameters.get("placedOrderId")), search,
+				filter, pagination, sorts);
 		}
 		else {
 			throw new NotSupportedException(
@@ -1038,4 +1135,4 @@ public abstract class BaseAttachmentResourceImpl
 		LogFactoryUtil.getLog(BaseAttachmentResourceImpl.class);
 
 }
-// LIFERAY-REST-BUILDER-HASH:-569077176
+// LIFERAY-REST-BUILDER-HASH:-2030787027

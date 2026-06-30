@@ -39,6 +39,14 @@ module "eks" {
 		}
 		vpc-cni={
 			before_compute=true
+			configuration_values=jsonencode(
+				{
+					enableNetworkPolicy="true"
+					nodeAgent={
+						healthProbeBindAddr="8163"
+						metricsBindAddr="8162"
+					}
+				})
 			most_recent=true
 		}
 	}
@@ -56,7 +64,8 @@ module "eks" {
 		provider_key_arn=aws_kms_key.eks_secrets.arn
 	}
 	endpoint_private_access=true
-	endpoint_public_access=true
+	endpoint_public_access=var.eks_allow_public_access
+	endpoint_public_access_cidrs=local.eks_api_public_access_cidrs
 	iam_role_additional_policies={
 		AmazonEKSBlockStoragePolicy="arn:${var.arn_partition}:iam::aws:policy/AmazonEKSBlockStoragePolicy"
 		AmazonEKSComputePolicy="arn:${var.arn_partition}:iam::aws:policy/AmazonEKSComputePolicy"
@@ -69,17 +78,9 @@ module "eks" {
 		AWSXRayDaemonWriteAccess="arn:${var.arn_partition}:iam::aws:policy/AWSXRayDaemonWriteAccess"
 		CloudWatchAgentServerPolicy="arn:${var.arn_partition}:iam::aws:policy/CloudWatchAgentServerPolicy"
 	}
-	source="terraform-aws-modules/eks/aws"
+	source="git::https://github.com/terraform-aws-modules/terraform-aws-eks.git?ref=de2aa10f25c7f2d2ab1264f6451f7cbf57f784c4"
 	subnet_ids=module.vpc.private_subnets
-	version="21.3.1"
 	vpc_id=module.vpc.vpc_id
-}
-resource "aws_eks_addon" "s3_csi" {
-	addon_name="aws-mountpoint-s3-csi-driver"
-	addon_version=data.aws_eks_addon_version.s3_csi.version
-	cluster_name=module.eks.cluster_name
-	resolve_conflicts_on_update="OVERWRITE"
-	service_account_role_arn=aws_iam_role.s3_csi_driver.arn
 }
 resource "aws_iam_role" "ebs_csi_driver" {
 	assume_role_policy=jsonencode(
@@ -130,33 +131,7 @@ resource "aws_iam_role" "irsa" {
 	force_detach_policies=true
 	name="${var.deployment_name}-irsa"
 }
-resource "aws_iam_role" "s3_csi_driver" {
-	assume_role_policy=jsonencode(
-		{
-			Statement=[
-				{
-					Action="sts:AssumeRoleWithWebIdentity"
-					Condition={
-						StringEquals={
-							"${module.eks.oidc_provider}:aud"="sts.amazonaws.com"
-							"${module.eks.oidc_provider}:sub"=[
-								"system:serviceaccount:kube-system:s3-csi-driver-controller-sa",
-								"system:serviceaccount:kube-system:s3-csi-driver-sa"
-							]
-						}
-					}
-					Effect="Allow"
-					Principal={
-						Federated=local.oidc_provider_arn
-					}
-				}
-			]
-			Version="2012-10-17"
-		})
-	force_detach_policies=true
-	name="${var.deployment_name}-s3_csi_driver"
-}
-resource "aws_iam_role_policy" "s3_csi_driver" {
+resource "aws_iam_role_policy" "overlay" {
 	policy=jsonencode(
 		{
 			Statement=[
@@ -176,7 +151,7 @@ resource "aws_iam_role_policy" "s3_csi_driver" {
 			Version="2012-10-17"
 		}
 	)
-	role=aws_iam_role.s3_csi_driver.id
+	role=aws_iam_role.irsa.id
 }
 resource "aws_iam_role_policy" "this" {
 	count=length(var.ecr_repositories) > 0 ? 1 : 0
@@ -213,6 +188,7 @@ resource "aws_kms_alias" "eks_kms_alias" {
 resource "aws_kms_key" "eks_secrets" {
 	deletion_window_in_days=7
 	description="KMS key for EKS secrets encryption"
+	enable_key_rotation=true
 	policy=jsonencode(
 		{
 			Statement=[

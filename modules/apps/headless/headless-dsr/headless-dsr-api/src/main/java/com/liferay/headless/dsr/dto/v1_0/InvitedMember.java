@@ -22,6 +22,10 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 
 import java.io.Serializable;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+
+import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -127,6 +131,89 @@ public class InvitedMember implements Serializable {
 	private Supplier<Long> _idSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema
+	public Date getMembershipExpirationDate() {
+		if (_membershipExpirationDateSupplier != null) {
+			membershipExpirationDate = _membershipExpirationDateSupplier.get();
+
+			_membershipExpirationDateSupplier = null;
+		}
+
+		return membershipExpirationDate;
+	}
+
+	public void setMembershipExpirationDate(Date membershipExpirationDate) {
+		this.membershipExpirationDate = membershipExpirationDate;
+
+		_membershipExpirationDateSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setMembershipExpirationDate(
+		UnsafeSupplier<Date, Exception>
+			membershipExpirationDateUnsafeSupplier) {
+
+		_membershipExpirationDateSupplier = () -> {
+			try {
+				return membershipExpirationDateUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected Date membershipExpirationDate;
+
+	@JsonIgnore
+	private Supplier<Date> _membershipExpirationDateSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema
+	public Long getOwnerId() {
+		if (_ownerIdSupplier != null) {
+			ownerId = _ownerIdSupplier.get();
+
+			_ownerIdSupplier = null;
+		}
+
+		return ownerId;
+	}
+
+	public void setOwnerId(Long ownerId) {
+		this.ownerId = ownerId;
+
+		_ownerIdSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setOwnerId(
+		UnsafeSupplier<Long, Exception> ownerIdUnsafeSupplier) {
+
+		_ownerIdSupplier = () -> {
+			try {
+				return ownerIdUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected Long ownerId;
+
+	@JsonIgnore
+	private Supplier<Long> _ownerIdSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema
 	public String getRoleKey() {
 		if (_roleKeySupplier != null) {
 			roleKey = _roleKeySupplier.get();
@@ -161,7 +248,7 @@ public class InvitedMember implements Serializable {
 	}
 
 	@GraphQLField
-	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
 	protected String roleKey;
 
 	@JsonIgnore
@@ -194,6 +281,9 @@ public class InvitedMember implements Serializable {
 
 		sb.append("{");
 
+		DateFormat liferayToJSONDateFormat = new SimpleDateFormat(
+			"yyyy-MM-dd'T'HH:mm:ss'Z'");
+
 		String emailAddress = getEmailAddress();
 
 		if (emailAddress != null) {
@@ -220,6 +310,34 @@ public class InvitedMember implements Serializable {
 			sb.append("\"id\": ");
 
 			sb.append(id);
+		}
+
+		Date membershipExpirationDate = getMembershipExpirationDate();
+
+		if (membershipExpirationDate != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"membershipExpirationDate\": ");
+
+			sb.append("\"");
+
+			sb.append(liferayToJSONDateFormat.format(membershipExpirationDate));
+
+			sb.append("\"");
+		}
+
+		Long ownerId = getOwnerId();
+
+		if (ownerId != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"ownerId\": ");
+
+			sb.append(ownerId);
 		}
 
 		String roleKey = getRoleKey();
@@ -339,4 +457,4 @@ public class InvitedMember implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:-386030802
+// LIFERAY-REST-BUILDER-HASH:1075051644

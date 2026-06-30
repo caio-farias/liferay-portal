@@ -1,5 +1,7 @@
 import {FrameLocator, Page, expect} from '@playwright/test';
 
+import {clickAndExpectToBeHidden} from './clickAndExpectToBeHidden';
+
 /**
  * SPDX-FileCopyrightText: (c) 2000 Liferay, Inc. https://liferay.com
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
@@ -9,6 +11,7 @@ type Options = {
 	autoClose?: boolean;
 	closeText?: string;
 	exact?: boolean;
+	first?: boolean;
 	timeout?: number;
 	type?: 'success' | 'info' | 'warning' | 'danger';
 };
@@ -27,18 +30,22 @@ export async function waitForAlert(
 		autoClose = true,
 		closeText = 'Close',
 		exact = false,
+		first = false,
 		timeout,
 		type = 'success',
 	}: Options = {
 		autoClose: true,
 		closeText: 'Close',
 		exact: false,
+		first: false,
 		type: 'success',
 	}
 ) {
-	const alert = parent.locator(CSS_CLASSES[type], {
+	const matchingAlerts = parent.locator(CSS_CLASSES[type], {
 		hasText: text,
 	});
+
+	const alert = first ? matchingAlerts.first() : matchingAlerts;
 
 	if (timeout) {
 		await alert.waitFor({timeout});
@@ -52,8 +59,9 @@ export async function waitForAlert(
 	}
 
 	if (autoClose) {
-		await alert.getByLabel(closeText).click();
-
-		await alert.waitFor({state: 'hidden'});
+		await clickAndExpectToBeHidden({
+			target: alert,
+			trigger: alert.getByLabel(closeText),
+		});
 	}
 }

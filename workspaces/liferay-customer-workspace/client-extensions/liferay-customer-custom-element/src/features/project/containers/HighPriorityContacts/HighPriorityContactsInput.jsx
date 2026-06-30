@@ -7,6 +7,7 @@ import {MultiSelect, Skeleton} from '~/components';
 import ClayForm from '@clayui/form';
 import {useEffect, useState} from 'react';
 import useUserAccountsByAccountExternalReferenceCode from '~/features/project/pages/Project/TeamMembers/components/TeamMembersTable/hooks/useUserAccountsByAccountExternalReferenceCode';
+import {HIGH_PRIORITY_CONTACT_CATEGORIES} from '~/features/project/utils/getHighPriorityContacts';
 import i18n from '~/utils/I18n';
 import getKebabCase from '~/utils/getKebabCase';
 
@@ -21,12 +22,10 @@ const HighPriorityContactsInput = ({
 	const [sourceItems, setSourceItems] = useState([]);
 	const loaded = sourceItems.length;
 	const [items, setItems] = useState([]);
-	const [
-		,
-		{data: userAccountsData, search},
-	] = useUserAccountsByAccountExternalReferenceCode(
-		koroneikiAccount?.accountKey
-	);
+	const [, {data: userAccountsData, search}] =
+		useUserAccountsByAccountExternalReferenceCode(
+			koroneikiAccount?.accountKey
+		);
 
 	const handleMetaErrorChange = (error) => {
 		disableSubmit(error, inputName);
@@ -38,31 +37,30 @@ const HighPriorityContactsInput = ({
 
 	useEffect(() => {
 		setItems(currentHighPriorityContacts);
+
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [currentHighPriorityContacts]);
 
 	useEffect(() => {
-		setCriticalIncidentContactList(items);
+		setContactList(items);
+
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [items, sourceItems]);
 
-	const setCriticalIncidentContactList = (contactList) => {
-		return setContactList(contactList);
-	};
-
 	useEffect(() => {
-		const teamMembers = userAccountsData?.accountUserAccountsByExternalReferenceCode?.items.map(
-			(account) => {
-				const {emailAddress, id, name} = account;
+		const teamMembers =
+			userAccountsData?.accountUserAccountsByExternalReferenceCode?.items.map(
+				(account) => {
+					const {emailAddress, id, name} = account;
 
-				return {
-					email: emailAddress,
-					id,
-					label: name,
-					value: id,
-				};
-			}
-		);
+					return {
+						email: emailAddress,
+						id,
+						label: name,
+						value: id,
+					};
+				}
+			);
 		setSourceItems(teamMembers);
 	}, [userAccountsData]);
 
@@ -81,14 +79,21 @@ const HighPriorityContactsInput = ({
 				label={
 					isCriticalIncidentCard
 						? i18n.translate('contacts')
-						: i18n.translate(`${getKebabCase(inputName)}-contact`)
+						: i18n.translate(
+								inputName ===
+									HIGH_PRIORITY_CONTACT_CATEGORIES.paasUser
+									? 'paas-user'
+									: `${getKebabCase(inputName)}-contact`
+							)
 				}
 				metaErrorCallback={handleMetaErrorChange}
 				name={`${inputName}Contact`}
 				onChange={handleMultiSelectChange}
 				onItemsChange={setItems}
 				placeholder={i18n.translate('enter-name-or-email-address')}
-				required
+				required={
+					inputName !== HIGH_PRIORITY_CONTACT_CATEGORIES.paasUser
+				}
 				sourceItems={sourceItems}
 				type="email"
 				values={items}

@@ -24,7 +24,9 @@ export {default as openConfirmModal} from './components/modals/openConfirmModal'
 export {default as openModalComponent} from './components/modals/openModalComponent';
 export {default as openOptionsModal} from './components/modals/openOptionsModal';
 export {default as PageTemplateModal} from './components/page_template_modal/PageTemplateModal';
+export {default as PopoverTooltip} from './components/popover_tooltip/PopoverTooltip';
 export {default as Resizer} from './components/resizer/Resizer';
+export {RowBuilder} from './components/row_builder/RowBuilder';
 export {default as ScreenReaderAnnouncer} from './components/screen_reader_announcer/ScreenReaderAnnouncer';
 export {default as SearchForm} from './components/search_form/SearchForm';
 export {default as SearchResultsMessage} from './components/search_results_message/SearchResultsMessage';
@@ -43,9 +45,11 @@ export {
 } from './contexts/StyleErrorsContext';
 export {default as useDragAndDrop} from './hooks/drag_and_drop/useDragAndDrop';
 export {default as useControlledState} from './hooks/useControlledState';
+export {default as useMediaQuery} from './hooks/useMediaQuery';
 export type {default as ConfigurationCustomComponentProps} from './types/ConfigurationCustomComponentProps';
 export {default as SegmentExperience} from './types/SegmentExperience';
 export {default as convertRGBtoHex} from './utils/convertRGBtoHex';
 export {default as isCtrlOrMeta} from './utils/isCtrlOrMeta';
 export {default as isNullOrUndefined} from './utils/isNullOrUndefined';
 export {default as isValidStyleValue} from './utils/isValidStyleValue';
+export {default as preventIframeNavigation} from './utils/preventIframeNavigation';

@@ -3,7 +3,7 @@
 		"pageElements": [
 			{
 				"definition": {
-					"customCSS": ".[$FRAGMENT_CLASS$] {\nborder-bottom: 1px solid var(--gray-300);\nposition: sticky;\n  top: calc(var(--control-menu-container-height, 0px) + 7.75rem);\n  z-index: 899;\n}\n\n.commerce-main header {\ntop: calc(var(--control-menu-container-height) - var(--commerce-header-user-height, 0));\n}\n\n.commerce-header-user {\nposition: sticky;\ntop: calc(-1 * var(--commerce-header-user-height));\n}",
+					"customCSS": ".[$FRAGMENT_CLASS$] {\nborder-bottom: 1px solid var(--gray-300);\nposition: sticky;\n  top: calc(var(--control-menu-container-height, 0px) + 7.75rem);\n  z-index: 899;\n}\n\n.signed-out .[$FRAGMENT_CLASS$] {\n  top: calc(var(--control-menu-container-height, 0px) + 7.0625rem);\n}\n\n.commerce-main header {\ntop: calc(var(--control-menu-container-height) - var(--commerce-header-user-height, 0));\n}\n\n.signed-out .commerce-main header {\ntop: var(--control-menu-container-height, 0px);\n}\n\n.commerce-header-user {\nposition: sticky;\ntop: calc(-1 * var(--commerce-header-user-height));\n}",
 					"fragmentStyle": {
 						"backgroundColor": "whiteColor",
 						"fontFamily": "fontFamilyBase",
@@ -179,7 +179,8 @@
 																			"fragmentStyle": {
 																				"backgroundColor": "blockquoteSmallColor",
 																				"borderRadius": "borderRadiusLg",
-																				"fontSize": "fontSizeSm"
+																				"fontSize": "fontSizeSm",
+																				"width": "40px"
 																			},
 																			"indexed": true
 																		},
@@ -489,7 +490,6 @@
 				"pageElements": [
 					{
 						"definition": {
-							"customCSS": ".[$FRAGMENT_CLASS$] nav.navbar.navbar-collapse-relative.navbar-expand-md.navbar-underline.navigation-bar.navigation-bar-light::before {\n    background-color: var(--white);\n    content: '';\n    height: -webkit-fill-available;\n    left: 50%;\n    margin-left: -50vw;\n    position: absolute;\n    width: 100vw;\n}",
 							"fragment": {
 								"key": "order-tabs",
 								"siteKey": "[$GROUP_KEY$]"
@@ -1645,6 +1645,123 @@
 											"indexed": true
 										},
 										"type": "Fragment"
+									}
+								],
+								"type": "FragmentDropZone"
+							},
+							{
+								"definition": {
+									"fragmentDropZoneId": "4"
+								},
+								"pageElements": [
+									{
+										"definition": {
+											"fragmentStyle": {
+												"fontFamily": "fontFamilyBase",
+												"paddingTop": "4"
+											},
+											"indexed": true,
+											"layout": {
+												"paddingTop": 2,
+												"widthType": "Fixed"
+											}
+										},
+										"pageElements": [
+											{
+												"definition": {
+													"fragmentStyle": {
+														"backgroundColor": "whiteColor",
+														"borderColor": "gray300Color",
+														"borderRadius": "0.25rem",
+														"borderWidth": "1px",
+														"marginBottom": "4"
+													},
+													"indexed": true,
+													"layout": {
+														"borderColor": "gray300Color",
+														"marginBottom": 2
+													},
+													"name": "Panel"
+												},
+												"pageElements": [
+													{
+														"definition": {
+															"customCSS": ".[$FRAGMENT_CLASS$] {\nborder-bottom: 1px solid var(--gray-300);\n}",
+															"fragment": {
+																"key": "BASIC_COMPONENT-heading"
+															},
+															"fragmentConfig": {
+																"headingLevel": "h3"
+															},
+															"fragmentFields": [
+																{
+																	"id": "element-text",
+																	"value": {
+																		"fragmentLink": {
+																		},
+																		"text": {
+																			"value_i18n": {
+																				"en_US": "Attachments"
+																			}
+																		}
+																	}
+																}
+															],
+															"fragmentStyle": {
+																"backgroundColor": "",
+																"paddingBottom": "3",
+																"paddingLeft": "4",
+																"paddingRight": "4",
+																"paddingTop": "3"
+															},
+															"indexed": true,
+															"name": "Panel Heading"
+														},
+														"type": "Fragment"
+													},
+													{
+														"definition": {
+															"fragmentStyle": {
+																"backgroundColor": ""
+															},
+															"indexed": true,
+															"layout": {
+															},
+															"name": "Panel Body"
+														},
+														"pageElements": [
+															{
+																"definition": {
+																	"indexed": true,
+																	"layout": {
+																	}
+																},
+																"pageElements": [
+																	{
+																		"definition": {
+																			"fragment": {
+																				"key": "com.liferay.commerce.order.content.web.internal.fragment.renderer.OrderAttachmentsDataSetFragmentRenderer"
+																			},
+																			"fragmentConfig": {
+																				"displayStyle": "fluid"
+																			},
+																			"fragmentFields": [
+																			],
+																			"indexed": true
+																		},
+																		"type": "Fragment"
+																	}
+																],
+																"type": "Section"
+															}
+														],
+														"type": "Section"
+													}
+												],
+												"type": "Section"
+											}
+										],
+										"type": "Section"
 									}
 								],
 								"type": "FragmentDropZone"

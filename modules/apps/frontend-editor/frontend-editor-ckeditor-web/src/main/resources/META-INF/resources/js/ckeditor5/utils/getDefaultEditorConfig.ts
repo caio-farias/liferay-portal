@@ -30,7 +30,7 @@ import {
 	ImageToolbar,
 } from '@ckeditor/ckeditor5-image/dist/index.js';
 import {Indent} from '@ckeditor/ckeditor5-indent/dist/index.js';
-import {Link} from '@ckeditor/ckeditor5-link/dist/index.js';
+import {Link, LinkImage} from '@ckeditor/ckeditor5-link/dist/index.js';
 import {List} from '@ckeditor/ckeditor5-list/dist/index.js';
 import {MediaEmbed} from '@ckeditor/ckeditor5-media-embed/dist/index.js';
 import {Paragraph} from '@ckeditor/ckeditor5-paragraph/dist/index.js';
@@ -56,9 +56,11 @@ import {EEditorConfigPreset, EEditorVariant} from './types';
 const getDefaultEditorConfig = ({
 	editorVariant,
 	preset,
+	showAICreator,
 }: {
 	editorVariant: EEditorVariant;
 	preset: EEditorConfigPreset;
+	showAICreator?: boolean;
 }): EditorConfig => {
 	const basicPlugins = [
 		BlockToolbar,
@@ -68,6 +70,7 @@ const getDefaultEditorConfig = ({
 		Italic,
 		Image,
 		Link,
+		LinkImage,
 		List,
 		Paragraph,
 		PasteFromOffice,
@@ -126,7 +129,6 @@ const getDefaultEditorConfig = ({
 
 	const advancedPlugins = [
 		...basicPlugins,
-		AICreator,
 		Alignment,
 		BlockQuote,
 		Font,
@@ -150,6 +152,10 @@ const getDefaultEditorConfig = ({
 		TableProperties,
 		TableToolbar,
 	];
+
+	if (showAICreator) {
+		advancedPlugins.push(AICreator);
+	}
 
 	if (editorVariant === EEditorVariant.CLASSIC) {
 		advancedPlugins.push(SourceEditing);
@@ -195,9 +201,12 @@ const getDefaultEditorConfig = ({
 		'horizontalLine',
 		'|',
 		'alignment',
-		'|',
-		'aiCreator',
 	];
+
+	if (showAICreator) {
+		toolbarItems.push('|');
+		toolbarItems.push('aiCreator');
+	}
 
 	if (editorVariant === EEditorVariant.CLASSIC) {
 		toolbarItems.push('|');
@@ -248,6 +257,16 @@ const getDefaultEditorConfig = ({
 			],
 		},
 		mediaEmbed: {
+			extraProviders: [
+				{
+					html: ([url]: string[]) =>
+						'<div style="position: relative; padding-bottom: 56.2493%; height: 0;">' +
+						`<video controls src="${url}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;"></video>` +
+						'</div>',
+					name: 'directVideo',
+					url: /^.+\.(mp4|webm|ogg|ogv|mov|avi|m4v|mkv|wmv)(?:[/?].*)?$/i,
+				},
+			],
 			previewsInData: true,
 		},
 		plugins: advancedPlugins,

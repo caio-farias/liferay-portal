@@ -110,6 +110,10 @@ public class DLFileShortcutModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table DLFileShortcut";
 
+	public static final String ENTITY_ALIAS = "dlFileShortcut";
+
+	public static final String FILTER_PK_COLUMN_NAME = "fileShortcutId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY dlFileShortcut.fileShortcutId ASC";
 
@@ -1520,4 +1524,4 @@ public class DLFileShortcutModelImpl
 	private DLFileShortcut _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:685103644
+// LIFERAY-SERVICE-BUILDER-HASH:1417450673

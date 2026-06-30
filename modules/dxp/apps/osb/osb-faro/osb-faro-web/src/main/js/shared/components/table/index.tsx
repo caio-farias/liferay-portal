@@ -8,7 +8,10 @@ import {OrderedMap} from 'immutable';
 import {OrderParams} from 'shared/util/records';
 import type {Column} from './Row';
 
-export const getRowIdentifierValue = (item, rowIdentifier) => {
+export const getRowIdentifierValue = (
+	item: {[key: string]: any},
+	rowIdentifier: string | string[]
+) => {
 	if (isArray(rowIdentifier)) {
 		return rowIdentifier.reduce((acc, rowIdentifierKey) => {
 			acc = acc.concat(get(item, rowIdentifierKey, rowIdentifierKey));
@@ -96,7 +99,7 @@ const Table: React.FC<ITableProps> = ({
 		}
 	};
 
-	const handleItemClick = item => {
+	const handleItemClick = (item: {[key: string]: any}) => {
 		if (showCheckbox && onSelectItemsChange) {
 			onSelectItemsChange(item);
 		}
@@ -106,8 +109,8 @@ const Table: React.FC<ITableProps> = ({
 		}
 	};
 
-	const sortItems = items => {
-		const orderParams = orderIOMap.first();
+	const sortItems = (items: {[key: string]: any}[]) => {
+		const orderParams = orderIOMap.first() ?? new OrderParams();
 
 		const {field, sortOrder} = orderParams;
 
@@ -126,6 +129,18 @@ const Table: React.FC<ITableProps> = ({
 		);
 	};
 
+	const itemsSorted = internalSort ? sortItems(items) : items;
+
+	const rootClassName = getCN('flex-grow-1 mx-4 table-root', className);
+
+	if (loading) {
+		return (
+			<div className={rootClassName}>
+				<Loading spacer />
+			</div>
+		);
+	}
+
 	const classes = getCN(
 		'table',
 		'table-autofit',
@@ -140,10 +155,8 @@ const Table: React.FC<ITableProps> = ({
 		}
 	);
 
-	const itemsSorted = internalSort ? sortItems(items) : items;
-
 	return (
-		<div className={getCN('flex-grow-1 mx-4 table-root', className)}>
+		<div className={rootClassName}>
 			<div className='table-responsive'>
 				<table className={classes}>
 					<HeaderRow
@@ -203,7 +216,7 @@ const Table: React.FC<ITableProps> = ({
 													? selectedItemsIOMap.has(
 															item?.id
 													  )
-													: null
+													: undefined
 											}
 											showCheckbox={showCheckbox}
 										/>
@@ -213,8 +226,6 @@ const Table: React.FC<ITableProps> = ({
 						</tbody>
 					)}
 				</table>
-
-				{loading && <Loading overlay />}
 			</div>
 		</div>
 	);

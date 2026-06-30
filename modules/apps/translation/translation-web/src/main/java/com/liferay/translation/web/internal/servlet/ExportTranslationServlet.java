@@ -5,10 +5,15 @@
 
 package com.liferay.translation.web.internal.servlet;
 
+import com.liferay.change.tracking.constants.CTConstants;
+import com.liferay.change.tracking.model.CTPreferences;
+import com.liferay.change.tracking.service.CTPreferencesLocalService;
 import com.liferay.info.item.InfoItemReference;
 import com.liferay.info.item.InfoItemServiceRegistry;
 import com.liferay.info.item.provider.InfoItemPermissionProvider;
+import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.User;
@@ -18,6 +23,8 @@ import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactory;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.service.LayoutLocalService;
+import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
 import com.liferay.portal.kernel.servlet.ServletResponseUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
@@ -70,66 +77,97 @@ public class ExportTranslationServlet extends HttpServlet {
 					StringPool.BLANK);
 			}
 
-			long[] segmentsExperienceIds = ParamUtil.getLongValues(
-				httpServletRequest, "segmentsExperienceIds");
+			try (SafeCloseable safeCloseable =
+					CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
+						_getActiveCTCollectionId(user))) {
 
-			TranslationRequestHelper translationRequestHelper =
-				new TranslationRequestHelper(
-					httpServletRequest, _infoItemServiceRegistry,
-					_segmentsExperienceLocalService);
+				long[] segmentsExperienceIds = ParamUtil.getLongValues(
+					httpServletRequest, "segmentsExperienceIds");
 
-			String className = translationRequestHelper.getClassName(
-				segmentsExperienceIds);
+				TranslationRequestHelper translationRequestHelper =
+					new TranslationRequestHelper(
+						httpServletRequest, _infoItemServiceRegistry,
+						_segmentsExperienceLocalService);
 
-			Set<Long> classPKs = SetUtil.fromArray(
-				_getClassPKs(
-					className, segmentsExperienceIds,
-					translationRequestHelper));
+				String className = translationRequestHelper.getClassName(
+					segmentsExperienceIds);
 
-			InfoItemPermissionProvider infoItemPermissionProvider =
-				_infoItemServiceRegistry.getFirstInfoItemService(
-					InfoItemPermissionProvider.class, className);
+				Set<Long> classPKs = SetUtil.fromArray(
+					_getClassPKs(
+						className, segmentsExperienceIds,
+						translationRequestHelper));
 
-			PermissionChecker permissionChecker =
-				_permissionCheckerFactory.create(user);
+				InfoItemPermissionProvider infoItemPermissionProvider =
+					_infoItemServiceRegistry.getFirstInfoItemService(
+						InfoItemPermissionProvider.class, className);
 
-			PermissionThreadLocal.setPermissionChecker(permissionChecker);
+				PermissionChecker permissionChecker =
+					_permissionCheckerFactory.create(user);
 
-			if (infoItemPermissionProvider != null) {
-				for (long classPK : classPKs) {
-					if (!infoItemPermissionProvider.hasPermission(
-							permissionChecker,
-							new InfoItemReference(className, classPK),
-							ActionKeys.VIEW)) {
+				PermissionThreadLocal.setPermissionChecker(permissionChecker);
 
-						throw new PrincipalException.MustHavePermission(
-							permissionChecker, className, classPK,
-							ActionKeys.VIEW);
+				if (infoItemPermissionProvider != null) {
+					for (long classPK : classPKs) {
+						if (!infoItemPermissionProvider.hasPermission(
+								permissionChecker,
+								new InfoItemReference(className, classPK),
+								ActionKeys.VIEW)) {
+
+							throw new PrincipalException.MustHavePermission(
+								permissionChecker, className, classPK,
+								ActionKeys.VIEW);
+						}
 					}
 				}
-			}
 
-			String sourceLanguageId = ParamUtil.getString(
-				httpServletRequest, "sourceLanguageId");
-			String[] targetLanguageIds = ParamUtil.getStringValues(
-				httpServletRequest, "targetLanguageIds");
-			String xliffMimeType = ParamUtil.getString(
-				httpServletRequest, "xliffMimeType");
+				String sourceLanguageId = ParamUtil.getString(
+					httpServletRequest, "sourceLanguageId");
+				String[] targetLanguageIds = ParamUtil.getStringValues(
+					httpServletRequest, "targetLanguageIds");
+				String xliffMimeType = ParamUtil.getString(
+					httpServletRequest, "xliffMimeType");
 
-			File file = _translationManager.getXLIFFZipFile(
-				className, ArrayUtil.toLongArray(classPKs), xliffMimeType,
-				_portal.getLocale(httpServletRequest), sourceLanguageId,
-				targetLanguageIds);
+				ServiceContext serviceContext = new ServiceContext();
 
-			try (InputStream inputStream = new FileInputStream(file)) {
-				ServletResponseUtil.sendFile(
-					httpServletRequest, httpServletResponse, file.getName(),
-					inputStream, ContentTypes.APPLICATION_ZIP);
+				serviceContext.setCompanyId(user.getCompanyId());
+				serviceContext.setRequest(httpServletRequest);
+				serviceContext.setUserId(user.getUserId());
+
+				ServiceContextThreadLocal.pushServiceContext(serviceContext);
+
+				try {
+					File file = _translationManager.getXLIFFZipFile(
+						className, ArrayUtil.toLongArray(classPKs),
+						xliffMimeType, _portal.getLocale(httpServletRequest),
+						sourceLanguageId, targetLanguageIds);
+
+					try (InputStream inputStream = new FileInputStream(file)) {
+						ServletResponseUtil.sendFile(
+							httpServletRequest, httpServletResponse,
+							file.getName(), inputStream,
+							ContentTypes.APPLICATION_ZIP);
+					}
+				}
+				finally {
+					ServiceContextThreadLocal.popServiceContext();
+				}
 			}
 		}
 		catch (PortalException portalException) {
 			throw new IOException(portalException);
 		}
+	}
+
+	private long _getActiveCTCollectionId(User user) {
+		CTPreferences ctPreferences =
+			_ctPreferencesLocalService.fetchCTPreferences(
+				user.getCompanyId(), user.getUserId());
+
+		if (ctPreferences == null) {
+			return CTConstants.CT_COLLECTION_ID_PRODUCTION;
+		}
+
+		return ctPreferences.getCtCollectionId();
 	}
 
 	private long[] _getClassPKs(
@@ -168,6 +206,9 @@ public class ExportTranslationServlet extends HttpServlet {
 
 		return draftLayout.getPlid();
 	}
+
+	@Reference
+	private CTPreferencesLocalService _ctPreferencesLocalService;
 
 	@Reference
 	private InfoItemServiceRegistry _infoItemServiceRegistry;

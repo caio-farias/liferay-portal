@@ -6,6 +6,7 @@
 package com.liferay.headless.commerce.admin.order.internal.graphql.query.v1_0;
 
 import com.liferay.headless.commerce.admin.order.dto.v1_0.Account;
+import com.liferay.headless.commerce.admin.order.dto.v1_0.Attachment;
 import com.liferay.headless.commerce.admin.order.dto.v1_0.BillingAddress;
 import com.liferay.headless.commerce.admin.order.dto.v1_0.Channel;
 import com.liferay.headless.commerce.admin.order.dto.v1_0.Order;
@@ -23,6 +24,7 @@ import com.liferay.headless.commerce.admin.order.dto.v1_0.ShippingAddress;
 import com.liferay.headless.commerce.admin.order.dto.v1_0.Term;
 import com.liferay.headless.commerce.admin.order.dto.v1_0.TermOrderType;
 import com.liferay.headless.commerce.admin.order.resource.v1_0.AccountResource;
+import com.liferay.headless.commerce.admin.order.resource.v1_0.AttachmentResource;
 import com.liferay.headless.commerce.admin.order.resource.v1_0.BillingAddressResource;
 import com.liferay.headless.commerce.admin.order.resource.v1_0.ChannelResource;
 import com.liferay.headless.commerce.admin.order.resource.v1_0.OrderAccountGroupResource;
@@ -77,6 +79,14 @@ public class Query {
 
 		_accountResourceComponentServiceObjects =
 			accountResourceComponentServiceObjects;
+	}
+
+	public static void setAttachmentResourceComponentServiceObjects(
+		ComponentServiceObjects<AttachmentResource>
+			attachmentResourceComponentServiceObjects) {
+
+		_attachmentResourceComponentServiceObjects =
+			attachmentResourceComponentServiceObjects;
 	}
 
 	public static void setBillingAddressResourceComponentServiceObjects(
@@ -212,7 +222,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderByExternalReferenceCodeAccount(externalReferenceCode: ___){customFields, emailAddress, externalReferenceCode, id, logoId, name, root, taxId, type}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field for orders accessed by externalReferenceCode; returns the associated Account. Throws NoSuchOrderException (404) if order not found."
+	)
 	public Account orderByExternalReferenceCodeAccount(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode)
 		throws Exception {
@@ -230,7 +242,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderIdAccount(id: ___){customFields, emailAddress, externalReferenceCode, id, logoId, name, root, taxId, type}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field (Order.account): returns the Account entity linked to order.commerceAccountId via _accountDTOConverter. Aliased by both /orders/<id>/account and /orders/by-externalReferenceCode/<externalReferenceCode>/account endpoints."
+	)
 	public Account orderIdAccount(@GraphQLName("id") Long id) throws Exception {
 		return _applyComponentServiceObjects(
 			_accountResourceComponentServiceObjects,
@@ -243,7 +257,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleAccountAccount(orderRuleAccountId: ___){customFields, emailAddress, externalReferenceCode, id, logoId, name, root, taxId, type}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field accessor: returns the Account entity linked to an OrderRuleAccount via corEntryRel.classNameId and accountEntryId."
+	)
 	public Account orderRuleAccountAccount(
 			@GraphQLName("orderRuleAccountId") Long orderRuleAccountId)
 		throws Exception {
@@ -258,9 +274,116 @@ public class Query {
 	/**
 	 * Invoke this method with the command line:
 	 *
+	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderAttachment(attachmentId: ___, orderId: ___){actions, attachment, dateModified, extension, externalReferenceCode, fileName, id, priority, restricted, title, type, typeLabel, url}}"}' -u 'test@liferay.com:test'
+	 */
+	@GraphQLField(
+		description = "Retrieves a single attachment from an order by attachment ID the service. Returns populated Attachment DTO with file metadata (extension, fileName, url) and actions. Throws NoSuchOrderAttachmentException (404) if not found."
+	)
+	public Attachment orderAttachment(
+			@GraphQLName("orderId") Long orderId,
+			@GraphQLName("attachmentId") Long attachmentId)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_attachmentResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			attachmentResource -> attachmentResource.getOrderAttachment(
+				orderId, attachmentId));
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
+	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderAttachments(filter: ___, orderId: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
+	 */
+	@GraphQLField(
+		description = "List endpoint for order attachments; supports pagination, filtering, and sorting. Delegates to the service scoped to a single order. Returns Page<Attachment> with total count. Searchable/filterable by attachment properties stored in attachment model."
+	)
+	public AttachmentPage orderAttachments(
+			@GraphQLName("orderId") Long orderId,
+			@GraphQLName("search") String search,
+			@GraphQLName("filter") String filterString,
+			@GraphQLName("pageSize") int pageSize,
+			@GraphQLName("page") int page,
+			@GraphQLName("sort") String sortsString)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_attachmentResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			attachmentResource -> new AttachmentPage(
+				attachmentResource.getOrderAttachmentsPage(
+					orderId, search,
+					_filterBiFunction.apply(attachmentResource, filterString),
+					Pagination.of(page, pageSize),
+					_sortsBiFunction.apply(attachmentResource, sortsString))));
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
+	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderByExternalReferenceCodeAttachmentByExternalReferenceCode(attachmentExternalReferenceCode: ___, externalReferenceCode: ___){actions, attachment, dateModified, extension, externalReferenceCode, fileName, id, priority, restricted, title, type, typeLabel, url}}"}' -u 'test@liferay.com:test'
+	 */
+	@GraphQLField(
+		description = "Retrieves a single attachment via external reference code pair; resolves both order and attachment, then delegates to getOrderAttachment(). Throws NoSuchOrderException (404) or NoSuchOrderAttachmentException (404) if either not found."
+	)
+	public Attachment
+			orderByExternalReferenceCodeAttachmentByExternalReferenceCode(
+				@GraphQLName("externalReferenceCode") String
+					externalReferenceCode,
+				@GraphQLName("attachmentExternalReferenceCode") String
+					attachmentExternalReferenceCode)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_attachmentResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			attachmentResource ->
+				attachmentResource.
+					getOrderByExternalReferenceCodeAttachmentByExternalReferenceCode(
+						externalReferenceCode,
+						attachmentExternalReferenceCode));
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
+	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderByExternalReferenceCodeAttachments(externalReferenceCode: ___, filter: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
+	 */
+	@GraphQLField(
+		description = "Identical to getOrderAttachmentsPage but order is resolved by externalReferenceCode first. Throws NoSuchOrderException (404) if order not found."
+	)
+	public AttachmentPage orderByExternalReferenceCodeAttachments(
+			@GraphQLName("externalReferenceCode") String externalReferenceCode,
+			@GraphQLName("search") String search,
+			@GraphQLName("filter") String filterString,
+			@GraphQLName("pageSize") int pageSize,
+			@GraphQLName("page") int page,
+			@GraphQLName("sort") String sortsString)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_attachmentResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			attachmentResource -> new AttachmentPage(
+				attachmentResource.
+					getOrderByExternalReferenceCodeAttachmentsPage(
+						externalReferenceCode, search,
+						_filterBiFunction.apply(
+							attachmentResource, filterString),
+						Pagination.of(page, pageSize),
+						_sortsBiFunction.apply(
+							attachmentResource, sortsString))));
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderByExternalReferenceCodeBillingAddress(externalReferenceCode: ___){city, countryISOCode, description, externalReferenceCode, id, latitude, longitude, name, phoneNumber, regionISOCode, street1, street2, street3, subtype, vatNumber, zip}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field for orders accessed by externalReferenceCode; returns BillingAddress. Throws NoSuchOrderException (404) if order not found."
+	)
 	public BillingAddress orderByExternalReferenceCodeBillingAddress(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode)
 		throws Exception {
@@ -279,7 +402,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderIdBillingAddress(id: ___){city, countryISOCode, description, externalReferenceCode, id, latitude, longitude, name, phoneNumber, regionISOCode, street1, street2, street3, subtype, vatNumber, zip}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field accessor returning the BillingAddress for order by order ID. Returns empty object if no billing address exists."
+	)
 	public BillingAddress orderIdBillingAddress(@GraphQLName("id") Long id)
 		throws Exception {
 
@@ -295,7 +420,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderByExternalReferenceCodeChannel(externalReferenceCode: ___){currencyCode, externalReferenceCode, id, name, type}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field for orders accessed by externalReferenceCode; returns the Channel. Throws NoSuchOrderException (404) if order not found."
+	)
 	public Channel orderByExternalReferenceCodeChannel(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode)
 		throws Exception {
@@ -313,7 +440,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderIdChannel(id: ___){currencyCode, externalReferenceCode, id, name, type}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field accessor returning the Channel for an order by order ID."
+	)
 	public Channel orderIdChannel(@GraphQLName("id") Long id) throws Exception {
 		return _applyComponentServiceObjects(
 			_channelResourceComponentServiceObjects,
@@ -326,7 +455,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleChannelChannel(orderRuleChannelId: ___){currencyCode, externalReferenceCode, id, name, type}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field accessor: returns the Channel entity linked to an OrderRuleChannel via corEntryRel."
+	)
 	public Channel orderRuleChannelChannel(
 			@GraphQLName("orderRuleChannelId") Long orderRuleChannelId)
 		throws Exception {
@@ -343,7 +474,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderTypeChannelChannel(orderTypeChannelId: ___){currencyCode, externalReferenceCode, id, name, type}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field accessor: returns the Channel entity linked to an OrderTypeChannel via commerceOrderTypeRel."
+	)
 	public Channel orderTypeChannelChannel(
 			@GraphQLName("orderTypeChannelId") Long orderTypeChannelId)
 		throws Exception {
@@ -360,7 +493,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {order(id: ___){account, accountExternalReferenceCode, accountId, actions, advanceStatus, author, billingAddress, billingAddressExternalReferenceCode, billingAddressId, channel, channelExternalReferenceCode, channelId, couponCode, createDate, creatorEmailAddress, currencyCode, currencyExternalReferenceCode, currencyId, customFields, deliveryTermDescription, deliveryTermExternalReferenceCode, deliveryTermId, deliveryTermName, externalReferenceCode, id, lastPriceUpdateDate, modifiedDate, name, orderDate, orderItems, orderStatus, orderStatusInfo, orderTypeExternalReferenceCode, orderTypeId, paymentMethod, paymentStatus, paymentStatusInfo, paymentTermDescription, paymentTermExternalReferenceCode, paymentTermId, paymentTermName, printedNote, purchaseOrderNumber, requestedDeliveryDate, shippable, shippingAddress, shippingAddressExternalReferenceCode, shippingAddressId, shippingAmount, shippingAmountFormatted, shippingAmountValue, shippingDiscountAmount, shippingDiscountAmountFormatted, shippingDiscountAmountValue, shippingDiscountPercentageLevel1, shippingDiscountPercentageLevel1WithTaxAmount, shippingDiscountPercentageLevel2, shippingDiscountPercentageLevel2WithTaxAmount, shippingDiscountPercentageLevel3, shippingDiscountPercentageLevel3WithTaxAmount, shippingDiscountPercentageLevel4, shippingDiscountPercentageLevel4WithTaxAmount, shippingDiscountWithTaxAmount, shippingDiscountWithTaxAmountFormatted, shippingMethod, shippingOption, shippingWithTaxAmount, shippingWithTaxAmountFormatted, shippingWithTaxAmountValue, subtotal, subtotalAmount, subtotalDiscountAmount, subtotalDiscountAmountFormatted, subtotalDiscountPercentageLevel1, subtotalDiscountPercentageLevel1WithTaxAmount, subtotalDiscountPercentageLevel2, subtotalDiscountPercentageLevel2WithTaxAmount, subtotalDiscountPercentageLevel3, subtotalDiscountPercentageLevel3WithTaxAmount, subtotalDiscountPercentageLevel4, subtotalDiscountPercentageLevel4WithTaxAmount, subtotalDiscountWithTaxAmount, subtotalDiscountWithTaxAmountFormatted, subtotalFormatted, subtotalWithTaxAmount, subtotalWithTaxAmountFormatted, subtotalWithTaxAmountValue, taxAmount, taxAmountFormatted, taxAmountValue, total, totalAmount, totalDiscountAmount, totalDiscountAmountFormatted, totalDiscountAmountValue, totalDiscountPercentageLevel1, totalDiscountPercentageLevel1WithTaxAmount, totalDiscountPercentageLevel2, totalDiscountPercentageLevel2WithTaxAmount, totalDiscountPercentageLevel3, totalDiscountPercentageLevel3WithTaxAmount, totalDiscountPercentageLevel4, totalDiscountPercentageLevel4WithTaxAmount, totalDiscountWithTaxAmount, totalDiscountWithTaxAmountFormatted, totalDiscountWithTaxAmountValue, totalFormatted, totalWithTaxAmount, totalWithTaxAmountFormatted, totalWithTaxAmountValue, transactionId, workflowStatusInfo}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves a single order by ID(id), converts to DTO with actions, locale-aware context, and HATEOAS links. Returns full Order object with all nested relationships populated via _toOrder(). Throws NoSuchOrderException (404) if not found."
+	)
 	public Order order(@GraphQLName("id") Long id) throws Exception {
 		return _applyComponentServiceObjects(
 			_orderResourceComponentServiceObjects,
@@ -373,7 +508,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderByExternalReferenceCode(externalReferenceCode: ___){account, accountExternalReferenceCode, accountId, actions, advanceStatus, author, billingAddress, billingAddressExternalReferenceCode, billingAddressId, channel, channelExternalReferenceCode, channelId, couponCode, createDate, creatorEmailAddress, currencyCode, currencyExternalReferenceCode, currencyId, customFields, deliveryTermDescription, deliveryTermExternalReferenceCode, deliveryTermId, deliveryTermName, externalReferenceCode, id, lastPriceUpdateDate, modifiedDate, name, orderDate, orderItems, orderStatus, orderStatusInfo, orderTypeExternalReferenceCode, orderTypeId, paymentMethod, paymentStatus, paymentStatusInfo, paymentTermDescription, paymentTermExternalReferenceCode, paymentTermId, paymentTermName, printedNote, purchaseOrderNumber, requestedDeliveryDate, shippable, shippingAddress, shippingAddressExternalReferenceCode, shippingAddressId, shippingAmount, shippingAmountFormatted, shippingAmountValue, shippingDiscountAmount, shippingDiscountAmountFormatted, shippingDiscountAmountValue, shippingDiscountPercentageLevel1, shippingDiscountPercentageLevel1WithTaxAmount, shippingDiscountPercentageLevel2, shippingDiscountPercentageLevel2WithTaxAmount, shippingDiscountPercentageLevel3, shippingDiscountPercentageLevel3WithTaxAmount, shippingDiscountPercentageLevel4, shippingDiscountPercentageLevel4WithTaxAmount, shippingDiscountWithTaxAmount, shippingDiscountWithTaxAmountFormatted, shippingMethod, shippingOption, shippingWithTaxAmount, shippingWithTaxAmountFormatted, shippingWithTaxAmountValue, subtotal, subtotalAmount, subtotalDiscountAmount, subtotalDiscountAmountFormatted, subtotalDiscountPercentageLevel1, subtotalDiscountPercentageLevel1WithTaxAmount, subtotalDiscountPercentageLevel2, subtotalDiscountPercentageLevel2WithTaxAmount, subtotalDiscountPercentageLevel3, subtotalDiscountPercentageLevel3WithTaxAmount, subtotalDiscountPercentageLevel4, subtotalDiscountPercentageLevel4WithTaxAmount, subtotalDiscountWithTaxAmount, subtotalDiscountWithTaxAmountFormatted, subtotalFormatted, subtotalWithTaxAmount, subtotalWithTaxAmountFormatted, subtotalWithTaxAmountValue, taxAmount, taxAmountFormatted, taxAmountValue, total, totalAmount, totalDiscountAmount, totalDiscountAmountFormatted, totalDiscountAmountValue, totalDiscountPercentageLevel1, totalDiscountPercentageLevel1WithTaxAmount, totalDiscountPercentageLevel2, totalDiscountPercentageLevel2WithTaxAmount, totalDiscountPercentageLevel3, totalDiscountPercentageLevel3WithTaxAmount, totalDiscountPercentageLevel4, totalDiscountPercentageLevel4WithTaxAmount, totalDiscountWithTaxAmount, totalDiscountWithTaxAmountFormatted, totalDiscountWithTaxAmountValue, totalFormatted, totalWithTaxAmount, totalWithTaxAmountFormatted, totalWithTaxAmountValue, transactionId, workflowStatusInfo}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves an order by externalReferenceCode the service. Identical to getOrder in response format. Throws NoSuchOrderException (404) if not found."
+	)
 	public Order orderByExternalReferenceCode(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode)
 		throws Exception {
@@ -390,7 +527,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orders(filter: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Lists all orders in the company scope. Supports OData filter, free-text search, paging, and sort. Backed by SearchUtil.search() over order. Filterable fields -- accountId, orderStatus, channelId, orderTypeId, paymentStatus, orderTypeExternalReferenceCode. Sortable fields -- createDate, modifiedDate, orderDate, totalAmount. Search corpus -- creatorEmailAddress (indexed as orderCreatorEmailAddress)."
+	)
 	public OrderPage orders(
 			@GraphQLName("search") String search,
 			@GraphQLName("filter") String filterString,
@@ -415,7 +554,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleAccountGroupAccountGroup(orderRuleAccountGroupId: ___){id, name}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field accessor: returns the AccountGroup entity linked to an OrderRuleAccountGroup via corEntryRel."
+	)
 	public OrderAccountGroup orderRuleAccountGroupAccountGroup(
 			@GraphQLName("orderRuleAccountGroupId") Long
 				orderRuleAccountGroupId)
@@ -434,7 +575,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderByExternalReferenceCodeOrderItems(externalReferenceCode: ___, page: ___, pageSize: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "List endpoint for items belonging to a single order, resolved by order externalReferenceCode. Delegates to the service. Returns Page<OrderItem> with total count. Throws NoSuchOrderException (404) if order not found."
+	)
 	public OrderItemPage orderByExternalReferenceCodeOrderItems(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode,
 			@GraphQLName("pageSize") int pageSize,
@@ -454,7 +597,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderIdOrderItems(id: ___, page: ___, pageSize: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field (Order.orderItems): list of items for a specific order. Delegates to the service(orderId, start, end) and.getCommerceOrderItemsCount(orderId). Returns paginated OrderItem list."
+	)
 	public OrderItemPage orderIdOrderItems(
 			@GraphQLName("id") Long id, @GraphQLName("pageSize") int pageSize,
 			@GraphQLName("page") int page)
@@ -473,7 +618,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderItem(id: ___){bookedQuantityId, customFields, decimalQuantity, deliveryGroup, deliveryGroupName, discountAmount, discountManuallyAdjusted, discountPercentageLevel1, discountPercentageLevel1WithTaxAmount, discountPercentageLevel2, discountPercentageLevel2WithTaxAmount, discountPercentageLevel3, discountPercentageLevel3WithTaxAmount, discountPercentageLevel4, discountPercentageLevel4WithTaxAmount, discountWithTaxAmount, externalReferenceCode, finalPrice, finalPriceWithTaxAmount, formattedQuantity, id, name, options, orderExternalReferenceCode, orderId, priceManuallyAdjusted, printedNote, productId, promoPrice, promoPriceWithTaxAmount, quantity, replacedSku, replacedSkuExternalReferenceCode, replacedSkuId, requestedDeliveryDate, shippable, shippedQuantity, shippingAddress, shippingAddressExternalReferenceCode, shippingAddressId, sku, skuExternalReferenceCode, skuId, subscription, unitOfMeasure, unitOfMeasureKey, unitPrice, unitPriceWithTaxAmount, virtualItemURLs, virtualItems}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves a single order item by ID via _orderItemDTOConverter.toDTO(). Returns full OrderItem DTO. Throws NoSuchOrderItemException (404) if not found."
+	)
 	public OrderItem orderItem(@GraphQLName("id") Long id) throws Exception {
 		return _applyComponentServiceObjects(
 			_orderItemResourceComponentServiceObjects,
@@ -486,7 +633,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderItemByExternalReferenceCode(externalReferenceCode: ___){bookedQuantityId, customFields, decimalQuantity, deliveryGroup, deliveryGroupName, discountAmount, discountManuallyAdjusted, discountPercentageLevel1, discountPercentageLevel1WithTaxAmount, discountPercentageLevel2, discountPercentageLevel2WithTaxAmount, discountPercentageLevel3, discountPercentageLevel3WithTaxAmount, discountPercentageLevel4, discountPercentageLevel4WithTaxAmount, discountWithTaxAmount, externalReferenceCode, finalPrice, finalPriceWithTaxAmount, formattedQuantity, id, name, options, orderExternalReferenceCode, orderId, priceManuallyAdjusted, printedNote, productId, promoPrice, promoPriceWithTaxAmount, quantity, replacedSku, replacedSkuExternalReferenceCode, replacedSkuId, requestedDeliveryDate, shippable, shippedQuantity, shippingAddress, shippingAddressExternalReferenceCode, shippingAddressId, sku, skuExternalReferenceCode, skuId, subscription, unitOfMeasure, unitOfMeasureKey, unitPrice, unitPriceWithTaxAmount, virtualItemURLs, virtualItems}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves an order item by externalReferenceCode the service. Throws NoSuchOrderItemException (404) if not found."
+	)
 	public OrderItem orderItemByExternalReferenceCode(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode)
 		throws Exception {
@@ -504,7 +653,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderItems(filter: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Gets a list of Order Items. Backed by the matching commerce service method on the target resource."
+	)
 	public OrderItemPage orderItems(
 			@GraphQLName("search") String search,
 			@GraphQLName("filter") String filterString,
@@ -529,7 +680,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderByExternalReferenceCodeOrderNotes(externalReferenceCode: ___, page: ___, pageSize: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "List endpoint for notes belonging to an order, resolved by externalReferenceCode. Delegates to the service. Throws NoSuchOrderException (404) if order not found."
+	)
 	public OrderNotePage orderByExternalReferenceCodeOrderNotes(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode,
 			@GraphQLName("pageSize") int pageSize,
@@ -549,7 +702,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderIdOrderNotes(id: ___, page: ___, pageSize: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field (Order.orderNotes): list of notes for a specific order. Delegates to the service(orderId, start, end)."
+	)
 	public OrderNotePage orderIdOrderNotes(
 			@GraphQLName("id") Long id, @GraphQLName("pageSize") int pageSize,
 			@GraphQLName("page") int page)
@@ -566,9 +721,11 @@ public class Query {
 	/**
 	 * Invoke this method with the command line:
 	 *
-	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderNote(id: ___){author, content, externalReferenceCode, id, orderExternalReferenceCode, orderId, restricted}}"}' -u 'test@liferay.com:test'
+	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderNote(id: ___){author, authorId, authorPortraitURL, content, externalReferenceCode, id, modifiedDate, orderExternalReferenceCode, orderId, restricted}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves a single order note by ID via _orderNoteDTOConverter.toDTO(). Returns full OrderNote DTO."
+	)
 	public OrderNote orderNote(@GraphQLName("id") Long id) throws Exception {
 		return _applyComponentServiceObjects(
 			_orderNoteResourceComponentServiceObjects,
@@ -579,9 +736,11 @@ public class Query {
 	/**
 	 * Invoke this method with the command line:
 	 *
-	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderNoteByExternalReferenceCode(externalReferenceCode: ___){author, content, externalReferenceCode, id, orderExternalReferenceCode, orderId, restricted}}"}' -u 'test@liferay.com:test'
+	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderNoteByExternalReferenceCode(externalReferenceCode: ___){author, authorId, authorPortraitURL, content, externalReferenceCode, id, modifiedDate, orderExternalReferenceCode, orderId, restricted}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves an order note by externalReferenceCode the service. Throws NoSuchOrderNoteException (404) if not found."
+	)
 	public OrderNote orderNoteByExternalReferenceCode(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode)
 		throws Exception {
@@ -599,7 +758,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRule(id: ___){actions, active, author, createDate, description, displayDate, expirationDate, externalReferenceCode, id, name, neverExpire, orderRuleAccount, orderRuleAccountGroup, orderRuleChannel, orderRuleOrderType, priority, type, typeSettings, workflowStatusInfo}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Gets an OrderRule by ID. Backed by the matching commerce service method on the target resource."
+	)
 	public OrderRule orderRule(@GraphQLName("id") Long id) throws Exception {
 		return _applyComponentServiceObjects(
 			_orderRuleResourceComponentServiceObjects,
@@ -612,7 +773,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleByExternalReferenceCode(externalReferenceCode: ___){actions, active, author, createDate, description, displayDate, expirationDate, externalReferenceCode, id, name, neverExpire, orderRuleAccount, orderRuleAccountGroup, orderRuleChannel, orderRuleOrderType, priority, type, typeSettings, workflowStatusInfo}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves an order rule by externalReferenceCode _corEntryService.fetchCOREntryByExternalReferenceCode(). Identical response to getOrderRule. Throws NoSuchCOREntryException (404) if not found."
+	)
 	public OrderRule orderRuleByExternalReferenceCode(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode)
 		throws Exception {
@@ -630,7 +793,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRules(filter: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "List endpoint for all order rules (COREntry) in the system. Supports pagination, filtering, and sorting via SearchUtil.search(). Status is set to Any. Filterable field: name (from OrderRuleEntityModel)."
+	)
 	public OrderRulePage orderRules(
 			@GraphQLName("search") String search,
 			@GraphQLName("filter") String filterString,
@@ -655,7 +820,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleByExternalReferenceCodeOrderRuleAccounts(externalReferenceCode: ___, page: ___, pageSize: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves order rule first by externalReferenceCode, then returns its linked accounts. Throws NoSuchCOREntryException (404) if order rule not found."
+	)
 	public OrderRuleAccountPage
 			orderRuleByExternalReferenceCodeOrderRuleAccounts(
 				@GraphQLName("externalReferenceCode") String
@@ -678,7 +845,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleIdOrderRuleAccounts(filter: ___, id: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field (OrderRule.orderRuleAccounts): paginated list of accounts linked to order rule by ID. Supports search filter."
+	)
 	public OrderRuleAccountPage orderRuleIdOrderRuleAccounts(
 			@GraphQLName("id") Long id, @GraphQLName("search") String search,
 			@GraphQLName("filter") String filterString,
@@ -705,7 +874,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleByExternalReferenceCodeOrderRuleAccountGroups(externalReferenceCode: ___, page: ___, pageSize: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves order rule by externalReferenceCode, then returns linked account groups. Throws NoSuchCOREntryException (404) if order rule not found."
+	)
 	public OrderRuleAccountGroupPage
 			orderRuleByExternalReferenceCodeOrderRuleAccountGroups(
 				@GraphQLName("externalReferenceCode") String
@@ -728,7 +899,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleIdOrderRuleAccountGroups(filter: ___, id: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field (OrderRule.orderRuleAccountGroups): paginated list of account groups linked to order rule by ID."
+	)
 	public OrderRuleAccountGroupPage orderRuleIdOrderRuleAccountGroups(
 			@GraphQLName("id") Long id, @GraphQLName("search") String search,
 			@GraphQLName("filter") String filterString,
@@ -756,7 +929,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleByExternalReferenceCodeOrderRuleChannels(externalReferenceCode: ___, page: ___, pageSize: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves order rule by externalReferenceCode, then returns linked channels. Throws NoSuchCOREntryException (404) if order rule not found."
+	)
 	public OrderRuleChannelPage
 			orderRuleByExternalReferenceCodeOrderRuleChannels(
 				@GraphQLName("externalReferenceCode") String
@@ -779,7 +954,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleIdOrderRuleChannels(filter: ___, id: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field (OrderRule.orderRuleChannels): paginated list of channels linked to order rule by ID."
+	)
 	public OrderRuleChannelPage orderRuleIdOrderRuleChannels(
 			@GraphQLName("id") Long id, @GraphQLName("search") String search,
 			@GraphQLName("filter") String filterString,
@@ -806,7 +983,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleByExternalReferenceCodeOrderRuleOrderTypes(externalReferenceCode: ___, page: ___, pageSize: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves order rule by externalReferenceCode, then returns linked order types. Throws NoSuchCOREntryException (404) if order rule not found."
+	)
 	public OrderRuleOrderTypePage
 			orderRuleByExternalReferenceCodeOrderRuleOrderTypes(
 				@GraphQLName("externalReferenceCode") String
@@ -829,7 +1008,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleIdOrderRuleOrderTypes(id: ___, page: ___, pageSize: ___, search: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field (OrderRule.orderRuleOrderTypes): paginated list of order types linked to order rule by ID."
+	)
 	public OrderRuleOrderTypePage orderRuleIdOrderRuleOrderTypes(
 			@GraphQLName("id") Long id, @GraphQLName("search") String search,
 			@GraphQLName("pageSize") int pageSize,
@@ -850,7 +1031,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderRuleOrderTypeOrderType(orderRuleOrderTypeId: ___){actions, active, customFields, description, displayDate, displayOrder, expirationDate, externalReferenceCode, id, name, neverExpire, orderTypeChannels, workflowStatusInfo}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field accessor: returns the OrderType entity linked to an OrderRuleOrderType via corEntryRel."
+	)
 	public OrderType orderRuleOrderTypeOrderType(
 			@GraphQLName("orderRuleOrderTypeId") Long orderRuleOrderTypeId)
 		throws Exception {
@@ -868,7 +1051,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderType(id: ___){actions, active, customFields, description, displayDate, displayOrder, expirationDate, externalReferenceCode, id, name, neverExpire, orderTypeChannels, workflowStatusInfo}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves a single order type by ID(). Returns full OrderType DTO including nested orderTypeChannels. Throws NoSuchOrderTypeException (404) if not found."
+	)
 	public OrderType orderType(@GraphQLName("id") Long id) throws Exception {
 		return _applyComponentServiceObjects(
 			_orderTypeResourceComponentServiceObjects,
@@ -881,7 +1066,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderTypeByExternalReferenceCode(externalReferenceCode: ___){actions, active, customFields, description, displayDate, displayOrder, expirationDate, externalReferenceCode, id, name, neverExpire, orderTypeChannels, workflowStatusInfo}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves an order type by externalReferenceCode the service. Identical response to getOrderType. Throws NoSuchOrderTypeException (404) if not found."
+	)
 	public OrderType orderTypeByExternalReferenceCode(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode)
 		throws Exception {
@@ -899,7 +1086,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderTypes(filter: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "List endpoint for all order types in the system. Supports pagination, filtering, and sorting via SearchUtil.search(). Status is set to Any. Filterable field: (implicit name field from OrderTypeEntityModel)."
+	)
 	public OrderTypePage orderTypes(
 			@GraphQLName("search") String search,
 			@GraphQLName("filter") String filterString,
@@ -924,7 +1113,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {termOrderTypeOrderType(termOrderTypeId: ___){actions, active, customFields, description, displayDate, displayOrder, expirationDate, externalReferenceCode, id, name, neverExpire, orderTypeChannels, workflowStatusInfo}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field accessor: returns the OrderType entity linked to a TermOrderType via commerceTermEntryRel."
+	)
 	public OrderType termOrderTypeOrderType(
 			@GraphQLName("termOrderTypeId") Long termOrderTypeId)
 		throws Exception {
@@ -941,7 +1132,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderTypeByExternalReferenceCodeOrderTypeChannels(externalReferenceCode: ___, page: ___, pageSize: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves order type first by externalReferenceCode, then returns its linked channels. Throws NoSuchOrderTypeException (404) if order type not found."
+	)
 	public OrderTypeChannelPage
 			orderTypeByExternalReferenceCodeOrderTypeChannels(
 				@GraphQLName("externalReferenceCode") String
@@ -964,7 +1157,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderTypeIdOrderTypeChannels(id: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field (OrderType.orderTypeChannels): paginated list of channels linked to order type by ID."
+	)
 	public OrderTypeChannelPage orderTypeIdOrderTypeChannels(
 			@GraphQLName("id") Long id, @GraphQLName("search") String search,
 			@GraphQLName("pageSize") int pageSize,
@@ -987,7 +1182,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderByExternalReferenceCodeShippingAddress(externalReferenceCode: ___){city, countryISOCode, description, externalReferenceCode, id, latitude, longitude, name, phoneNumber, regionISOCode, street1, street2, street3, subtype, zip}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field for orders accessed by externalReferenceCode; returns ShippingAddress. Throws NoSuchOrderException (404) if order not found."
+	)
 	public ShippingAddress orderByExternalReferenceCodeShippingAddress(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode)
 		throws Exception {
@@ -1006,7 +1203,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderIdShippingAddress(id: ___){city, countryISOCode, description, externalReferenceCode, id, latitude, longitude, name, phoneNumber, regionISOCode, street1, street2, street3, subtype, zip}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field accessor returning the ShippingAddress for order by order ID."
+	)
 	public ShippingAddress orderIdShippingAddress(@GraphQLName("id") Long id)
 		throws Exception {
 
@@ -1022,7 +1221,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {orderItemShippingAddress(id: ___){city, countryISOCode, description, externalReferenceCode, id, latitude, longitude, name, phoneNumber, regionISOCode, street1, street2, street3, subtype, zip}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field (OrderItem.shippingAddress): returns ShippingAddress for an order item if shippingAddressId > 0, otherwise returns empty ShippingAddress."
+	)
 	public ShippingAddress orderItemShippingAddress(@GraphQLName("id") Long id)
 		throws Exception {
 
@@ -1038,7 +1239,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {term(id: ___){actions, active, createDate, description, displayDate, expirationDate, externalReferenceCode, id, label, name, neverExpire, priority, termOrderType, type, typeLocalized, typeSettings, workflowStatusInfo}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Gets a Term by ID. Backed by the matching commerce service method on the target resource."
+	)
 	public Term term(@GraphQLName("id") Long id) throws Exception {
 		return _applyComponentServiceObjects(
 			_termResourceComponentServiceObjects,
@@ -1051,7 +1254,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {termByExternalReferenceCode(externalReferenceCode: ___){actions, active, createDate, description, displayDate, expirationDate, externalReferenceCode, id, label, name, neverExpire, priority, termOrderType, type, typeLocalized, typeSettings, workflowStatusInfo}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves a term by externalReferenceCode the service. Identical response to getTerm. Throws NoSuchTermEntryException (404) if not found."
+	)
 	public Term termByExternalReferenceCode(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode)
 		throws Exception {
@@ -1068,7 +1273,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {terms(filter: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "List endpoint for all commerce terms in the system. Supports pagination, filtering, and sorting SearchUtil.search(). Status is set to Any."
+	)
 	public TermPage terms(
 			@GraphQLName("search") String search,
 			@GraphQLName("filter") String filterString,
@@ -1092,7 +1299,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {termByExternalReferenceCodeTermOrderTypes(externalReferenceCode: ___, page: ___, pageSize: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Retrieves term first by externalReferenceCode, then returns its linked order types. Throws NoSuchTermEntryException (404) if term not found."
+	)
 	public TermOrderTypePage termByExternalReferenceCodeTermOrderTypes(
 			@GraphQLName("externalReferenceCode") String externalReferenceCode,
 			@GraphQLName("pageSize") int pageSize,
@@ -1113,7 +1322,9 @@ public class Query {
 	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {termIdTermOrderTypes(id: ___, page: ___, pageSize: ___, search: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
-	@GraphQLField
+	@GraphQLField(
+		description = "Nested field (Term.termOrderTypes): paginated list of order types linked to term by ID."
+	)
 	public TermOrderTypePage termIdTermOrderTypes(
 			@GraphQLName("id") Long id, @GraphQLName("search") String search,
 			@GraphQLName("pageSize") int pageSize,
@@ -1137,7 +1348,9 @@ public class Query {
 			_orderItem = orderItem;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Retrieves an order by externalReferenceCode the service. Identical to getOrder in response format. Throws NoSuchOrderException (404) if not found."
+		)
 		public Order orderByExternalReferenceCode() throws Exception {
 			return _applyComponentServiceObjects(
 				_orderResourceComponentServiceObjects,
@@ -1157,7 +1370,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Retrieves an order item by externalReferenceCode the service. Throws NoSuchOrderItemException (404) if not found."
+		)
 		public OrderItem itemByExternalReferenceCode() throws Exception {
 			return _applyComponentServiceObjects(
 				_orderItemResourceComponentServiceObjects,
@@ -1178,7 +1393,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Retrieves an order note by externalReferenceCode the service. Throws NoSuchOrderNoteException (404) if not found."
+		)
 		public OrderNote noteByExternalReferenceCode() throws Exception {
 			return _applyComponentServiceObjects(
 				_orderNoteResourceComponentServiceObjects,
@@ -1199,7 +1416,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Retrieves an order rule by externalReferenceCode _corEntryService.fetchCOREntryByExternalReferenceCode(). Identical response to getOrderRule. Throws NoSuchCOREntryException (404) if not found."
+		)
 		public OrderRule ruleByExternalReferenceCode() throws Exception {
 			return _applyComponentServiceObjects(
 				_orderRuleResourceComponentServiceObjects,
@@ -1220,7 +1439,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Retrieves an order type by externalReferenceCode the service. Identical response to getOrderType. Throws NoSuchOrderTypeException (404) if not found."
+		)
 		public OrderType typeByExternalReferenceCode() throws Exception {
 			return _applyComponentServiceObjects(
 				_orderTypeResourceComponentServiceObjects,
@@ -1241,7 +1462,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Retrieves a term by externalReferenceCode the service. Identical response to getTerm. Throws NoSuchTermEntryException (404) if not found."
+		)
 		public Term termByExternalReferenceCode() throws Exception {
 			return _applyComponentServiceObjects(
 				_termResourceComponentServiceObjects,
@@ -1263,7 +1486,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Nested field for orders accessed by externalReferenceCode; returns the associated Account. Throws NoSuchOrderException (404) if order not found."
+		)
 		public Account byExternalReferenceCodeAccount() throws Exception {
 			return _applyComponentServiceObjects(
 				_accountResourceComponentServiceObjects,
@@ -1271,6 +1496,44 @@ public class Query {
 				accountResource ->
 					accountResource.getOrderByExternalReferenceCodeAccount(
 						_order.getExternalReferenceCode()));
+		}
+
+		private Order _order;
+
+	}
+
+	@GraphQLTypeExtension(Order.class)
+	public class GetOrderByExternalReferenceCodeAttachmentsPageTypeExtension {
+
+		public GetOrderByExternalReferenceCodeAttachmentsPageTypeExtension(
+			Order order) {
+
+			_order = order;
+		}
+
+		@GraphQLField(
+			description = "Identical to getOrderAttachmentsPage but order is resolved by externalReferenceCode first. Throws NoSuchOrderException (404) if order not found."
+		)
+		public AttachmentPage byExternalReferenceCodeAttachments(
+				@GraphQLName("search") String search,
+				@GraphQLName("filter") String filterString,
+				@GraphQLName("pageSize") int pageSize,
+				@GraphQLName("page") int page,
+				@GraphQLName("sort") String sortsString)
+			throws Exception {
+
+			return _applyComponentServiceObjects(
+				_attachmentResourceComponentServiceObjects,
+				Query.this::_populateResourceContext,
+				attachmentResource -> new AttachmentPage(
+					attachmentResource.
+						getOrderByExternalReferenceCodeAttachmentsPage(
+							_order.getExternalReferenceCode(), search,
+							_filterBiFunction.apply(
+								attachmentResource, filterString),
+							Pagination.of(page, pageSize),
+							_sortsBiFunction.apply(
+								attachmentResource, sortsString))));
 		}
 
 		private Order _order;
@@ -1286,7 +1549,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Nested field for orders accessed by externalReferenceCode; returns BillingAddress. Throws NoSuchOrderException (404) if order not found."
+		)
 		public BillingAddress byExternalReferenceCodeBillingAddress()
 			throws Exception {
 
@@ -1312,7 +1577,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Nested field for orders accessed by externalReferenceCode; returns the Channel. Throws NoSuchOrderException (404) if order not found."
+		)
 		public Channel byExternalReferenceCodeChannel() throws Exception {
 			return _applyComponentServiceObjects(
 				_channelResourceComponentServiceObjects,
@@ -1335,7 +1602,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "List endpoint for items belonging to a single order, resolved by order externalReferenceCode. Delegates to the service. Returns Page<OrderItem> with total count. Throws NoSuchOrderException (404) if order not found."
+		)
 		public OrderItemPage byExternalReferenceCodeOrderItems(
 				@GraphQLName("pageSize") int pageSize,
 				@GraphQLName("page") int page)
@@ -1364,7 +1633,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "List endpoint for notes belonging to an order, resolved by externalReferenceCode. Delegates to the service. Throws NoSuchOrderException (404) if order not found."
+		)
 		public OrderNotePage byExternalReferenceCodeOrderNotes(
 				@GraphQLName("pageSize") int pageSize,
 				@GraphQLName("page") int page)
@@ -1394,7 +1665,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Retrieves order rule first by externalReferenceCode, then returns its linked accounts. Throws NoSuchCOREntryException (404) if order rule not found."
+		)
 		public OrderRuleAccountPage
 				ruleByExternalReferenceCodeOrderRuleAccounts(
 					@GraphQLName("pageSize") int pageSize,
@@ -1425,7 +1698,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Retrieves order rule by externalReferenceCode, then returns linked account groups. Throws NoSuchCOREntryException (404) if order rule not found."
+		)
 		public OrderRuleAccountGroupPage
 				ruleByExternalReferenceCodeOrderRuleAccountGroups(
 					@GraphQLName("pageSize") int pageSize,
@@ -1456,7 +1731,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Retrieves order rule by externalReferenceCode, then returns linked channels. Throws NoSuchCOREntryException (404) if order rule not found."
+		)
 		public OrderRuleChannelPage
 				ruleByExternalReferenceCodeOrderRuleChannels(
 					@GraphQLName("pageSize") int pageSize,
@@ -1487,7 +1764,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Retrieves order rule by externalReferenceCode, then returns linked order types. Throws NoSuchCOREntryException (404) if order rule not found."
+		)
 		public OrderRuleOrderTypePage
 				ruleByExternalReferenceCodeOrderRuleOrderTypes(
 					@GraphQLName("pageSize") int pageSize,
@@ -1518,7 +1797,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Retrieves order type first by externalReferenceCode, then returns its linked channels. Throws NoSuchOrderTypeException (404) if order type not found."
+		)
 		public OrderTypeChannelPage
 				typeByExternalReferenceCodeOrderTypeChannels(
 					@GraphQLName("pageSize") int pageSize,
@@ -1548,7 +1829,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Nested field for orders accessed by externalReferenceCode; returns ShippingAddress. Throws NoSuchOrderException (404) if order not found."
+		)
 		public ShippingAddress byExternalReferenceCodeShippingAddress()
 			throws Exception {
 
@@ -1574,7 +1857,9 @@ public class Query {
 			_order = order;
 		}
 
-		@GraphQLField
+		@GraphQLField(
+			description = "Retrieves term first by externalReferenceCode, then returns its linked order types. Throws NoSuchTermEntryException (404) if term not found."
+		)
 		public TermOrderTypePage termByExternalReferenceCodeTermOrderTypes(
 				@GraphQLName("pageSize") int pageSize,
 				@GraphQLName("page") int page)
@@ -1588,6 +1873,39 @@ public class Query {
 						getTermByExternalReferenceCodeTermOrderTypesPage(
 							_order.getExternalReferenceCode(),
 							Pagination.of(page, pageSize))));
+		}
+
+		private Order _order;
+
+	}
+
+	@GraphQLTypeExtension(Order.class)
+	public class
+		GetOrderByExternalReferenceCodeAttachmentByExternalReferenceCodeTypeExtension {
+
+		public GetOrderByExternalReferenceCodeAttachmentByExternalReferenceCodeTypeExtension(
+			Order order) {
+
+			_order = order;
+		}
+
+		@GraphQLField(
+			description = "Retrieves a single attachment via external reference code pair; resolves both order and attachment, then delegates to getOrderAttachment(). Throws NoSuchOrderException (404) or NoSuchOrderAttachmentException (404) if either not found."
+		)
+		public Attachment
+				byExternalReferenceCodeAttachmentByExternalReferenceCode(
+					@GraphQLName("attachmentExternalReferenceCode") String
+						attachmentExternalReferenceCode)
+			throws Exception {
+
+			return _applyComponentServiceObjects(
+				_attachmentResourceComponentServiceObjects,
+				Query.this::_populateResourceContext,
+				attachmentResource ->
+					attachmentResource.
+						getOrderByExternalReferenceCodeAttachmentByExternalReferenceCode(
+							_order.getExternalReferenceCode(),
+							attachmentExternalReferenceCode));
 		}
 
 		private Order _order;
@@ -1612,6 +1930,39 @@ public class Query {
 
 		@GraphQLField
 		protected java.util.Collection<Account> items;
+
+		@GraphQLField
+		protected long lastPage;
+
+		@GraphQLField
+		protected long page;
+
+		@GraphQLField
+		protected long pageSize;
+
+		@GraphQLField
+		protected long totalCount;
+
+	}
+
+	@GraphQLName("AttachmentPage")
+	public class AttachmentPage {
+
+		public AttachmentPage(Page attachmentPage) {
+			actions = attachmentPage.getActions();
+
+			items = attachmentPage.getItems();
+			lastPage = attachmentPage.getLastPage();
+			page = attachmentPage.getPage();
+			pageSize = attachmentPage.getPageSize();
+			totalCount = attachmentPage.getTotalCount();
+		}
+
+		@GraphQLField
+		protected Map<String, Map<String, String>> actions;
+
+		@GraphQLField
+		protected java.util.Collection<Attachment> items;
 
 		@GraphQLField
 		protected long lastPage;
@@ -2191,6 +2542,23 @@ public class Query {
 		accountResource.setRoleLocalService(_roleLocalService);
 	}
 
+	private void _populateResourceContext(AttachmentResource attachmentResource)
+		throws Exception {
+
+		attachmentResource.setContextAcceptLanguage(_acceptLanguage);
+		attachmentResource.setContextCompany(_company);
+		attachmentResource.setContextHttpServletRequest(_httpServletRequest);
+		attachmentResource.setContextHttpServletResponse(_httpServletResponse);
+		attachmentResource.setContextUriInfo(_uriInfo);
+		attachmentResource.setContextUser(_user);
+		attachmentResource.setGroupLocalService(_groupLocalService);
+		attachmentResource.setResourceActionLocalService(
+			_resourceActionLocalService);
+		attachmentResource.setResourcePermissionLocalService(
+			_resourcePermissionLocalService);
+		attachmentResource.setRoleLocalService(_roleLocalService);
+	}
+
 	private void _populateResourceContext(
 			BillingAddressResource billingAddressResource)
 		throws Exception {
@@ -2490,6 +2858,8 @@ public class Query {
 
 	private static ComponentServiceObjects<AccountResource>
 		_accountResourceComponentServiceObjects;
+	private static ComponentServiceObjects<AttachmentResource>
+		_attachmentResourceComponentServiceObjects;
 	private static ComponentServiceObjects<BillingAddressResource>
 		_billingAddressResourceComponentServiceObjects;
 	private static ComponentServiceObjects<ChannelResource>
@@ -2540,4 +2910,4 @@ public class Query {
 	private com.liferay.portal.kernel.model.User _user;
 
 }
-// LIFERAY-REST-BUILDER-HASH:1993276845
+// LIFERAY-REST-BUILDER-HASH:-663038204

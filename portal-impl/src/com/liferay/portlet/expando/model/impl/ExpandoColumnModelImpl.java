@@ -84,6 +84,10 @@ public class ExpandoColumnModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table ExpandoColumn";
 
+	public static final String ENTITY_ALIAS = "expandoColumn";
+
+	public static final String FILTER_PK_COLUMN_NAME = "columnId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY expandoColumn.name ASC";
 
@@ -859,4 +863,4 @@ public class ExpandoColumnModelImpl
 	private ExpandoColumn _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-624137481
+// LIFERAY-SERVICE-BUILDER-HASH:698216137

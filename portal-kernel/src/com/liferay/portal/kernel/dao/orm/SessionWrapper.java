@@ -152,13 +152,15 @@ public class SessionWrapper implements Session {
 	}
 
 	@Override
-	public Serializable save(Object object) throws ORMException {
-		return session.save(object);
+	public void reassociateIfAbsent(
+		Class<?> clazz, Serializable id, Object object) {
+
+		session.reassociateIfAbsent(clazz, id, object);
 	}
 
 	@Override
-	public void saveOrUpdate(Object object) throws ORMException {
-		session.saveOrUpdate(object);
+	public Serializable save(Object object) throws ORMException {
+		return session.save(object);
 	}
 
 	protected final Session session;

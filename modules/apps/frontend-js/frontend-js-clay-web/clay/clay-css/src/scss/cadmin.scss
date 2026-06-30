@@ -10,6 +10,8 @@
 
 @import '_mixins';
 
+@import 'cadmin/components/_root';
+
 @import 'cadmin/components/_base';
 @import 'cadmin/components/_reboot';
 
@@ -86,6 +88,7 @@ html#{$cadmin-selector} {
 		@import 'cadmin/components/_utilities-functional-important';
 
 		@import 'cadmin/components/_loaders';
+		@import 'cadmin/components/_focus-ring';
 
 		@import 'cadmin/components/_print';
 	}

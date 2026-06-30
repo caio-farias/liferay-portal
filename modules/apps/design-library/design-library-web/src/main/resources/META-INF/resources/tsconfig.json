@@ -1,5 +1,5 @@
 {
-	"@generated": "90341bbead805bc1c03fe3749ac1cf4be38f6b70",
+	"@generated": "b8299b7382c44a451db63efabd288ac7ba738ee6",
 	"@readonly": "** AUTO-GENERATED: DO NOT EDIT **",
 	"compilerOptions": {
 		"allowSyntheticDefaultImports": true,
@@ -14,6 +14,9 @@
 			"@liferay/frontend-data-set-web": [
 				"../../../../../../../frontend-data-set/frontend-data-set-web/src/main/resources/META-INF/resources/index.ts"
 			],
+			"@liferay/frontend-data-set-web/api": [
+				"../../../../../../../frontend-data-set/frontend-data-set-web/src/main/resources/META-INF/resources/js/api/api.ts"
+			],
 			"@liferay/frontend-js-item-selector-web": [
 				"../../../../../../../frontend-js/frontend-js-item-selector-web/src/main/resources/META-INF/resources/index.ts"
 			],
@@ -25,6 +28,9 @@
 			],
 			"frontend-js-web/legacy": [
 				"../../../../../../../frontend-js/frontend-js-web/src/main/resources/META-INF/resources/legacy/index.ts"
+			],
+			"style-book-web": [
+				"../../../../../../../style-book/style-book-web/src/main/resources/META-INF/resources/js/index.d.ts"
 			]
 		},
 		"rootDir": "../../../../../../../..",
@@ -54,6 +60,9 @@
 		},
 		{
 			"path": "../../../../../../../frontend-js/frontend-js-web/src/main/resources/META-INF/resources/tsconfig.json"
+		},
+		{
+			"path": "../../../../../../../style-book/style-book-web/src/main/resources/META-INF/resources/tsconfig.json"
 		}
 	]
 }

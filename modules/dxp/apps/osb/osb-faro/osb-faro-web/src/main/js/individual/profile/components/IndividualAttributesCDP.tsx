@@ -4,10 +4,12 @@ import {
 	GeneralInfoSection
 } from 'shared/components/GeneralInfoSection';
 import {formatUTCDate} from 'shared/util/date';
-import {SectionHeader} from './SectionHeader';
+import {SectionHeader} from 'shared/components/SectionHeader';
 
 interface IIndividualAttributesProps {
+	children?: React.ReactNode;
 	contactId?: string;
+	loading?: boolean;
 	propertiesData: Map<string, any>;
 	showEmptyState?: boolean;
 }
@@ -59,6 +61,7 @@ const contextualInfoConfig: DataDrivenConfig = [
 const IndividualAttributesCDP: React.FC<IIndividualAttributesProps> = ({
 	children: emptyState,
 	contactId,
+	loading = false,
 	propertiesData,
 	showEmptyState
 }) => {
@@ -83,13 +86,14 @@ const IndividualAttributesCDP: React.FC<IIndividualAttributesProps> = ({
 				title={Liferay.Language.get('individual-attributes')}
 			/>
 
-			{showEmptyState ? (
+			{showEmptyState && !loading ? (
 				emptyState
 			) : (
 				<GeneralInfoSection
 					config={contextualInfoConfig}
 					getValue={getValue}
 					languageMap={INFO_LANGUAGE_MAP}
+					loading={loading}
 				/>
 			)}
 		</>

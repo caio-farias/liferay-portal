@@ -34,7 +34,6 @@ export const test = mergeTests(
 	dataApiHelpersTest,
 	displayPageTemplatesPagesTest,
 	featureFlagsTest({
-		'LPD-20379': {enabled: true},
 		'LPS-178052': {enabled: true},
 	}),
 	isolatedSiteTest,
@@ -295,7 +294,7 @@ test(
 				await expect(
 					(
 						await commerceThemeClassicOrdersPage.orderItemsTableRow(
-							3,
+							4,
 							productWithUploadOption.productOptions[0].name[
 								'en_US'
 							]
@@ -484,8 +483,9 @@ test(
 					},
 					{
 						actionIds: [
+							'ADD_COMMERCE_SHIPMENT',
 							'MANAGE_ALL_ACCOUNTS',
-							'MANAGE_COMMERCE_SHIPMENTS',
+							'VIEW_COMMERCE_SHIPMENTS',
 						],
 						primaryKey: companyId,
 						resourceName: 'com.liferay.commerce.shipment',
@@ -837,7 +837,7 @@ test(
 
 				const optionValuesColumn = (
 					await commerceThemeClassicOrdersPage.orderItemsTableRow(
-						2,
+						3,
 						'option-checkbox-key'
 					)
 				).column;
@@ -851,7 +851,7 @@ test(
 				await expect(
 					(
 						await commerceThemeClassicOrdersPage.orderItemsTableRow(
-							3,
+							4,
 							product1.name['en_US'],
 							true
 						)
@@ -1416,7 +1416,7 @@ test(
 				await expect(
 					(
 						await commerceThemeClassicOrdersPage.orderItemsTableRow(
-							3,
+							4,
 							product2.name['en_US'],
 							true
 						)

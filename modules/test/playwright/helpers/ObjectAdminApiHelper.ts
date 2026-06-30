@@ -6,10 +6,14 @@
 import {
 	ObjectDefinition,
 	ObjectDefinitionAPI,
+	ObjectDefinitionSetting,
 	ObjectField,
 	ObjectFolder,
 	ObjectFolderAPI,
+	ObjectRelationship,
+	ObjectRelationshipAPI,
 } from '@liferay/object-admin-rest-client-js';
+import {expect} from '@playwright/test';
 
 import {getRandomInt} from '../utils/getRandomInt';
 import {ApiHelpers} from './ApiHelpers';
@@ -34,6 +38,66 @@ export class ObjectAdminApiHelper {
 		);
 	}
 
+	async getObjectDefinitionByName(name: string): Promise<ObjectDefinition> {
+		const {items} = await this.apiHelpers.get(
+			`${this.apiHelpers.baseUrl}${this.basePath}/object-definitions?filter=name eq '${name}'`
+		);
+
+		return items[0];
+	}
+
+	async patchObjectDefinitionSetting(
+		objectDefinitionId: number,
+		name: string,
+		value: string
+	) {
+		return this.apiHelpers.patch(
+			`${this.apiHelpers.baseUrl}${this.basePath}/object-definitions/${objectDefinitionId}`,
+			{objectDefinitionSettings: [{name, value}]}
+		);
+	}
+
+	async patchObjectRelationshipEdge(
+		relationship: ObjectRelationship,
+		edge: boolean
+	) {
+		const objectRelationshipAPIClient =
+			await this.apiHelpers.buildRestClient(ObjectRelationshipAPI);
+
+		await objectRelationshipAPIClient.putObjectRelationship(
+			relationship.id!,
+			{...relationship, edge}
+		);
+	}
+
+	async postObjectDefinitionInheritanceRelationship(
+		parent: ObjectDefinition,
+		child: ObjectDefinition
+	): Promise<ObjectRelationship> {
+		const objectRelationshipAPIClient =
+			await this.apiHelpers.buildRestClient(ObjectRelationshipAPI);
+
+		const {body} =
+			await objectRelationshipAPIClient.postObjectDefinitionByExternalReferenceCodeObjectRelationship(
+				parent.externalReferenceCode!,
+				{
+					edge: true,
+					label: {en_US: 'inheritanceRelationship' + getRandomInt()},
+					name: 'rel' + getRandomInt(),
+					objectDefinitionExternalReferenceCode1:
+						parent.externalReferenceCode,
+					objectDefinitionExternalReferenceCode2:
+						child.externalReferenceCode,
+					objectDefinitionId1: parent.id,
+					objectDefinitionId2: child.id,
+					objectDefinitionName2: child.name,
+					type: 'oneToMany',
+				}
+			);
+
+		return body;
+	}
+
 	async postObjectDefinitionObjectFieldBatch(
 		objectDefinitionId: number,
 		objectFields: Partial<ObjectField>[]
@@ -44,10 +108,26 @@ export class ObjectAdminApiHelper {
 		);
 	}
 
+	async postObjectDefinitionPublish({
+		objectDefinitionId,
+	}: {
+		objectDefinitionId: number;
+	}): Promise<ObjectDefinition> {
+		const objectDefinitionAPIClient =
+			await this.apiHelpers.buildRestClient(ObjectDefinitionAPI);
+
+		return (
+			await objectDefinitionAPIClient.postObjectDefinitionPublish(
+				objectDefinitionId
+			)
+		).body;
+	}
+
 	async postRandomObjectDefinition({
 		className,
 		enableFriendlyURLCustomization,
 		objectDefinitionExternalReferenceCode = `ObjectDefinition${getRandomInt()}`,
+		objectDefinitionSettings,
 		objectFields,
 		objectFolderExternalReferenceCode,
 		panelCategoryKey,
@@ -58,10 +138,11 @@ export class ObjectAdminApiHelper {
 		className?: string;
 		enableFriendlyURLCustomization?: boolean;
 		objectDefinitionExternalReferenceCode?: string;
+		objectDefinitionSettings?: Partial<ObjectDefinitionSetting>[];
 		objectFields?: Partial<ObjectField>[];
 		objectFolderExternalReferenceCode?: string;
 		panelCategoryKey?: string;
-		scope?: 'site' | 'company';
+		scope?: 'company' | 'depot' | 'site';
 		status: {code: number};
 		titleObjectFieldName?: string;
 	}) {
@@ -74,6 +155,8 @@ export class ObjectAdminApiHelper {
 				en_US: objectDefinitionExternalReferenceCode,
 			},
 			name: objectDefinitionExternalReferenceCode,
+			objectDefinitionSettings:
+				objectDefinitionSettings as ObjectDefinitionSetting[],
 			objectFields: objectFields ?? [
 				{
 					DBType: 'String',
@@ -130,5 +213,28 @@ export class ObjectAdminApiHelper {
 				name: objectFolderExternalReferenceCode,
 			})
 		).body;
+	}
+
+	async waitForObjectDefinition(
+		name: string,
+		{
+			interval = 500,
+			timeout = 10_000,
+		}: {interval?: number; timeout?: number} = {}
+	): Promise<ObjectDefinition> {
+		let definition: ObjectDefinition | undefined;
+
+		await expect
+			.poll(
+				async () => {
+					definition = await this.getObjectDefinitionByName(name);
+
+					return Boolean(definition?.active);
+				},
+				{intervals: [interval], timeout}
+			)
+			.toBe(true);
+
+		return definition!;
 	}
 }

@@ -22,6 +22,7 @@ import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
@@ -30,6 +31,8 @@ import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.test.log.LogCapture;
+import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
@@ -91,17 +94,17 @@ public class DisplayPageTemplateFolderResourceTest
 
 		DisplayPageTemplateFolder liveGroupDisplayPageTemplateFolder =
 			testGetSiteDisplayPageTemplateFoldersPage_addDisplayPageTemplateFolder(
-				testGroup.getExternalReferenceCode(),
+				irrelevantGroup.getExternalReferenceCode(),
 				randomDisplayPageTemplateFolder());
 
-		_enableLocalStaging();
+		_enableLocalStaging(irrelevantGroup);
 
 		_assertProblemException(
 			"BAD_REQUEST", null,
 			() ->
 				displayPageTemplateFolderResource.
 					deleteSiteDisplayPageTemplateFolder(
-						testGroup.getExternalReferenceCode(),
+						irrelevantGroup.getExternalReferenceCode(),
 						liveGroupDisplayPageTemplateFolder.
 							getExternalReferenceCode()));
 	}
@@ -471,10 +474,22 @@ public class DisplayPageTemplateFolderResourceTest
 	}
 
 	private void _enableLocalStaging() throws Exception {
-		_stagingLocalService.enableLocalStaging(
-			TestPropsValues.getUserId(), testGroup, true, false,
-			ServiceContextTestUtil.getServiceContext(
-				testGroup, TestPropsValues.getUserId()));
+		_enableLocalStaging(testGroup);
+	}
+
+	private void _enableLocalStaging(Group group) throws Exception {
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.batch.engine.internal." +
+					"BatchEngineImportTaskExecutorImpl",
+				LoggerTestUtil.OFF)) {
+
+			_stagingLocalService.enableLocalStaging(
+				TestPropsValues.getUserId(), group, true, false,
+				ServiceContextTestUtil.getServiceContext(
+					group, TestPropsValues.getUserId()));
+		}
+
+		Assert.assertTrue(group.hasStagingGroup());
 	}
 
 	private DisplayPageTemplateFolder _getParentDisplayPageTemplateFolder(

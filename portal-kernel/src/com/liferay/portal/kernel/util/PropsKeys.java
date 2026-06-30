@@ -432,6 +432,9 @@ public interface PropsKeys {
 
 	public static final String CLUSTER_LINK_ENABLED = "cluster.link.enabled";
 
+	public static final String CLUSTER_LINK_JMX_ENABLED =
+		"cluster.link.jmx.enabled";
+
 	public static final String CLUSTERABLE_ADVICE_CALL_MASTER_TIMEOUT =
 		"clusterable.advice.call.master.timeout";
 
@@ -994,8 +997,6 @@ public interface PropsKeys {
 	public static final String DNS_SECURITY_THREAD_QUEUE_LIMIT =
 		"dns.security.thread.queue.limit";
 
-	public static final String DSR_DEV_ENV_ENABLED = "dsr.dev.env.enabled";
-
 	public static final String EDITOR_WYSIWYG_DEFAULT =
 		"editor.wysiwyg.default";
 
@@ -1071,6 +1072,8 @@ public interface PropsKeys {
 	public static final String
 		FIELD_ENABLE_COM_LIFERAY_PORTAL_KERNEL_MODEL_ORGANIZATION_STATUS =
 			"field.enable.com.liferay.portal.kernel.model.Organization.status";
+
+	public static final String FIPS_ENABLED = "fips.enabled";
 
 	public static final String FULL_PAGE_DISPLAYABLE = "full.page.displayable";
 
@@ -2500,6 +2503,9 @@ public interface PropsKeys {
 
 	public static final String SITES_FORM_UPDATE_SEO = "sites.form.update.seo";
 
+	public static final String SITES_FRIENDLY_URL_KEYWORDS =
+		"sites.friendly.url.keywords";
+
 	public static final String SITES_FRIENDLY_URL_PAGE_NOT_FOUND =
 		"sites.friendly.url.page.not.found";
 
@@ -2720,6 +2726,21 @@ public interface PropsKeys {
 
 	public static final String UPGRADE_LOG_CONTEXT_ENABLED =
 		"upgrade.log.context.enabled";
+
+	public static final String UPGRADE_LOG_PROGRESS_ENABLED =
+		"upgrade.log.progress.enabled";
+
+	public static final String UPGRADE_LOG_PROGRESS_INTERVAL =
+		"upgrade.log.progress.interval";
+
+	public static final String UPGRADE_QUERY_MONITOR_ENABLED =
+		"upgrade.query.monitor.enabled";
+
+	public static final String UPGRADE_QUERY_MONITOR_LOCK_THRESHOLD =
+		"upgrade.query.monitor.lock.threshold";
+
+	public static final String UPGRADE_QUERY_MONITOR_LONG_RUNNING_THRESHOLD =
+		"upgrade.query.monitor.long.running.threshold";
 
 	public static final String UPGRADE_REPORT_DIR = "upgrade.report.dir";
 

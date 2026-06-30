@@ -8,6 +8,8 @@ package com.liferay.object.internal.deployer;
 import com.liferay.account.service.AccountEntryLocalService;
 import com.liferay.account.service.AccountEntryOrganizationRelLocalService;
 import com.liferay.asset.kernel.service.AssetEntryLocalService;
+import com.liferay.depot.service.DepotEntryGroupRelLocalService;
+import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
 import com.liferay.frontend.taglib.servlet.taglib.ScreenNavigationCategory;
 import com.liferay.frontend.taglib.servlet.taglib.ScreenNavigationEntry;
@@ -18,6 +20,7 @@ import com.liferay.object.constants.ObjectDefinitionSettingConstants;
 import com.liferay.object.definition.security.permission.resource.util.ObjectDefinitionResourcePermissionUtil;
 import com.liferay.object.definition.tree.util.ObjectDefinitionTreeUtil;
 import com.liferay.object.deployer.ObjectDefinitionDeployer;
+import com.liferay.object.field.business.type.ObjectFieldBusinessTypeRegistry;
 import com.liferay.object.internal.layout.tab.screen.navigation.category.ObjectLayoutTabScreenNavigationCategory;
 import com.liferay.object.internal.notification.handler.ObjectDefinitionNotificationHandler;
 import com.liferay.object.internal.notification.term.contributor.ObjectDefinitionNotificationTermEvaluator;
@@ -131,6 +134,8 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			accountEntryOrganizationRelLocalService,
 		AssetEntryLocalService assetEntryLocalService,
 		BundleContext bundleContext,
+		DepotEntryGroupRelLocalService depotEntryGroupRelLocalService,
+		DepotEntryLocalService depotEntryLocalService,
 		DLFileEntryLocalService dlFileEntryLocalService,
 		GroupLocalService groupLocalService,
 		KaleoDefinitionLocalService kaleoDefinitionLocalService,
@@ -141,6 +146,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		ObjectEntryFolderLocalService objectEntryFolderLocalService,
 		ObjectEntryLocalService objectEntryLocalService,
 		ObjectEntryService objectEntryService,
+		ObjectFieldBusinessTypeRegistry objectFieldBusinessTypeRegistry,
 		ObjectFieldLocalService objectFieldLocalService,
 		ObjectFolderLocalService objectFolderLocalService,
 		ObjectLayoutLocalService objectLayoutLocalService,
@@ -166,6 +172,8 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			accountEntryOrganizationRelLocalService;
 		_assetEntryLocalService = assetEntryLocalService;
 		_bundleContext = bundleContext;
+		_depotEntryGroupRelLocalService = depotEntryGroupRelLocalService;
+		_depotEntryLocalService = depotEntryLocalService;
 		_dlFileEntryLocalService = dlFileEntryLocalService;
 		_groupLocalService = groupLocalService;
 		_kaleoDefinitionLocalService = kaleoDefinitionLocalService;
@@ -177,6 +185,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		_objectEntryFolderLocalService = objectEntryFolderLocalService;
 		_objectEntryLocalService = objectEntryLocalService;
 		_objectEntryService = objectEntryService;
+		_objectFieldBusinessTypeRegistry = objectFieldBusinessTypeRegistry;
 		_objectFieldLocalService = objectFieldLocalService;
 		_objectFolderLocalService = objectFolderLocalService;
 		_objectLayoutLocalService = objectLayoutLocalService;
@@ -279,6 +288,9 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		Map<Long, List<ObjectRelationship>> objectRelationshipsMap) {
 
 		if (objectDefinition.isUnmodifiableSystemObject()) {
+			_registerObjectRelationshipsRelatedInfoCollectionProviders(
+				objectDefinition, objectRelationshipsMap);
+
 			return Collections.emptyList();
 		}
 
@@ -324,6 +336,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 						_accountEntryOrganizationRelLocalService,
 						_dlFileEntryLocalService,
 						_objectEntryFolderLocalService,
+						_objectFieldBusinessTypeRegistry,
 						_textEmbeddingDocumentContributor),
 					HashMapDictionaryBuilder.<String, Object>put(
 						"indexer.class.name", objectDefinition.getClassName()
@@ -457,12 +470,13 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		ModelResourcePermission<ObjectEntry> modelResourcePermission =
 			new ObjectEntryModelResourcePermission(
 				_accountEntryLocalService,
-				_accountEntryOrganizationRelLocalService, _groupLocalService,
-				objectDefinition.getClassName(), _objectActionLocalService,
-				_objectDefinitionLocalService, _objectEntryLocalService,
-				consumerSupplier, _objectFieldLocalService,
-				portletResourcePermission, _resourcePermissionLocalService,
-				_userGroupRoleLocalService);
+				_accountEntryOrganizationRelLocalService,
+				_depotEntryGroupRelLocalService, _depotEntryLocalService,
+				_groupLocalService, objectDefinition.getClassName(),
+				_objectActionLocalService, _objectDefinitionLocalService,
+				_objectEntryLocalService, consumerSupplier,
+				_objectFieldLocalService, portletResourcePermission,
+				_resourcePermissionLocalService, _userGroupRoleLocalService);
 
 		serviceRegistrations.add(
 			_bundleContext.registerService(
@@ -501,7 +515,8 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 				TrashHandler.class,
 				new ObjectEntryTrashHandler(
 					objectDefinition, _objectDefinitionLocalService,
-					_objectEntryService, _systemEventLocalService),
+					_objectEntryLocalService, _objectEntryService,
+					_systemEventLocalService),
 				HashMapDictionaryBuilder.<String, Object>put(
 					"model.class.name", objectDefinition.getClassName()
 				).build()));
@@ -532,18 +547,8 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 					objectDefinition, objectLayout.getObjectLayoutTabs());
 		}
 
-		List<ObjectRelationship> objectRelationships = null;
-
-		if (objectRelationshipsMap != null) {
-			objectRelationships = objectRelationshipsMap.getOrDefault(
-				objectDefinition.getObjectDefinitionId(),
-				Collections.emptyList());
-		}
-
-		_objectRelationshipLocalService.
-			registerObjectRelationshipsRelatedInfoCollectionProviders(
-				objectDefinition, _objectDefinitionLocalService,
-				objectRelationships);
+		_registerObjectRelationshipsRelatedInfoCollectionProviders(
+			objectDefinition, objectRelationshipsMap);
 
 		try {
 			if (ArrayUtil.isNotEmpty(
@@ -575,6 +580,28 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		return StringBundler.concat(
 			serviceRegistrationKey, StringPool.POUND,
 			objectRelationship.getObjectRelationshipId());
+	}
+
+	private void _registerObjectRelationshipsRelatedInfoCollectionProviders(
+		ObjectDefinition objectDefinition,
+		Map<Long, List<ObjectRelationship>> objectRelationshipsMap) {
+
+		List<ObjectRelationship> objectRelationships = null;
+
+		if (objectRelationshipsMap != null) {
+			objectRelationships = objectRelationshipsMap.getOrDefault(
+				objectDefinition.getObjectDefinitionId(),
+				Collections.emptyList());
+		}
+
+		if ((objectRelationships != null) && objectRelationships.isEmpty()) {
+			return;
+		}
+
+		_objectRelationshipLocalService.
+			registerObjectRelationshipsRelatedInfoCollectionProviders(
+				objectDefinition, _objectDefinitionLocalService,
+				objectRelationships);
 	}
 
 	private void _registerRootObjectLayoutTabScreenNavigationCategories(
@@ -637,6 +664,9 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		_accountEntryOrganizationRelLocalService;
 	private final AssetEntryLocalService _assetEntryLocalService;
 	private final BundleContext _bundleContext;
+	private final DepotEntryGroupRelLocalService
+		_depotEntryGroupRelLocalService;
+	private final DepotEntryLocalService _depotEntryLocalService;
 	private final DLFileEntryLocalService _dlFileEntryLocalService;
 	private final GroupLocalService _groupLocalService;
 	private final KaleoDefinitionLocalService _kaleoDefinitionLocalService;
@@ -649,6 +679,8 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 	private final ObjectEntryFolderLocalService _objectEntryFolderLocalService;
 	private final ObjectEntryLocalService _objectEntryLocalService;
 	private final ObjectEntryService _objectEntryService;
+	private final ObjectFieldBusinessTypeRegistry
+		_objectFieldBusinessTypeRegistry;
 	private final ObjectFieldLocalService _objectFieldLocalService;
 	private final ObjectFolderLocalService _objectFolderLocalService;
 	private final ObjectLayoutLocalService _objectLayoutLocalService;

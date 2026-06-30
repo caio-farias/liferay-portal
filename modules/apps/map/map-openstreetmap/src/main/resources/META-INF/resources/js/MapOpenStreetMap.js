@@ -4,6 +4,9 @@
  */
 
 import {MapBase} from '@liferay/map-common';
+import L from 'leaflet';
+
+import 'leaflet/dist/leaflet.css';
 
 import OpenStreetMapDialog from './OpenStreetMapDialog';
 import OpenStreetMapGeoJSON from './OpenStreetMapGeoJSON';
@@ -11,6 +14,14 @@ import OpenStreetMapGeocoder from './OpenStreetMapGeocoder';
 import OpenStreetMapMarker from './OpenStreetMapMarker';
 
 const defaultTileURI = '//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+L.Icon.Default.imagePath = `${Liferay.ThemeDisplay.getPathContext()}/o/map-openstreetmap/images/`;
+
+L.Icon.Default.mergeOptions({
+	iconRetinaUrl: 'marker_icon_2x.png',
+	iconUrl: 'marker_icon.png',
+	shadowUrl: 'marker_shadow.png',
+});
 
 /**
  * MapOpenStreetMap

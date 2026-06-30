@@ -7,6 +7,7 @@ package com.liferay.marketplace.util;
 
 import com.liferay.headless.commerce.admin.catalog.client.dto.v1_0.Product;
 import com.liferay.headless.commerce.admin.catalog.client.dto.v1_0.SkuOption;
+import com.liferay.headless.commerce.admin.order.client.dto.v1_0.Order;
 import com.liferay.headless.commerce.admin.order.client.dto.v1_0.OrderItem;
 import com.liferay.marketplace.model.PublisherAssetLink;
 import com.liferay.osb.koroneiki.phloem.rest.client.dto.v1_0.ExternalLink;
@@ -285,6 +286,28 @@ public class MarketplaceUtil {
 		return localeMap.get("en_US");
 	}
 
+	public static String getEntityId(
+		ExternalLink[] externalLinks, String domain, String entityName) {
+
+		for (ExternalLink externalLink : externalLinks) {
+			if (Objects.equals(externalLink.getDomain(), domain) &&
+				Objects.equals(externalLink.getEntityName(), entityName)) {
+
+				return externalLink.getEntityId();
+			}
+		}
+
+		return null;
+	}
+
+	public static JSONObject getOrderMetadataJSONObject(Order order) {
+		Map<String, String> customFields =
+			(Map<String, String>)order.getCustomFields();
+
+		return new JSONObject(
+			customFields.getOrDefault("order-metadata", "{}"));
+	}
+
 	public static Date getOrderPurchaseEndDate(
 		String licenseType, String licenseUsageType) {
 
@@ -365,6 +388,10 @@ public class MarketplaceUtil {
 
 			ByteArrayOutputStream byteArrayOutputStream =
 				new ByteArrayOutputStream();
+
+			Properties properties = entry.getValue();
+
+			properties.store(byteArrayOutputStream, null);
 
 			zipOutputStream.write(byteArrayOutputStream.toByteArray());
 

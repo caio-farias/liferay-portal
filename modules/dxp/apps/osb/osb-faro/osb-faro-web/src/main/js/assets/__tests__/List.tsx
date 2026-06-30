@@ -11,97 +11,148 @@ import {Router} from 'react-router-dom';
 
 jest.unmock('react-dom');
 
-jest.mock('shared/hooks/useFrontendDataSet', () => ({
-	useFrontendDataSet: () => {
-		const FakeDataSet = ({
-			filters,
-			id,
-			itemsActions
-		}: {
-			filters?: any[];
-			id: string;
-			itemsActions?: Array<{onClick?: (item: any) => void}>;
-		}) => (
-			<div data-testid='fds-component' id={id}>
-				<div data-testid='fds-filters'>{JSON.stringify(filters)}</div>
+jest.mock('@liferay/frontend-data-set-web', () => ({
+	...jest.requireActual('@liferay/frontend-data-set-web'),
+	FrontendDataSet: ({
+		emptyState,
+		filters,
+		id,
+		itemsActions
+	}: {
+		emptyState?: {
+			description?: React.ReactNode;
+			image?: string;
+			title?: string;
+		};
+		filters?: any[];
+		id: string;
+		itemsActions?: Array<{onClick?: (item: any) => void}>;
+	}) => (
+		<div data-testid='fds-component' id={id}>
+			{emptyState && (
+				<div data-testid='fds-empty-state'>
+					<div data-testid='fds-empty-state-title'>
+						{emptyState.title}
+					</div>
 
-				<button
-					data-testid='trigger-info-panel'
-					onClick={() =>
-						itemsActions?.[0]?.onClick?.({
-							itemData: {
-								assetCategories: [],
-								assetTags: [],
-								assetTitle: 'Test Asset Title',
-								assetType: 'blog',
-								id: 'asset-id-1',
-								mimeType: 'blog'
-							}
-						})
-					}
-				>
-					{'Open Info Panel'}
-				</button>
+					<div data-testid='fds-empty-state-description'>
+						{emptyState.description}
+					</div>
+				</div>
+			)}
+			<div data-testid='fds-filters'>{JSON.stringify(filters)}</div>
 
-				<button
-					data-testid='trigger-info-panel-no-mime'
-					onClick={() =>
-						itemsActions?.[0]?.onClick?.({
-							itemData: {
-								assetCategories: [],
-								assetTags: [],
-								assetTitle: 'Asset Without Mime',
-								assetType: 'document',
-								id: 'asset-id-2'
-							}
-						})
-					}
-				>
-					{'Open Info Panel No Mime'}
-				</button>
+			<button
+				data-testid='trigger-info-panel'
+				onClick={() =>
+					itemsActions?.[0]?.onClick?.({
+						itemData: {
+							assetCategories: [],
+							assetTags: [],
+							assetTitle: 'Test Asset Title',
+							assetType: 'blog',
+							id: 'asset-id-1',
+							mimeType: 'blog'
+						}
+					})
+				}
+			>
+				{'Open Info Panel'}
+			</button>
 
-				<button
-					data-testid='trigger-info-panel-no-title'
-					onClick={() =>
-						itemsActions?.[0]?.onClick?.({
-							itemData: {
-								assetCategories: [],
-								assetTags: [],
-								assetType: 'folder',
-								id: 'fallback-id-3',
-								mimeType: 'folder'
-							}
-						})
-					}
-				>
-					{'Open Info Panel No Title'}
-				</button>
+			<button
+				data-testid='trigger-info-panel-no-mime'
+				onClick={() =>
+					itemsActions?.[0]?.onClick?.({
+						itemData: {
+							assetCategories: [],
+							assetTags: [],
+							assetTitle: 'Asset Without Mime',
+							assetType: 'document',
+							id: 'asset-id-2'
+						}
+					})
+				}
+			>
+				{'Open Info Panel No Mime'}
+			</button>
 
-				<button
-					data-testid='trigger-info-panel-with-items'
-					onClick={() =>
-						itemsActions?.[0]?.onClick?.({
-							itemData: {
-								assetCategories: [
-									{id: 'cat-1', name: 'Category One'},
-									{id: 'cat-2', name: 'Category Two'}
-								],
-								assetTags: [{id: 'tag-1', name: 'Tag One'}],
-								assetTitle: 'Rich Asset',
-								assetType: 'webContent',
-								id: 'asset-id-4',
-								mimeType: 'basic-web-content'
-							}
-						})
-					}
-				>
-					{'Open Info Panel With Items'}
-				</button>
-			</div>
-		);
+			<button
+				data-testid='trigger-info-panel-no-title'
+				onClick={() =>
+					itemsActions?.[0]?.onClick?.({
+						itemData: {
+							assetCategories: [],
+							assetTags: [],
+							assetType: 'folder',
+							id: 'fallback-id-3',
+							mimeType: 'folder'
+						}
+					})
+				}
+			>
+				{'Open Info Panel No Title'}
+			</button>
 
-		return FakeDataSet;
-	}
+			<button
+				data-testid='trigger-info-panel-with-items'
+				onClick={() =>
+					itemsActions?.[0]?.onClick?.({
+						itemData: {
+							assetCategories: [
+								{
+									id: 'cat-1',
+									name: 'Category One',
+									vocabularyId: 'vocab-1'
+								},
+								{
+									id: 'cat-2',
+									name: 'Category Two',
+									vocabularyId: 'vocab-1'
+								}
+							],
+							assetTags: [{id: 'tag-1', name: 'Tag One'}],
+							assetTitle: 'Rich Asset',
+							assetType: 'webContent',
+							assetVocabularies: [{id: 'vocab-1', name: 'Topic'}],
+							id: 'asset-id-4',
+							mimeType: 'basic-web-content'
+						}
+					})
+				}
+			>
+				{'Open Info Panel With Items'}
+			</button>
+
+			<button
+				data-testid='trigger-info-panel-empty-vocab'
+				onClick={() =>
+					itemsActions?.[0]?.onClick?.({
+						itemData: {
+							assetCategories: [
+								{
+									id: 'cat-1',
+									name: 'Category One',
+									vocabularyId: 'vocab-1'
+								}
+							],
+							assetTags: [],
+							assetTitle: 'Asset With Empty Vocab',
+							assetType: 'blog',
+							assetVocabularies: [
+								{id: 'vocab-1', name: 'Topics'},
+								{id: 'vocab-2', name: 'Genres'}
+							],
+							id: 'asset-id-5',
+							mimeType: 'blog'
+						}
+					})
+				}
+			>
+				{'Open Info Panel Empty Vocab'}
+			</button>
+		</div>
+	)
 }));
 
 jest.mock('shared/components/dropdown-range-key/DropdownRangeKey', () => ({
@@ -209,6 +260,41 @@ describe('List', () => {
 
 	afterEach(cleanup);
 
+	describe('empty state', () => {
+		it('should pass the correct title to the FDS empty state', () => {
+			renderList();
+
+			expect(
+				screen.getByTestId('fds-empty-state-title')
+			).toHaveTextContent('There are no assets found.');
+		});
+
+		it('should include the check-back-later text in the empty state description', () => {
+			renderList();
+
+			expect(
+				screen.getByTestId('fds-empty-state-description')
+			).toHaveTextContent(
+				'Check back later to verify if data has been received from your data sources, or you can try a different date range.'
+			);
+		});
+
+		it('should render a learn-more-about-assets link in the empty state description', () => {
+			renderList();
+
+			const link = screen.getByRole('link', {
+				exact: false,
+				name: /learn more about assets/i
+			});
+
+			expect(link).toBeInTheDocument();
+			expect(link).toHaveAttribute(
+				'href',
+				'https://learn.liferay.com/w/dxp/personalization/analytics-cloud/touchpoints/assets-analytics'
+			);
+		});
+	});
+
 	describe('rendering', () => {
 		it('should render without crashing', () => {
 			const {container} = renderList();
@@ -245,11 +331,12 @@ describe('List', () => {
 			);
 
 			const mimeTypeFilter = filters.find(
-				filter => filter.id === 'mimeType'
+				(filter: {apiURL: string; id: string; label: string}) =>
+					filter.id === 'mimeType'
 			);
 
 			expect(mimeTypeFilter).toBeDefined();
-			expect(mimeTypeFilter.label).toBe('MIME Type');
+			expect(mimeTypeFilter.label).toBe('File Type');
 			expect(mimeTypeFilter.apiURL).toContain('asset-summary-mime-types');
 		});
 
@@ -530,70 +617,104 @@ describe('List', () => {
 		});
 	});
 
-	describe('InfoPanelContent', () => {
-		it('should display the empty state message when categories list is empty', () => {
+	describe('CategoriesInfoPanelContent', () => {
+		it('should display empty state when there are no categories', () => {
 			renderList();
 
 			fireEvent.click(screen.getByTestId('trigger-info-panel'));
-
 			fireEvent.click(screen.getByText('Categorization'));
 
 			expect(
-				screen.getByText(/No Categories were found for this asset/i)
+				screen.getByText('No Categories were found for this asset.')
 			).toBeInTheDocument();
 		});
 
-		it('should display the empty state message when tags list is empty', () => {
-			renderList();
-
-			fireEvent.click(screen.getByTestId('trigger-info-panel'));
-
-			fireEvent.click(screen.getByText('Categorization'));
-
-			// Tags section uses the 'tags' language key as the title.
-
-			expect(
-				screen.getByText(/No tags were found for this asset/i)
-			).toBeInTheDocument();
-		});
-
-		it('should render a label for each category when categories are present', () => {
+		it('should group categories under their vocabulary name', () => {
 			renderList();
 
 			fireEvent.click(
 				screen.getByTestId('trigger-info-panel-with-items')
 			);
-
 			fireEvent.click(screen.getByText('Categorization'));
 
+			expect(screen.getByText('Topic')).toBeInTheDocument();
 			expect(screen.getByText('Category One')).toBeInTheDocument();
 			expect(screen.getByText('Category Two')).toBeInTheDocument();
 		});
 
-		it('should render a label for each tag when tags are present', () => {
+		it('should not render a vocabulary that has no matching categories', () => {
+			renderList();
+
+			fireEvent.click(
+				screen.getByTestId('trigger-info-panel-empty-vocab')
+			);
+			fireEvent.click(screen.getByText('Categorization'));
+
+			expect(screen.getByText('Topics')).toBeInTheDocument();
+			expect(screen.queryByText('Genres')).not.toBeInTheDocument();
+		});
+
+		it('should group all categories from the same vocabulary under one header', () => {
 			renderList();
 
 			fireEvent.click(
 				screen.getByTestId('trigger-info-panel-with-items')
 			);
+			fireEvent.click(screen.getByText('Categorization'));
 
+			expect(screen.getAllByText('Topic')).toHaveLength(1);
+			expect(screen.getByText('Category One')).toBeInTheDocument();
+			expect(screen.getByText('Category Two')).toBeInTheDocument();
+		});
+
+		it('should not show empty state when categories are present', () => {
+			renderList();
+
+			fireEvent.click(
+				screen.getByTestId('trigger-info-panel-with-items')
+			);
+			fireEvent.click(screen.getByText('Categorization'));
+
+			expect(
+				screen.queryByText('No Categories were found for this asset.')
+			).not.toBeInTheDocument();
+		});
+	});
+
+	describe('TagsInfoPanelContent', () => {
+		it('should display empty state when there are no tags', () => {
+			renderList();
+
+			fireEvent.click(screen.getByTestId('trigger-info-panel'));
+			fireEvent.click(screen.getByText('Categorization'));
+
+			expect(
+				screen.getByText('No Tags were found for this asset.')
+			).toBeInTheDocument();
+		});
+
+		it('should render tags as labels', () => {
+			renderList();
+
+			fireEvent.click(
+				screen.getByTestId('trigger-info-panel-with-items')
+			);
 			fireEvent.click(screen.getByText('Categorization'));
 
 			expect(screen.getByText('Tag One')).toBeInTheDocument();
 		});
 
-		it('should not render empty state when categories are present', () => {
+		it('should not show empty state when tags are present', () => {
 			renderList();
 
 			fireEvent.click(
 				screen.getByTestId('trigger-info-panel-with-items')
 			);
-
 			fireEvent.click(screen.getByText('Categorization'));
 
 			expect(
-				screen.queryByText(/No Categories were found for this asset/i)
-			).toBeNull();
+				screen.queryByText('No Tags were found for this asset.')
+			).not.toBeInTheDocument();
 		});
 	});
 });

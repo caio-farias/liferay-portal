@@ -13,6 +13,7 @@ import NoResultsDisplay from 'shared/components/NoResultsDisplay';
 import React, {useContext, useEffect, useRef, useState} from 'react';
 import RowActions from 'shared/components/RowActions';
 import SearchableEntityTable from 'shared/components/SearchableEntityTable';
+import SequentialEventOrderPopover from 'shared/components/SequentialEventOrderPopover';
 import ToThousandsCell from 'shared/components/table/cell-components/ToThousandsCell';
 import URLConstants from 'shared/util/url-constants';
 import UserCell from 'shared/components/table/cell-components/UserCell';
@@ -45,6 +46,7 @@ import {
 	USER_NAME
 } from 'shared/util/router';
 import {DateCell} from 'shared/components/table/cell-components';
+import {ENABLE_REAL_TIME_SEGMENTS} from 'shared/util/feature-flags';
 import {FeatureName, useLimitReached} from 'shared/hooks/useLimitReached';
 import {formatDateToTimeZone} from 'shared/util/date';
 import {
@@ -188,7 +190,7 @@ export const List: React.FC<IListProps> = ({
 		};
 	}, []);
 
-	const selectedSegmentTypes = filterBy.get(SEGMENT_TYPE)?.toArray() || [];
+	const selectedSegmentTypes = filterBy?.get(SEGMENT_TYPE)?.toArray() || [];
 
 	const {data, error, loading, refetch} = useRequest({
 		dataSourceFn: API.individualSegment.search,
@@ -219,10 +221,13 @@ export const List: React.FC<IListProps> = ({
 		featureName: FeatureName.Batch
 	});
 
-	const isRealTimeDisabled = useLimitReached({
+	const realTimeLimitReached = useLimitReached({
 		data: usageData,
 		featureName: FeatureName.RealTime
 	});
+
+	const isRealTimeDisabled =
+		ENABLE_REAL_TIME_SEGMENTS && realTimeLimitReached;
 
 	const allActionsDisabled = isBatchDisabled && isRealTimeDisabled;
 
@@ -262,12 +267,12 @@ export const List: React.FC<IListProps> = ({
 
 	const getDisabledSegmentsAlert = (abortSignal: AbortSignal) =>
 		fetchDisabledSegments(channelId, groupId, orderIOMap).then(
-			({total}) => {
+			({total}: {total: number}) => {
 				if (abortSignal.aborted) {
 					return;
 				}
 				if (total) {
-					setAlerts(() => handleDisabledSegmentsAlert());
+					setAlerts(handleDisabledSegmentsAlert() as any);
 				}
 			}
 		);
@@ -336,12 +341,22 @@ export const List: React.FC<IListProps> = ({
 				false
 			),
 			onClose: () =>
-				unassignedSegmentsDispatch({type: ActionType.updateShowAlert}),
+				unassignedSegmentsDispatch?.({
+					type: ActionType.updateShowAlert
+				}),
 			...ALERT_CONFIG_MAP[AlertTypes.Warning]
 		};
 	};
 
-	const handleDeleteSegments = ({ids, items, name = undefined}) => {
+	const handleDeleteSegments = ({
+		ids,
+		items,
+		name = undefined
+	}: {
+		ids: string[];
+		items: unknown[];
+		name?: string;
+	}) => {
 		const isMultiple = ids.length > 1;
 
 		const MODAL_MESSAGES = {
@@ -401,10 +416,10 @@ export const List: React.FC<IListProps> = ({
 								)
 							);
 						}
-						selectionDispatch({type: ActionTypes.ClearAll});
+						selectionDispatch?.({type: ActionTypes.ClearAll});
 
-						refetch();
-						refetchUsage();
+						refetch?.();
+						refetchUsage?.();
 					})
 					.catch(() => {
 						addAlert({
@@ -419,7 +434,13 @@ export const List: React.FC<IListProps> = ({
 		});
 	};
 
-	const renderRowActions = ({data: {id, name}, items}) => {
+	const renderRowActions = ({
+		data: {id, name},
+		items
+	}: {
+		data: {id: string; name: string};
+		items: unknown[];
+	}) => {
 		const commonActions = [
 			{
 				href: toRoute(Routes.CONTACTS_SEGMENT, {
@@ -469,77 +490,108 @@ export const List: React.FC<IListProps> = ({
 				<Nav>
 					<Nav.Item>
 						<div className='d-flex align-items-center'>
-							<ClayDropDown
-								alignmentPosition={Align.BottomRight}
-								trigger={
-									<ClayButton
-										aria-label={
-											pageActionsLabel &&
-											Liferay.Language.get('menu')
-										}
-										className='button-root p-2 rounded-lg'
-										disabled={
-											error ||
-											loading ||
-											allActionsDisabled
-										}
-										displayType='primary'
-										size='sm'
-									>
-										<>
-											<span>{pageActionsLabel}</span>
-											<ClayIcon
-												className='icon-root ml-2'
-												symbol='caret-bottom'
-											/>
-										</>
-									</ClayButton>
-								}
-							>
-								{usageDropDownMessage && (
-									<div
-										className='alert alert-fluid alert-info'
-										role='alert'
-									>
-										{usageDropDownMessage}
-									</div>
-								)}
-
-								<ClayDropDown.Item
-									data-testid='batch-segment-dropdown-item'
-									disabled={usageLoading || isBatchDisabled}
-									href={setUriQueryValues(
-										{type: SegmentTypes.Batch},
-										toRoute(
-											Routes.CONTACTS_SEGMENT_CREATE,
-											{channelId, groupId}
-										)
-									)}
-								>
-									<ClayIcon
-										className='mr-2'
-										symbol='diagram'
-									/>
-									{Liferay.Language.get('batch')}
-								</ClayDropDown.Item>
-
-								<ClayDropDown.Item
-									data-testid='real-time-segment-dropdown-item'
-									disabled={
-										usageLoading || isRealTimeDisabled
+							{ENABLE_REAL_TIME_SEGMENTS ? (
+								<ClayDropDown
+									alignmentPosition={Align.BottomRight}
+									trigger={
+										<ClayButton
+											aria-label={
+												pageActionsLabel &&
+												Liferay.Language.get('menu')
+											}
+											className='button-root p-2 rounded-lg'
+											disabled={
+												error ||
+												loading ||
+												allActionsDisabled
+											}
+											displayType='primary'
+											size='sm'
+										>
+											<>
+												<span>{pageActionsLabel}</span>
+												<ClayIcon
+													className='icon-root ml-2'
+													symbol='caret-bottom'
+												/>
+											</>
+										</ClayButton>
 									}
-									href={setUriQueryValues(
-										{type: SegmentTypes.RealTime},
-										toRoute(
-											Routes.CONTACTS_SEGMENT_CREATE,
-											{channelId, groupId}
-										)
-									)}
 								>
-									<ClayIcon className='mr-2' symbol='bolt' />
-									{Liferay.Language.get('real-time')}
-								</ClayDropDown.Item>
-							</ClayDropDown>
+									{usageDropDownMessage && (
+										<div
+											className='alert alert-fluid alert-info'
+											role='alert'
+										>
+											{usageDropDownMessage}
+										</div>
+									)}
+
+									<ClayDropDown.Item
+										data-testid='batch-segment-dropdown-item'
+										disabled={
+											usageLoading || isBatchDisabled
+										}
+										href={setUriQueryValues(
+											{type: SegmentTypes.Batch},
+											toRoute(
+												Routes.CONTACTS_SEGMENT_CREATE,
+												{channelId, groupId}
+											)
+										)}
+									>
+										<ClayIcon
+											className='mr-2'
+											symbol='diagram'
+										/>
+										{Liferay.Language.get('batch')}
+									</ClayDropDown.Item>
+
+									<ClayDropDown.Item
+										data-testid='real-time-segment-dropdown-item'
+										disabled={
+											usageLoading || isRealTimeDisabled
+										}
+										href={setUriQueryValues(
+											{type: SegmentTypes.RealTime},
+											toRoute(
+												Routes.CONTACTS_SEGMENT_CREATE,
+												{channelId, groupId}
+											)
+										)}
+									>
+										<ClayIcon
+											className='mr-2'
+											symbol='bolt'
+										/>
+										{Liferay.Language.get('real-time')}
+									</ClayDropDown.Item>
+								</ClayDropDown>
+							) : (
+								<ClayButton
+									aria-label={pageActionsLabel}
+									className='button-root p-2 rounded-lg'
+									data-testid='batch-segment-button'
+									disabled={
+										error || loading || isBatchDisabled
+									}
+									displayType='primary'
+									onClick={() =>
+										history.push(
+											setUriQueryValues(
+												{type: SegmentTypes.Batch},
+												toRoute(
+													Routes.CONTACTS_SEGMENT_CREATE,
+													{channelId, groupId}
+												)
+											)
+										)
+									}
+									size='sm'
+								>
+									{pageActionsLabel}
+								</ClayButton>
+							)}
 
 							{usageMessage && (
 								<ClayButton
@@ -624,7 +676,7 @@ export const List: React.FC<IListProps> = ({
 									accessor: 'name',
 									cellRenderer: LinkCell,
 									cellRendererProps: {
-										hrefFormatter: data =>
+										hrefFormatter: (data: {id: string}) =>
 											toRoute(Routes.CONTACTS_SEGMENT, {
 												channelId,
 												groupId,
@@ -638,14 +690,20 @@ export const List: React.FC<IListProps> = ({
 								},
 								{
 									accessor: 'segmentType',
-									cellRenderer: item => {
+									cellRenderer: (item: {
+										data: {
+											segmentType: 'BATCH' | 'REAL_TIME';
+											sequential: boolean;
+										};
+									}) => {
 										const segmentTypeMap = {
 											BATCH: Liferay.Language.get(
 												'batch'
 											),
-											REAL_TIME: Liferay.Language.get(
-												'real-time'
-											)
+											REAL_TIME:
+												Liferay.Language.get(
+													'real-time'
+												)
 										};
 
 										return (
@@ -655,6 +713,12 @@ export const List: React.FC<IListProps> = ({
 														item.data.segmentType
 													]
 												}
+
+												{item.data.segmentType ===
+													SegmentTypes.RealTime &&
+													item.data.sequential && (
+														<SequentialEventOrderPopover />
+													)}
 											</td>
 										);
 									},
@@ -671,8 +735,9 @@ export const List: React.FC<IListProps> = ({
 									accessor: 'lastMembershipUpdateDate',
 									cellRenderer: DateCell,
 									cellRendererProps: {
-										dateFormatter: date =>
-											formatDateToTimeZone(date, 'lll'),
+										dateFormatter: (
+											date: string | number
+										) => formatDateToTimeZone(date, 'lll'),
 										datePath: 'lastMembershipUpdateDate'
 									},
 									className: 'table-column-text-start',
@@ -691,8 +756,9 @@ export const List: React.FC<IListProps> = ({
 									accessor: 'dateModified',
 									cellRenderer: DateCell,
 									cellRendererProps: {
-										dateFormatter: date =>
-											formatDateToTimeZone(date, 'll'),
+										dateFormatter: (
+											date: string | number
+										) => formatDateToTimeZone(date, 'll'),
 										datePath: 'dateModified'
 									},
 									className: 'table-column-text-start',

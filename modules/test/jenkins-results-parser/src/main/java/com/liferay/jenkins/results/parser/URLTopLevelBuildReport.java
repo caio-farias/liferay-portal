@@ -45,6 +45,10 @@ public class URLTopLevelBuildReport extends BaseTopLevelBuildReport {
 				getBuildReportJSONTestrayURL());
 		}
 
+		if (_buildReportJSONObject == null) {
+			_buildReportJSONObject = new JSONObject();
+		}
+
 		initialize(_buildReportJSONObject);
 
 		return _buildReportJSONObject;
@@ -87,7 +91,7 @@ public class URLTopLevelBuildReport extends BaseTopLevelBuildReport {
 		}
 
 		File file = new File(
-			System.getenv("WORKSPACE"),
+			Environment.get("WORKSPACE"),
 			JenkinsResultsParserUtil.getDistinctTimeStamp() + ".gz");
 
 		try {

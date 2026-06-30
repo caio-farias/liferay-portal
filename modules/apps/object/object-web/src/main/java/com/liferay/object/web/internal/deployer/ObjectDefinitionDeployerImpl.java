@@ -9,10 +9,10 @@ import com.liferay.application.list.PanelApp;
 import com.liferay.asset.display.page.portlet.AssetDisplayPageFriendlyURLProvider;
 import com.liferay.asset.kernel.model.AssetRendererFactory;
 import com.liferay.asset.kernel.service.AssetCategoryLocalService;
+import com.liferay.asset.kernel.service.AssetEntryLocalService;
 import com.liferay.asset.kernel.service.AssetTagLocalService;
 import com.liferay.asset.kernel.service.AssetVocabularyLocalService;
 import com.liferay.asset.util.AssetHelper;
-import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.document.library.kernel.exception.FileExtensionException;
 import com.liferay.document.library.kernel.exception.FileSizeException;
 import com.liferay.document.library.kernel.exception.InvalidFileException;
@@ -59,6 +59,7 @@ import com.liferay.list.type.service.ListTypeEntryLocalService;
 import com.liferay.object.configuration.ObjectConfiguration;
 import com.liferay.object.constants.ObjectActionKeys;
 import com.liferay.object.constants.ObjectDefinitionConstants;
+import com.liferay.object.constants.ObjectFolderConstants;
 import com.liferay.object.definition.security.permission.resource.ObjectDefinitionPortletResourcePermissionRegistryUtil;
 import com.liferay.object.definition.util.ObjectDefinitionUtil;
 import com.liferay.object.deployer.ObjectDefinitionDeployer;
@@ -123,6 +124,7 @@ import com.liferay.object.web.internal.object.entries.portlet.action.EditObjectE
 import com.liferay.object.web.internal.object.entries.portlet.action.EditObjectEntryMVCRenderCommand;
 import com.liferay.object.web.internal.object.entries.portlet.action.EditObjectEntryRelatedModelMVCActionCommand;
 import com.liferay.object.web.internal.object.entries.portlet.action.UploadAttachmentMVCActionCommand;
+import com.liferay.object.web.internal.sharing.servlet.taglib.ui.ObjectEntrySharingEntryDropdownItemContributor;
 import com.liferay.petra.io.unsync.UnsyncByteArrayInputStream;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
@@ -163,6 +165,7 @@ import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.search.searcher.SearchRequestBuilderFactory;
 import com.liferay.portal.search.searcher.Searcher;
+import com.liferay.sharing.servlet.taglib.ui.SharingEntryDropdownItemContributor;
 import com.liferay.template.info.item.capability.TemplateInfoItemCapability;
 import com.liferay.template.info.item.provider.TemplateInfoItemFieldSetProvider;
 import com.liferay.translation.info.item.provider.InfoItemLanguagesProvider;
@@ -248,11 +251,11 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			_bundleContext.registerService(
 				AssetRendererFactory.class,
 				new ObjectEntryAssetRendererFactory(
-					_assetDisplayPageFriendlyURLProvider,
-					_depotEntryLocalService, _dlAppLocalService, _dlURLHelper,
-					objectDefinition, _objectEntryDisplayContextFactory,
-					_objectEntryLocalService, _objectEntryService,
-					_objectFieldLocalService, _servletContext),
+					_assetDisplayPageFriendlyURLProvider, _dlAppLocalService,
+					_dlURLHelper, objectDefinition,
+					_objectEntryDisplayContextFactory, _objectEntryLocalService,
+					_objectEntryService, _objectFieldLocalService,
+					_servletContext),
 				HashMapDictionaryBuilder.<String, Object>put(
 					"company.id", objectDefinition.getCompanyId()
 				).put(
@@ -358,7 +361,8 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 					_listTypeEntryLocalService, _objectActionLocalService,
 					objectDefinition, _objectDefinitionLocalService,
 					objectFieldInfoFieldConverter, _objectEntryLocalService,
-					_objectEntryManagerRegistry, _objectFieldLocalService,
+					_objectEntryManagerRegistry, _objectEntryService,
+					_objectFieldLocalService,
 					_objectRelatedModelsProviderRegistry,
 					_objectRelationshipLocalService,
 					_objectScopeProviderRegistry, _portal,
@@ -522,6 +526,10 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 				).put(
 					"com.liferay.portlet.display-category",
 					() -> {
+						if (!objectDefinition.isAllowStandaloneObjectEntry()) {
+							return "category.hidden";
+						}
+
 						if (objectDefinition.isPortlet()) {
 							return "category.object";
 						}
@@ -675,28 +683,51 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		// Register ObjectEntriesPanelApp after ObjectEntriesPortlet. See
 		// LPS-140379.
 
-		serviceRegistrations.add(
-			_bundleContext.registerService(
-				PanelApp.class,
-				new ObjectEntriesPanelApp(
-					objectDefinition,
-					() -> {
-						com.liferay.portal.kernel.model.Portlet portlet =
-							_portletLocalService.getPortletById(
-								objectDefinition.getCompanyId(),
-								objectDefinition.getPortletId());
+		if (objectDefinition.isPortlet()) {
+			String panelCategoryKey = objectDefinition.getPanelCategoryKey();
 
-						portlet.setControlPanelEntryCategory(
-							objectDefinition.getPanelCategoryKey());
+			if (!objectDefinition.isAllowStandaloneObjectEntry()) {
+				panelCategoryKey = StringPool.BLANK;
+			}
 
-						return portlet;
-					}),
-				HashMapDictionaryBuilder.<String, Object>put(
-					"panel.app.order:Integer",
-					objectDefinition.getPanelAppOrder()
-				).put(
-					"panel.category.key", objectDefinition.getPanelCategoryKey()
-				).build()));
+			serviceRegistrations.add(
+				_bundleContext.registerService(
+					PanelApp.class,
+					new ObjectEntriesPanelApp(
+						objectDefinition,
+						() -> {
+							com.liferay.portal.kernel.model.Portlet portlet =
+								_portletLocalService.getPortletById(
+									objectDefinition.getCompanyId(),
+									objectDefinition.getPortletId());
+
+							portlet.setControlPanelEntryCategory(
+								objectDefinition.getPanelCategoryKey());
+
+							return portlet;
+						}),
+					HashMapDictionaryBuilder.<String, Object>put(
+						"panel.app.order:Integer",
+						objectDefinition.getPanelAppOrder()
+					).put(
+						"panel.category.key", panelCategoryKey
+					).build()));
+		}
+
+		if (objectDefinition.isCMS() &&
+			Objects.equals(
+				objectDefinition.getObjectFolderExternalReferenceCode(),
+				ObjectFolderConstants.EXTERNAL_REFERENCE_CODE_FILE_TYPES)) {
+
+			serviceRegistrations.add(
+				_bundleContext.registerService(
+					SharingEntryDropdownItemContributor.class,
+					new ObjectEntrySharingEntryDropdownItemContributor(
+						_assetEntryLocalService, _language),
+					HashMapDictionaryBuilder.<String, Object>put(
+						"model.class.name", objectDefinition.getClassName()
+					).build()));
+		}
 
 		return serviceRegistrations;
 	}
@@ -745,6 +776,9 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		_assetDisplayPageFriendlyURLProvider;
 
 	@Reference
+	private AssetEntryLocalService _assetEntryLocalService;
+
+	@Reference
 	private AssetHelper _assetHelper;
 
 	@Reference
@@ -769,9 +803,6 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 
 	@Reference(target = "(upload.response.handler.system.default=true)")
 	private UploadResponseHandler _defaultUploadResponseHandler;
-
-	@Reference
-	private DepotEntryLocalService _depotEntryLocalService;
 
 	@Reference(
 		target = "(info.item.capability.key=" + DisplayPageInfoItemCapability.KEY + ")"

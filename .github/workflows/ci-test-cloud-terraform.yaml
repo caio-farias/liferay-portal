@@ -1,0 +1,13 @@
+jobs:
+    test-cloud-terraform:
+        if: ${{github.repository == 'cloudnative-team/liferay-portal'}}
+        permissions:
+            checks: write
+            contents: read
+        uses: ./.github/workflows/ci-reusable-test-cloud-terraform.yaml
+on:
+    pull_request:
+        paths:
+            -   .github/workflows/ci-reusable-test-cloud-terraform.yaml
+            -   .github/workflows/ci-test-cloud-terraform.yaml
+            -   cloud/terraform/**

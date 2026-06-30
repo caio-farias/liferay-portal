@@ -22,6 +22,10 @@ import org.osgi.annotation.versioning.ProviderType;
 @ProviderType
 public interface CookiesConfigurationProvider {
 
+	public void forceCookiesPreferenceHandlingReconsent(
+			ExtendedObjectClassDefinition.Scope scope, long scopePK)
+		throws Exception;
+
 	public String getCompanyConfigurationURL(
 			HttpServletRequest httpServletRequest)
 		throws PortalException;
@@ -56,6 +60,9 @@ public interface CookiesConfigurationProvider {
 	public String getCookiesPreferenceHandlingFloatingIcon(
 		ExtendedObjectClassDefinition.Scope scope, long scopePK);
 
+	public long getCookiesPreferenceHandlingModifiedDate(
+		ExtendedObjectClassDefinition.Scope scope, long scopePK);
+
 	public String getGroupConfigurationURL(
 			HttpServletRequest httpServletRequest)
 		throws PortalException;
@@ -63,6 +70,9 @@ public interface CookiesConfigurationProvider {
 	public String getSystemConfigurationURL(
 			HttpServletRequest httpServletRequest)
 		throws PortalException;
+
+	public boolean isCookiesPreferenceHandlingActive(
+		ExtendedObjectClassDefinition.Scope scope, long scopePK);
 
 	public boolean isCookiesPreferenceHandlingConfigurationDefined(
 			ExtendedObjectClassDefinition.Scope scope, long scopePK)
@@ -77,6 +87,9 @@ public interface CookiesConfigurationProvider {
 	public boolean isCookiesPreferenceHandlingFloatingIconEnabled(
 		ExtendedObjectClassDefinition.Scope scope, long scopePK);
 
+	public boolean isCookiesPreferenceHandlingGlobalPrivacyControlEnabled(
+		ExtendedObjectClassDefinition.Scope scope, long scopePK);
+
 	public boolean isCookiesPreferenceHandlingStoreConsent(
 		ExtendedObjectClassDefinition.Scope scope, long scopePK);
 
@@ -85,7 +98,7 @@ public interface CookiesConfigurationProvider {
 		throws ConfigurationException;
 
 	public void updateCookiesPreferenceHandlingConfiguration(
-			int consentRenewalPeriod, boolean enabled,
+			boolean active, int consentRenewalPeriod, boolean enabled,
 			boolean explicitConsentMode,
 			ExtendedObjectClassDefinition.Scope scope, long scopePK,
 			boolean storeConsent)

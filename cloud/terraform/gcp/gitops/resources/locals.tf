@@ -1,4 +1,5 @@
 locals {
+	argocd_external_url=var.argocd_domain_config.hostname == null ? "" : "${local.argocd_tls_enabled ? "https" : "http"}://${var.argocd_domain_config.hostname}"
 	argocd_gateway_class_name="argocd-gateway-class"
 	argocd_gateway_name="argocd-gateway"
 	argocd_tls_enabled=var.argocd_domain_config.hostname != null && var.argocd_domain_config.tls_external_secret_name != null
@@ -78,12 +79,12 @@ locals {
 			chart_name=var.liferay_helm_chart_name
 		},
 		var.liferay_helm_chart_name == "liferay-default" ? {
-			chart_url=coalesce(var.liferay_helm_chart_config.chart_url, "oci://us-central1-docker.pkg.dev/liferay-artifact-registry/liferay-helm-chart/liferay-default")
+			chart_url=coalesce(var.liferay_helm_chart_config.chart_url, "oci://us-central1-docker.pkg.dev/external-assets-prd/liferay-helm-chart/liferay-default")
 			region=var.region
 			values_scope_prefix=""
 		} : {},
 		var.liferay_helm_chart_name == "liferay-gcp" ? {
-			chart_url=coalesce(var.liferay_helm_chart_config.chart_url, "oci://us-central1-docker.pkg.dev/liferay-artifact-registry/liferay-helm-chart/liferay-gcp")
+			chart_url=coalesce(var.liferay_helm_chart_config.chart_url, "oci://us-central1-docker.pkg.dev/external-assets-prd/liferay-helm-chart/liferay-gcp")
 			region=var.region
 			values_scope_prefix="liferay-default."
 		} : {},
@@ -102,4 +103,5 @@ locals {
 	secret_store_provider_default_enabled=var.external_secret_store_provider_hcl == null
 	secret_store_provider_hcl=local.secret_store_provider_default_enabled ? local.secret_store_provider_default : var.external_secret_store_provider_hcl
 	terraform_manager_name="liferay-cloud-native-terraform"
+	vpc_name="${var.deployment_name}-vpc"
 }

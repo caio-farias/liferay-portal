@@ -41,6 +41,74 @@ export default function App() {
 }
 ```
 
+## Inverse Variants
+
+Using [`inverse`](#api-inverse) property you can use these inverse color variations on Label component:
+
+```jsx preview
+import {Provider} from '@clayui/core';
+import Label from '@clayui/label';
+import React from 'react';
+
+import '@clayui/css/lib/css/atlas.css';
+
+export default function App() {
+	return (
+		<Provider spritemap="/public/icons.svg">
+			<div className="p-4">
+				<>
+					<Label displayType="success" inverse>
+						Label Success
+					</Label>
+					<Label displayType="info" inverse>
+						Label Info
+					</Label>
+					<Label displayType="secondary" inverse>
+						Label Secondary
+					</Label>
+					<Label displayType="warning" inverse>
+						Label Warning
+					</Label>
+					<Label displayType="danger" inverse>
+						Label Danger
+					</Label>
+				</>
+			</div>
+		</Provider>
+	);
+}
+```
+
+## Sizes
+
+Use the [`size`](#api-size) property to render a smaller (`sm`) or larger (`lg`) label. When omitted, the label uses its default size.
+
+```jsx preview
+import {Provider} from '@clayui/core';
+import Label from '@clayui/label';
+import React from 'react';
+
+import '@clayui/css/lib/css/atlas.css';
+
+export default function App() {
+	return (
+		<Provider spritemap="/public/icons.svg">
+			<div className="p-4">
+				<>
+					<Label displayType="success" size="sm">
+						Small
+					</Label>
+					<Label displayType="success">Default</Label>
+					<Label displayType="success" size="lg">
+						Large
+					</Label>
+				</>
+			</div>
+		</Provider>
+	);
+}
+```
+
 ## Closing Actions
 
 <div class="clay-site-alert alert alert-warning">
@@ -65,8 +133,8 @@ export default function App() {
 				<Label
 					closeButtonProps={{
 						'aria-label': 'Close',
-						title: 'Close',
-						id: 'closeId',
+						'title': 'Close',
+						'id': 'closeId',
 					}}
 					displayType="success"
 				>
@@ -97,8 +165,8 @@ export default function App() {
 					<Label
 						closeButtonProps={{
 							'aria-label': 'Close',
-							title: 'Close',
-							onClick: () => setVisible((val) => !val),
+							'title': 'Close',
+							'onClick': () => setVisible((val) => !val),
 						}}
 						displayType="success"
 					>

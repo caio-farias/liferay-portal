@@ -106,6 +106,7 @@ export class GlobalMenuPage {
 	private readonly homePage: HomePage;
 	readonly page: Page;
 	readonly sitesList: Locator;
+	readonly viewAllLink: Locator;
 
 	constructor(page: Page) {
 		this.categoriesList = page
@@ -119,32 +120,32 @@ export class GlobalMenuPage {
 		this.sitesList = page
 			.getByRole('menu')
 			.and(page.locator('.global-menu .sites-list'));
+		this.viewAllLink = page.getByRole('menuitem', {
+			exact: true,
+			name: 'View All Sites',
+		});
 	}
 
 	async goTo(categoryName: Categories) {
-		await expect(async () => {
-			const isOpen =
-				(await this.globalMenuButton.getAttribute('aria-expanded')) ===
-				'true';
+		const menuItem = this.page.getByRole('menuitem', {
+			name: categoryName,
+		});
 
-			if (!isOpen) {
+		await expect(async () => {
+			if (!(await this.categoriesList.isVisible())) {
 				await this.globalMenuButton.click();
 			}
 
-			const menuItem = this.page.getByRole('menuitem', {
-				name: categoryName,
-			});
+			await expect(menuItem).toBeVisible({timeout: 2000});
 
-			await expect(menuItem).toBeVisible();
-
-			const isActive = await menuItem.evaluate((element) =>
-				element.classList.contains('active')
-			);
+			const isActive = (
+				(await menuItem.getAttribute('class', {timeout: 2000})) || ''
+			).includes('active');
 
 			if (!isActive) {
 				await menuItem.click();
 
-				await expect(menuItem).toBeHidden({timeout: 2000});
+				await expect(this.categoriesList).toBeHidden({timeout: 2000});
 			}
 		}).toPass();
 

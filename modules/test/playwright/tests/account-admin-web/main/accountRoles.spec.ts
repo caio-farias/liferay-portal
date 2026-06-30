@@ -353,8 +353,6 @@ test(
 
 			await accountUserSelectorPage.assignButton.click();
 
-			await waitForAlert(page);
-
 			await expect(
 				accountRolesPage.assignUsersTable.cell(user.name)
 			).toBeVisible();
@@ -738,7 +736,13 @@ test(
 		await rolesPage.accountRolesLink.click();
 		await rolesPage.rolesTable.changeView('Table');
 
-		await expect(rolesPage.rolesTable.cell(role.name)).toBeVisible();
+		await expect(async () => {
+			await rolesPage.rolesTable.search(role.name);
+
+			await expect(rolesPage.rolesTable.cell(role.name)).toBeVisible({
+				timeout: 5000,
+			});
+		}).toPass({timeout: 30000});
 
 		await (await rolesPage.rolesTable.cellLink(role.name)).click();
 		await editAccountRolePage.defineGroupScopePermissionsLink.click();
@@ -900,7 +904,13 @@ test(
 		await rolesPage.accountRolesLink.click();
 		await rolesPage.rolesTable.changeView('Table');
 
-		await expect(rolesPage.rolesTable.cell(role.name)).toBeVisible();
+		await expect(async () => {
+			await rolesPage.rolesTable.search(role.name);
+
+			await expect(rolesPage.rolesTable.cell(role.name)).toBeVisible({
+				timeout: 5000,
+			});
+		}).toPass({timeout: 30000});
 
 		await (await rolesPage.rolesTable.cellLink(role.name)).click();
 		await editAccountRolePage.definePermissionsLink.click();

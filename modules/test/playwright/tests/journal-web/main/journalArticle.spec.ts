@@ -25,7 +25,7 @@ import {nextPage, setItemsPerPage} from '../../../utils/pagination';
 import addApprovedStructuredContent from '../../../utils/structured-content/addApprovedStructuredContent';
 import getBasicWebContentStructureId from '../../../utils/structured-content/getBasicWebContentStructureId';
 import {waitForAlert} from '../../../utils/waitForAlert';
-import {ClassicPage as CKEditor4ClassicPage} from '../../frontend-editor-ckeditor-sample-web/pages/ckeditor4/ClassicPage';
+import {ClassicPage as CKEditor4ClassicPage} from '../../frontend-editor-ckeditor4-sample-web/pages/ClassicPage';
 import {journalPagesTest} from './fixtures/journalPagesTest';
 import getDataStructureDefinition from './utils/getDataStructureDefinition';
 
@@ -43,9 +43,7 @@ const translateNameAndMetadataFields = async (
 	);
 	await fillAndClickOutside(
 		page,
-		page
-			.frameLocator(':text("Description")+div iframe')
-			.getByRole('textbox')
+		page.getByText('Description Rich Text Editor').getByRole('textbox')
 	);
 };
 
@@ -1465,9 +1463,8 @@ baseTest(
 
 		await expect(
 			page
-				.getByLabel('Content', {exact: true})
-				.locator('iframe[title="editor"]')
-				.contentFrame()
+				.getByTestId('content')
+				.getByRole('textbox', {name: 'Rich Text Editor'})
 				.getByText(catalanContent)
 		).toBeVisible();
 	}

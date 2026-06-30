@@ -7,6 +7,7 @@ package com.liferay.translation.internal.manager;
 
 import com.liferay.document.library.kernel.exception.FileMimeTypeException;
 import com.liferay.info.exception.InfoItemPermissionException;
+import com.liferay.info.field.InfoFieldValue;
 import com.liferay.info.item.ClassPKInfoItemIdentifier;
 import com.liferay.info.item.InfoItemFieldValues;
 import com.liferay.info.item.InfoItemReference;
@@ -49,6 +50,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -79,6 +81,9 @@ public class TranslationManagerImpl implements TranslationManager {
 			String sourceLanguageId, String targetLanguageId)
 		throws IOException, PortalException {
 
+		_validateLanguageId(sourceLanguageId);
+		_validateLanguageId(targetLanguageId);
+
 		String fileName = _getXLIFFFileName(
 			className, classPK, locale, sourceLanguageId, targetLanguageId);
 
@@ -100,6 +105,21 @@ public class TranslationManagerImpl implements TranslationManager {
 			String className, long[] classPKs, String xliffMimeType,
 			Locale locale, String sourceLanguageId, String[] targetLanguageIds)
 		throws IOException, PortalException {
+
+		if (classPKs == null) {
+			throw new XLIFFFileException.MustHaveValidParameter("classPKs");
+		}
+
+		if (targetLanguageIds == null) {
+			throw new XLIFFFileException.MustHaveValidParameter(
+				"targetLanguageIds");
+		}
+
+		_validateLanguageId(sourceLanguageId);
+
+		for (String targetLanguageId : targetLanguageIds) {
+			_validateLanguageId(targetLanguageId);
+		}
 
 		String fileName = StringBundler.concat(
 			StringUtil.removeSubstrings(
@@ -283,6 +303,13 @@ public class TranslationManagerImpl implements TranslationManager {
 		InfoItemFieldValues infoItemFieldValues =
 			translationSnapshot.getInfoItemFieldValues();
 
+		Collection<InfoFieldValue<Object>> infoFieldValues =
+			infoItemFieldValues.getInfoFieldValues();
+
+		if (infoFieldValues.isEmpty()) {
+			return;
+		}
+
 		try {
 			_translationEntryService.addOrUpdateTranslationEntry(
 				groupId,
@@ -333,6 +360,12 @@ public class TranslationManagerImpl implements TranslationManager {
 			if (_log.isDebugEnabled()) {
 				_log.debug(exception);
 			}
+		}
+	}
+
+	private void _validateLanguageId(String languageId) throws PortalException {
+		if (!_language.isAvailableLocale(languageId)) {
+			throw new XLIFFFileException.MustBeSupportedLanguage(languageId);
 		}
 	}
 

@@ -5,6 +5,7 @@
 
 package com.liferay.portal.search.elasticsearch8.internal.upgrade.v1_0_0;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.persistence.upgrade.ConfigurationUpgradeStepFactory;
 import com.liferay.portal.file.install.constants.FileInstallConstants;
@@ -36,13 +37,9 @@ public class ElasticsearchConfigurationUpgradeProcess extends UpgradeProcess {
 		_configurationUpgradeStepFactory = configurationUpgradeStepFactory;
 	}
 
-	@Override
-	protected void doUpgrade() throws Exception {
-		_upgradeElasticsearchConfiguration();
-		_upgradeElasticsearchConnectionConfigurations();
-	}
+	protected static void updateProperties(
+		Dictionary<String, Object> properties) {
 
-	private void _updateProperties(Dictionary<String, Object> properties) {
 		properties.remove("discoveryZenPingUnicastHostsPort");
 
 		Object embeddedHttpPort = properties.remove("embeddedHttpPort");
@@ -63,7 +60,20 @@ public class ElasticsearchConfigurationUpgradeProcess extends UpgradeProcess {
 				_log.warn("The operationMode property is no longer supported");
 			}
 
-			properties.put("productionModeEnabled", Boolean.TRUE);
+			Object productionModeEnabled = properties.get(
+				"productionModeEnabled");
+
+			if (productionModeEnabled == null) {
+				properties.put("productionModeEnabled", Boolean.TRUE);
+			}
+			else if (!GetterUtil.getBoolean(productionModeEnabled) &&
+					 _log.isWarnEnabled()) {
+
+				_log.warn(
+					"Preserving existing value of property " +
+						"\"productionModeEnabled\" over property " +
+							"\"operationMode\" with value \"REMOTE\"");
+			}
 		}
 
 		Object trackTotalHits = properties.remove("trackTotalHits");
@@ -80,6 +90,12 @@ public class ElasticsearchConfigurationUpgradeProcess extends UpgradeProcess {
 		}
 
 		properties.remove("restClientLoggerLevel");
+	}
+
+	@Override
+	protected void doUpgrade() throws Exception {
+		_upgradeElasticsearchConfiguration();
+		_upgradeElasticsearchConnectionConfigurations();
 	}
 
 	private void _upgradeElasticsearchConfiguration() throws Exception {
@@ -101,7 +117,7 @@ public class ElasticsearchConfigurationUpgradeProcess extends UpgradeProcess {
 						"to the configuration may be required.");
 		}
 
-		_updateProperties(elasticsearch7properties);
+		updateProperties(elasticsearch7properties);
 
 		UpgradeStep upgradeStep =
 			_configurationUpgradeStepFactory.createUpgradeStep(
@@ -118,7 +134,7 @@ public class ElasticsearchConfigurationUpgradeProcess extends UpgradeProcess {
 		Dictionary<String, Object> elasticsearch8properties =
 			elasticsearch8configuration.getProperties();
 
-		_updateProperties(elasticsearch8properties);
+		updateProperties(elasticsearch8properties);
 
 		Enumeration<String> enumeration = elasticsearch7properties.keys();
 
@@ -147,6 +163,19 @@ public class ElasticsearchConfigurationUpgradeProcess extends UpgradeProcess {
 				ElasticsearchConnectionConfiguration.class.getName());
 
 		upgradeStep.upgrade();
+
+		Configuration[] configurations = _configurationAdmin.listConfigurations(
+			StringBundler.concat(
+				"(service.factoryPid=",
+				ElasticsearchConnectionConfiguration.class.getName(), ")"));
+
+		if (configurations == null) {
+			return;
+		}
+
+		for (Configuration configuration : configurations) {
+			configuration.update(configuration.getProperties());
+		}
 	}
 
 	private static final String _CLASS_NAME_ELASTICSEARCH_CONFIGURATION =

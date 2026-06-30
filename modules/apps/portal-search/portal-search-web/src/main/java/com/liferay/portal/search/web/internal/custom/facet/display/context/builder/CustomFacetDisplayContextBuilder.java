@@ -83,15 +83,17 @@ public class CustomFacetDisplayContextBuilder {
 			return _buildRangeAggregationCustomFacetDisplayContext();
 		}
 
-		return new CustomFacetDisplayContext(
-			_aggregationType,
+		List<BucketDisplayContext> bucketDisplayContexts =
 			_buildTermsAggregationBucketDisplayContexts(
-				getTermsAggregationTermCollectors()),
-			null, _customFacetPortletInstanceConfiguration, null,
-			getDisplayCaption(), _getDisplayStyleGroupId(), _from,
-			isNothingSelected(), _paginationStartParameterName, _parameterName,
-			_getFirstParameterValue(), _parameterValues, isRenderNothing(),
-			_showInputRange, _to);
+				getTermsAggregationTermCollectors());
+
+		return new CustomFacetDisplayContext(
+			_aggregationType, bucketDisplayContexts, null,
+			_customFacetPortletInstanceConfiguration, null, getDisplayCaption(),
+			_getDisplayStyleGroupId(), _from, isNothingSelected(),
+			_paginationStartParameterName, _parameterName,
+			_getFirstParameterValue(), _parameterValues,
+			isRenderNothing(bucketDisplayContexts), _showInputRange, _to);
 	}
 
 	public CustomFacetDisplayContextBuilder currentURL(String currentURL) {
@@ -267,8 +269,10 @@ public class CustomFacetDisplayContextBuilder {
 		return false;
 	}
 
-	protected boolean isRenderNothing() {
-		if (_totalHits > 0) {
+	protected boolean isRenderNothing(
+		List<BucketDisplayContext> bucketDisplayContexts) {
+
+		if ((_totalHits > 0) || !bucketDisplayContexts.isEmpty()) {
 			return false;
 		}
 
@@ -382,14 +386,17 @@ public class CustomFacetDisplayContextBuilder {
 	private CustomFacetDisplayContext
 		_buildRangeAggregationCustomFacetDisplayContext() {
 
+		List<BucketDisplayContext> bucketDisplayContexts =
+			_buildRangeAggregationBucketDisplayContexts();
+
 		return new CustomFacetDisplayContext(
-			_aggregationType, _buildRangeAggregationBucketDisplayContexts(),
+			_aggregationType, bucketDisplayContexts,
 			_buildCalendarDisplayContext(),
 			_customFacetPortletInstanceConfiguration,
 			_buildCustomRangeBucketDisplayContext(), getDisplayCaption(),
 			_getDisplayStyleGroupId(), _from, isNothingSelected(),
 			_paginationStartParameterName, _parameterName, null, null,
-			isRenderNothing(), _showInputRange, _to);
+			isRenderNothing(bucketDisplayContexts), _showInputRange, _to);
 	}
 
 	private BucketDisplayContext _buildTermsAggregationBucketDisplayContext(
@@ -462,9 +469,10 @@ public class CustomFacetDisplayContextBuilder {
 		rangeURL = HttpComponentsUtil.removeParameter(rangeURL, _parameterName);
 		rangeURL = HttpComponentsUtil.setParameter(
 			rangeURL, _parameterName + "From", from);
-
-		return HttpComponentsUtil.setParameter(
+		rangeURL = HttpComponentsUtil.setParameter(
 			rangeURL, _parameterName + "To", to);
+
+		return HttpComponentsUtil.sortParameters(rangeURL);
 	}
 
 	private TermCollector _getCustomRangeTermCollector(boolean selected) {
@@ -501,9 +509,10 @@ public class CustomFacetDisplayContextBuilder {
 		rangeURL = HttpComponentsUtil.removeParameter(rangeURL, _parameterName);
 		rangeURL = HttpComponentsUtil.setParameter(
 			rangeURL, _parameterName + "From", 0);
-
-		return HttpComponentsUtil.setParameter(
+		rangeURL = HttpComponentsUtil.setParameter(
 			rangeURL, _parameterName + "To", 0);
+
+		return HttpComponentsUtil.sortParameters(rangeURL);
 	}
 
 	private long _getDisplayStyleGroupId() {
@@ -545,8 +554,10 @@ public class CustomFacetDisplayContextBuilder {
 			rangeURL, _parameterName + "From");
 		rangeURL = HttpComponentsUtil.removeParameter(
 			rangeURL, _parameterName + "To");
+		rangeURL = HttpComponentsUtil.setParameter(
+			rangeURL, _parameterName, label);
 
-		return HttpComponentsUtil.setParameter(rangeURL, _parameterName, label);
+		return HttpComponentsUtil.sortParameters(rangeURL);
 	}
 
 	private JSONArray _getRangesJSONArray() {
@@ -573,7 +584,7 @@ public class CustomFacetDisplayContextBuilder {
 		termsURL = HttpComponentsUtil.setParameter(
 			termsURL, _parameterName, term);
 
-		return termsURL;
+		return HttpComponentsUtil.sortParameters(termsURL);
 	}
 
 	private boolean _isCustomRangeSelected() {

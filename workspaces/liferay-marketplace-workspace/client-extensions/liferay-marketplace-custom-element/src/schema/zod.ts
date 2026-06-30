@@ -47,7 +47,7 @@ const billingAddress = z.object({
 	country: z.string().min(1),
 	countryISOCode: z.string().optional(),
 	name: z.string().min(1),
-	phoneNumber: z.string().min(1),
+	phoneNumber: z.string().optional(),
 	regionISOCode: z.string().optional(),
 	street1: z.string().min(1),
 	street2: z.string().optional(),
@@ -72,6 +72,25 @@ const contentMediaTypeVideo = z.object({
 	headerVideoDescription: z.string().optional(),
 	headerVideoUrl: z.string().url().min(1),
 });
+
+const dsrLicenseKeyBaseSchema = {
+	acceptTermsAndConditions: z.boolean().refine((value) => value, {
+		message: 'You must agree with the terms and conditions',
+	}),
+	hostname: z.string().optional().or(z.literal('')),
+	ipAddress: z
+		.string()
+		.optional()
+		.refine((value) => checkRegExp(ipv4Regex, value ?? ''), {
+			message: 'Invalid IP address',
+		}),
+	macAddress: z
+		.string()
+		.optional()
+		.refine((value) => checkRegExp(macAddressRegex, value ?? ''), {
+			message: 'Invalid MAC address',
+		}),
+};
 
 const freeApp = z.object({
 	...baseAppSchema,
@@ -178,6 +197,13 @@ const zodSchema = {
 		termsAndConditions: z.boolean().refine((value) => value === true),
 		userAgreement: z.boolean().refine((value) => value === true),
 	}),
+	aiHubOpenBetaForm: z.object({
+		...personalInformationSchema,
+		administratorEmailAddress: z
+			.string()
+			.email('Please fill in valid email'),
+		aiHubAccountName: z.string().min(3, 'AI Hub Account Name is required'),
+	}),
 	analyticsProvisioning: z.object({
 		_refAllowedEmailDomains: z.array(z.any()),
 		_refIncidentReportContacts: z.array(z.any()),
@@ -263,6 +289,50 @@ const zodSchema = {
 		email: z.string().email(i18n.translate('please-fill-in-a-valid-email')),
 		name: z.string().min(3, i18n.sub('x-is-required', 'name')),
 	}),
+	dsrLicenseKey: z
+		.object({
+			...dsrLicenseKeyBaseSchema,
+			dataCenterLocation: z.string().min(1),
+			workspaceName: z.string().min(3),
+			workspaceOwnerEmail: z.string().email(),
+		})
+		.refine(
+			(data) =>
+				Boolean(
+					data.hostname?.trim() ||
+						data.ipAddress?.trim() ||
+						data.macAddress?.trim()
+				),
+			{
+				message:
+					'Please complete at least one of the following fields to proceed',
+				path: ['hostname'],
+			}
+		),
+	dsrLicenseKeyServerOnly: z
+		.object({
+			...dsrLicenseKeyBaseSchema,
+			dataCenterLocation: z.string().optional(),
+			workspaceName: z.string().optional(),
+			workspaceOwnerEmail: z
+				.string()
+				.email()
+				.optional()
+				.or(z.literal('')),
+		})
+		.refine(
+			(data) =>
+				Boolean(
+					data.hostname?.trim() ||
+						data.ipAddress?.trim() ||
+						data.macAddress?.trim()
+				),
+			{
+				message:
+					'Please complete at least one of the following fields to proceed',
+				path: ['hostname'],
+			}
+		),
 	extendSSATrial: z.object({
 		duration: z.coerce
 			.number()
@@ -323,8 +393,8 @@ const zodSchema = {
 	ldpProvisioning: z.object({
 		_refAllowedEmailDomains: z.array(z.any()),
 		_refIncidentReportContacts: z.array(z.any()),
-		acceptTerms: z.boolean().refine((value) => value, {
-			message: 'You must agree with the terms',
+		agreementAcceptance: z.boolean().refine((value) => value, {
+			message: 'You must agree to the terms of the agreement',
 		}),
 		allowedEmailDomains: z
 			.array(z.string())
@@ -338,13 +408,19 @@ const zodSchema = {
 				'One of the chosen domains is invalid.'
 			),
 		dataCenterLocation: z.string(),
+		dataProcessingConsent: z.boolean().refine((value) => value, {
+			message: 'You must consent to the processing of your data',
+		}),
 		friendlyWorkspaceURL: z.string().optional(),
 		incidentReportContacts: z.array(z.string().email()).min(1),
 		productKey: z.string().optional(),
 		productPurchaseKey: z.string().optional(),
+		timezone: z.string().optional(),
+		timezoneRegion: z.string().optional(),
 		workspaceName: z.string().min(3),
 		workspaceOwnerEmail: z.string().email(),
 	}),
+
 	productFeedback: z.object({
 		companyName: z.string().optional(),
 		emailAddress: z

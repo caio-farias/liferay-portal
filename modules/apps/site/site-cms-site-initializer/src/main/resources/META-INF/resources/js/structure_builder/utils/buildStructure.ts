@@ -120,7 +120,7 @@ export function buildChildren({
 
 			children.set(repeatableGroup.uuid, repeatableGroup);
 		}
-		else if (objectRelationship.deletionType === 'cascade') {
+		else if (objectRelationship.edge) {
 			const referencedStructure = buildReferencedStructure({
 				ancestors: [
 					...ancestors,
@@ -311,7 +311,26 @@ function getFieldSettings(objectField: ObjectField): Field['settings'] {
 		objectFieldSettings[objectFieldSetting.name] = objectFieldSetting.value;
 	}
 
-	if (objectField.businessType === 'Attachment') {
+	if (objectField.businessType === 'EmailAddress') {
+		if (objectFieldSettings.autocompleteDomains) {
+			settings.autocompleteDomains =
+				objectFieldSettings.autocompleteDomains;
+		}
+
+		if (objectFieldSettings.autocompleteEnabled) {
+			settings.autocompleteEnabled =
+				objectFieldSettings.autocompleteEnabled;
+		}
+
+		if (objectFieldSettings.blockedDomains) {
+			settings.blockedDomains = objectFieldSettings.blockedDomains;
+		}
+
+		if (objectFieldSettings.uniqueValues) {
+			settings.uniqueValues = objectFieldSettings.uniqueValues;
+		}
+	}
+	else if (objectField.businessType === 'Attachment') {
 		settings.acceptedFileExtensions =
 			objectFieldSettings.acceptedFileExtensions;
 		settings.fileSource = objectFieldSettings.fileSource;
@@ -348,6 +367,17 @@ function getFieldSettings(objectField: ObjectField): Field['settings'] {
 			settings.uniqueValues = objectFieldSettings.uniqueValues;
 		}
 	}
+	else if (objectField.businessType === 'PhoneNumber') {
+		settings.countrySource = objectFieldSettings.countrySource;
+
+		if (objectFieldSettings.country) {
+			settings.country = objectFieldSettings.country;
+		}
+
+		if (objectFieldSettings.uniqueValues) {
+			settings.uniqueValues = objectFieldSettings.uniqueValues;
+		}
+	}
 
 	return settings as Field['settings'];
 }
@@ -366,8 +396,10 @@ function getFieldType(objectField: ObjectField): FieldType {
 		Date: 'date',
 		DateTime: 'datetime',
 		Decimal: 'decimal',
+		EmailAddress: 'email',
 		Integer: 'integer',
 		LongText: 'long-text',
+		PhoneNumber: 'phone-number',
 		RichText: 'rich-text',
 		Text: 'text',
 	} as const;
@@ -455,7 +487,7 @@ function getRelatedContentObjectRelationships(
 				objectRelationship.objectDefinitionExternalReferenceCode2 ===
 					mainObjectDefinition.externalReferenceCode &&
 				objectRelationship.type === 'oneToMany' &&
-				objectRelationship.deletionType === 'disassociate'
+				!objectRelationship.edge
 			) {
 				relationships.push(objectRelationship);
 			}

@@ -12,8 +12,8 @@ import {isPartiallyInViewport} from '../utils/scroll';
 
 const customDatasetList = [
 	AnalyticsType.DataSetList.AnalyticsAssetAction,
-	AnalyticsType.DataSetList.AnalyticsExternalReferenceCode,
 	AnalyticsType.DataSetList.AnalyticsAssetType,
+	AnalyticsType.DataSetList.AnalyticsExternalReferenceCode,
 	AnalyticsType.DataSetList.AnalyticsObjectDefinitionName,
 ];
 
@@ -46,6 +46,18 @@ function getObjectEntryPayload({
 
 	if (dataset.analyticsAssetTitle) {
 		Object.assign(payload, {title: dataset.analyticsAssetTitle.trim()});
+	}
+
+	if (dataset.analyticsAssetVocabularies) {
+		Object.assign(payload, {
+			assetVocabularies: dataset.analyticsAssetVocabularies.trim(),
+		});
+	}
+
+	if (dataset.analyticsObjectType) {
+		Object.assign(payload, {
+			objectType: dataset.analyticsObjectType.trim(),
+		});
 	}
 
 	return payload;

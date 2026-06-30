@@ -29,7 +29,7 @@ export function search({
 	delta,
 	groupId,
 	orderIOMap = createOrderIOMap(NAME),
-	page,
+	page = 1,
 	query = '',
 	...otherParams
 }) {
@@ -216,24 +216,6 @@ export function createCSV({fieldMappingMaps, fileVersionId, groupId, name}) {
 	});
 }
 
-export function createDemandbase({credentials, groupId, name}) {
-	const data = pickBy(
-		{
-			credentials
-		},
-		Boolean
-	);
-
-	return sendRequest({
-		data: {
-			...data,
-			name
-		},
-		method: 'POST',
-		path: `contacts/${groupId}/data_source/demandbase`
-	});
-}
-
 export function createLiferay({
 	credentials,
 	fieldMappingMaps,
@@ -313,31 +295,6 @@ export function updateCSV({fieldMappingMaps, groupId, id, name, status}) {
 	});
 }
 
-export function updateDemandbase({
-	channelsConfiguration,
-	credentials,
-	groupId,
-	id,
-	name
-}) {
-	const data = pickBy(
-		{
-			channelsConfiguration,
-			credentials
-		},
-		Boolean
-	);
-
-	return sendRequest({
-		data: {
-			...data,
-			name
-		},
-		method: 'PATCH',
-		path: `contacts/${groupId}/data_source/${id}/demandbase`
-	});
-}
-
 export function updateLiferay({
 	analyticsConfiguration,
 	channelsConfiguration,
@@ -414,20 +371,6 @@ export function updateSalesforce({
 	});
 }
 
-export function fetchAccountsCount({groupId, id}) {
-	return sendRequest({
-		method: 'GET',
-		path: `contacts/${groupId}/salesforce/accounts_count?dataSourceId=${id}`
-	});
-}
-
-export function fetchUserCount({groupId, id}) {
-	return sendRequest({
-		method: 'GET',
-		path: `contacts/${groupId}/salesforce/users_count?dataSourceId=${id}`
-	});
-}
-
 export function fetchChannelDatasources({
 	delta,
 	groupId,
@@ -493,12 +436,3 @@ export function fetchChannelsMetric({groupId, id}) {
 }
 
 export {delete$ as delete};
-
-/* Demandbase endpoints */
-
-export async function fetchDemandbaseAccountsCount({groupId, id}) {
-	return sendRequest({
-		method: 'GET',
-		path: `contacts/${groupId}/demandbase/accounts_count?dataSourceId=${id}`
-	});
-}

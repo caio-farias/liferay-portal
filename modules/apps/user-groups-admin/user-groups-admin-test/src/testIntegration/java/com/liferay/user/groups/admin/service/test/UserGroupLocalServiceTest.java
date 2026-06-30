@@ -10,8 +10,10 @@ import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.DuplicateUserGroupException;
 import com.liferay.portal.kernel.exception.DuplicateUserGroupExternalReferenceCodeException;
+import com.liferay.portal.kernel.exception.NoSuchUserGroupException;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.UserGroupNameException;
+import com.liferay.portal.kernel.lazy.referencing.LazyReferencingThreadLocal;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.SystemEvent;
 import com.liferay.portal.kernel.model.SystemEventConstants;
@@ -264,6 +266,44 @@ public class UserGroupLocalServiceTest {
 	}
 
 	@Test
+	public void testGetOrAddEmptyUserGroup() throws Exception {
+
+		// Lazy referencing disabled
+
+		try {
+			_userGroupLocalService.getOrAddEmptyUserGroup(
+				RandomTestUtil.randomString(), TestPropsValues.getCompanyId(),
+				TestPropsValues.getUserId(), RandomTestUtil.randomString());
+
+			Assert.fail();
+		}
+		catch (NoSuchUserGroupException noSuchUserGroupException) {
+			Assert.assertNotNull(noSuchUserGroupException);
+		}
+
+		// Lazy referencing enabled
+
+		try (SafeCloseable safeCloseable =
+				LazyReferencingThreadLocal.setEnabledWithSafeCloseable(true)) {
+
+			String externalReferenceCode = RandomTestUtil.randomString();
+
+			UserGroup userGroup = _userGroupLocalService.getOrAddEmptyUserGroup(
+				externalReferenceCode, TestPropsValues.getCompanyId(),
+				TestPropsValues.getUserId(), RandomTestUtil.randomString());
+
+			Assert.assertEquals(
+				externalReferenceCode, userGroup.getExternalReferenceCode());
+			Assert.assertEquals(
+				WorkflowConstants.STATUS_EMPTY, userGroup.getStatus());
+			Assert.assertEquals(
+				userGroup,
+				_userGroupLocalService.fetchUserGroupByExternalReferenceCode(
+					externalReferenceCode, TestPropsValues.getCompanyId()));
+		}
+	}
+
+	@Test
 	public void testSearchRoleUserGroups() throws Exception {
 		List<UserGroup> userGroups = _search(
 			null,
@@ -385,6 +425,36 @@ public class UserGroupLocalServiceTest {
 			userGroup2, externalReferenceCode);
 	}
 
+	@Test
+	public void testUpdateUserGroupWithLazyReferencingEnabled()
+		throws Exception {
+
+		try (SafeCloseable safeCloseable =
+				LazyReferencingThreadLocal.setEnabledWithSafeCloseable(true)) {
+
+			String externalReferenceCode = RandomTestUtil.randomString();
+
+			UserGroup userGroup = _userGroupLocalService.getOrAddEmptyUserGroup(
+				externalReferenceCode, TestPropsValues.getCompanyId(),
+				TestPropsValues.getUserId(), RandomTestUtil.randomString());
+
+			Assert.assertEquals(
+				externalReferenceCode, userGroup.getExternalReferenceCode());
+
+			String description = RandomTestUtil.randomString();
+			String name = RandomTestUtil.randomString();
+
+			userGroup = _userGroupLocalService.updateUserGroup(
+				externalReferenceCode, TestPropsValues.getCompanyId(),
+				userGroup.getUserGroupId(), name, description, null);
+
+			Assert.assertEquals(description, userGroup.getDescription());
+			Assert.assertEquals(name, userGroup.getName());
+			Assert.assertEquals(
+				WorkflowConstants.STATUS_APPROVED, userGroup.getStatus());
+		}
+	}
+
 	@Rule
 	public SearchTestRule searchTestRule = new SearchTestRule();
 
@@ -414,16 +484,18 @@ public class UserGroupLocalServiceTest {
 		}
 	}
 
-	private static int _count;
-	private static Role _role;
-	private static UserGroup _userGroup1;
-	private static UserGroup _userGroup2;
+	private int _count;
 
 	@Inject
 	private Portal _portal;
 
+	private Role _role;
+
 	@Inject
 	private SystemEventLocalService _systemEventLocalService;
+
+	private UserGroup _userGroup1;
+	private UserGroup _userGroup2;
 
 	@Inject
 	private UserGroupLocalService _userGroupLocalService;

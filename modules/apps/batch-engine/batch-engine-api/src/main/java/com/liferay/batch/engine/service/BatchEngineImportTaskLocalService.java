@@ -352,8 +352,9 @@ public interface BatchEngineImportTaskLocalService
 	 * @return the batch engine import task that was updated
 	 */
 	@Indexable(type = IndexableType.REINDEX)
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public BatchEngineImportTask updateBatchEngineImportTask(
 		BatchEngineImportTask batchEngineImportTask);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-586450567
+// LIFERAY-SERVICE-BUILDER-HASH:1324455093

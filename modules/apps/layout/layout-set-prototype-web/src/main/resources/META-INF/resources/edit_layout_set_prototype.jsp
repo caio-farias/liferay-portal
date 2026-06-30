@@ -58,8 +58,6 @@ request.setAttribute("edit_layout_set_prototype.jsp-redirect", currentURL);
 
 <liferay-ui:success key='<%= LayoutSetPrototypePortletKeys.SITE_TEMPLATE_SETTINGS + "requestProcessed" %>' message="site-template-was-added" />
 
-<liferay-util:include page="/merge_alert.jsp" servletContext="<%= application %>" />
-
 <portlet:actionURL name="updateLayoutSetPrototype" var="updateLayoutSetPrototypeURL" />
 
 <liferay-frontend:edit-form
@@ -80,7 +78,7 @@ request.setAttribute("edit_layout_set_prototype.jsp-redirect", currentURL);
 
 			<aui:input helpMessage="allow-site-administrators-to-create-sites-from-this-site-template" inlineLabel="right" label="active" labelCssClass="simple-toggle-switch" name="active" type="toggle-switch" value="<%= layoutSetPrototype.isActive() %>" />
 
-			<aui:input helpMessage="allow-site-administrators-to-modify-pages-associated-with-this-site-template-help" inlineLabel="right" label="allow-site-administrators-to-modify-pages-associated-with-this-site-template" labelCssClass="simple-toggle-switch" name="layoutsUpdateable" type="toggle-switch" value="<%= layoutsUpdateable %>" />
+			<aui:input helpMessage='<%= FeatureFlagManagerUtil.isEnabled(company.getCompanyId(), "LPD-82107") ? "allow-site-administrators-to-modify-pages-associated-with-this-site-template-sync-help" : "allow-site-administrators-to-modify-pages-associated-with-this-site-template-help" %>' inlineLabel="right" label="allow-site-administrators-to-modify-pages-associated-with-this-site-template" labelCssClass="simple-toggle-switch" name="layoutsUpdateable" type="toggle-switch" value="<%= layoutsUpdateable %>" />
 
 			<%
 			Set<String> servletContextNames = CustomJspRegistryUtil.getServletContextNames();

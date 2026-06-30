@@ -19,6 +19,10 @@ type TFolder = {
 type TWebContent = {
 	articleId?: string;
 	content?: string;
+	contentFields?: Array<{
+		name: string;
+		value: string;
+	}>;
 	ddmStructureId: number | string;
 	ddmTemplateKey?: string;
 	description?: string;
@@ -127,14 +131,31 @@ export class JSONWebServicesJournalApiHelper {
 			...(webContent || {}),
 		};
 
-		urlSearchParams.append(
-			'content',
-			`<root>
-				<dynamic-element field-reference="content" index-type="text" name="content" type="rich_text">
-				<dynamic-content><![CDATA[<p>${webContent.content}</p>]]></dynamic-content>
-				</dynamic-element>
-				</root>`
-		);
+		let content = '';
+
+		if (webContent.contentFields) {
+			content = `<root>
+				${webContent.contentFields
+					.map(
+						({
+							name,
+							value,
+						}) => `<dynamic-element field-reference="${name}" index-type="keyword" name="${name}" type="text">
+					<dynamic-content><![CDATA[${value}]]></dynamic-content>
+					</dynamic-element>`
+					)
+					.join('\n')}
+			</root>`;
+		}
+		else if (webContent.content) {
+			content = `<root>
+					<dynamic-element field-reference="content" index-type="text" name="content" type="rich_text">
+					<dynamic-content><![CDATA[<p>${webContent.content}</p>]]></dynamic-content>
+					</dynamic-element>
+				</root>`;
+		}
+
+		urlSearchParams.append('content', content);
 
 		urlSearchParams.append(
 			'descriptionMap',
@@ -331,6 +352,24 @@ export class JSONWebServicesJournalApiHelper {
 
 		return this.apiHelpers.post(
 			`${liferayConfig.environment.baseUrl}${this.basePath}/expire-article`,
+			{
+				data: urlSearchParams.toString(),
+				failOnStatusCode: true,
+				headers: await this.apiHelpers.getJSONWebServicesHeaders(),
+			}
+		);
+	}
+
+	async deleteArticle(siteId: string, articleId: string): Promise<void> {
+		const urlSearchParams = new URLSearchParams();
+
+		urlSearchParams.append('groupId', siteId);
+		urlSearchParams.append('articleId', articleId);
+		urlSearchParams.append('articleURL', '');
+		urlSearchParams.append('serviceContext', JSON.stringify({}));
+
+		return this.apiHelpers.post(
+			`${liferayConfig.environment.baseUrl}${this.basePath}/delete-article`,
 			{
 				data: urlSearchParams.toString(),
 				failOnStatusCode: true,

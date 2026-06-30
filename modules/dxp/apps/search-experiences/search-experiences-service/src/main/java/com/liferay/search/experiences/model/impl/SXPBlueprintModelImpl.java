@@ -114,6 +114,10 @@ public class SXPBlueprintModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table SXPBlueprint";
 
+	public static final String ENTITY_ALIAS = "sxpBlueprint";
+
+	public static final String FILTER_PK_COLUMN_NAME = "sxpBlueprintId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY sxpBlueprint.sxpBlueprintId ASC";
 
@@ -1667,4 +1671,4 @@ public class SXPBlueprintModelImpl
 	private SXPBlueprint _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1397150276
+// LIFERAY-SERVICE-BUILDER-HASH:-1304246969

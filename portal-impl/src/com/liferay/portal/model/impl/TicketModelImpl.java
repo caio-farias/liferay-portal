@@ -63,7 +63,8 @@ public class TicketModelImpl
 		{"companyId", Types.BIGINT}, {"createDate", Types.TIMESTAMP},
 		{"classNameId", Types.BIGINT}, {"classPK", Types.BIGINT},
 		{"key_", Types.VARCHAR}, {"type_", Types.INTEGER},
-		{"extraInfo", Types.CLOB}, {"expirationDate", Types.TIMESTAMP}
+		{"emailAddress", Types.VARCHAR}, {"extraInfo", Types.CLOB},
+		{"expirationDate", Types.TIMESTAMP}
 	};
 
 	public static final Map<String, Integer> TABLE_COLUMNS_MAP =
@@ -78,14 +79,17 @@ public class TicketModelImpl
 		TABLE_COLUMNS_MAP.put("classPK", Types.BIGINT);
 		TABLE_COLUMNS_MAP.put("key_", Types.VARCHAR);
 		TABLE_COLUMNS_MAP.put("type_", Types.INTEGER);
+		TABLE_COLUMNS_MAP.put("emailAddress", Types.VARCHAR);
 		TABLE_COLUMNS_MAP.put("extraInfo", Types.CLOB);
 		TABLE_COLUMNS_MAP.put("expirationDate", Types.TIMESTAMP);
 	}
 
 	public static final String TABLE_SQL_CREATE =
-		"create table Ticket (mvccVersion LONG default 0 not null,ticketId LONG not null primary key,companyId LONG,createDate DATE null,classNameId LONG,classPK LONG,key_ VARCHAR(255) null,type_ INTEGER,extraInfo TEXT null,expirationDate DATE null)";
+		"create table Ticket (mvccVersion LONG default 0 not null,ticketId LONG not null primary key,companyId LONG,createDate DATE null,classNameId LONG,classPK LONG,key_ VARCHAR(255) null,type_ INTEGER,emailAddress VARCHAR(254) null,extraInfo TEXT null,expirationDate DATE null)";
 
 	public static final String TABLE_SQL_DROP = "drop table Ticket";
+
+	public static final String ENTITY_ALIAS = "ticket";
 
 	public static final String ORDER_BY_JPQL = " ORDER BY ticket.ticketId ASC";
 
@@ -137,20 +141,26 @@ public class TicketModelImpl
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
 	 */
 	@Deprecated
-	public static final long KEY_COLUMN_BITMASK = 8L;
+	public static final long EMAILADDRESS_COLUMN_BITMASK = 8L;
 
 	/**
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
 	 */
 	@Deprecated
-	public static final long TYPE_COLUMN_BITMASK = 16L;
+	public static final long KEY_COLUMN_BITMASK = 16L;
+
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
+	 */
+	@Deprecated
+	public static final long TYPE_COLUMN_BITMASK = 32L;
 
 	/**
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
 	 *		#getColumnBitmask(String)}
 	 */
 	@Deprecated
-	public static final long TICKETID_COLUMN_BITMASK = 32L;
+	public static final long TICKETID_COLUMN_BITMASK = 64L;
 
 	public static final long LOCK_EXPIRATION_TIME = GetterUtil.getLong(
 		com.liferay.portal.kernel.util.PropsUtil.get(
@@ -254,6 +264,8 @@ public class TicketModelImpl
 			attributeGetterFunctions.put("classPK", Ticket::getClassPK);
 			attributeGetterFunctions.put("key", Ticket::getKey);
 			attributeGetterFunctions.put("type", Ticket::getType);
+			attributeGetterFunctions.put(
+				"emailAddress", Ticket::getEmailAddress);
 			attributeGetterFunctions.put("extraInfo", Ticket::getExtraInfo);
 			attributeGetterFunctions.put(
 				"expirationDate", Ticket::getExpirationDate);
@@ -291,6 +303,9 @@ public class TicketModelImpl
 				"key", (BiConsumer<Ticket, String>)Ticket::setKey);
 			attributeSetterBiConsumers.put(
 				"type", (BiConsumer<Ticket, Integer>)Ticket::setType);
+			attributeSetterBiConsumers.put(
+				"emailAddress",
+				(BiConsumer<Ticket, String>)Ticket::setEmailAddress);
 			attributeSetterBiConsumers.put(
 				"extraInfo", (BiConsumer<Ticket, String>)Ticket::setExtraInfo);
 			attributeSetterBiConsumers.put(
@@ -489,6 +504,34 @@ public class TicketModelImpl
 	}
 
 	@Override
+	public String getEmailAddress() {
+		if (_emailAddress == null) {
+			return "";
+		}
+		else {
+			return _emailAddress;
+		}
+	}
+
+	@Override
+	public void setEmailAddress(String emailAddress) {
+		if (_columnOriginalValues == Collections.EMPTY_MAP) {
+			_setColumnOriginalValues();
+		}
+
+		_emailAddress = emailAddress;
+	}
+
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
+	 *             #getColumnOriginalValue(String)}
+	 */
+	@Deprecated
+	public String getOriginalEmailAddress() {
+		return getColumnOriginalValue("emailAddress");
+	}
+
+	@Override
 	public String getExtraInfo() {
 		if (_extraInfo == null) {
 			return "";
@@ -585,6 +628,7 @@ public class TicketModelImpl
 		ticketImpl.setClassPK(getClassPK());
 		ticketImpl.setKey(getKey());
 		ticketImpl.setType(getType());
+		ticketImpl.setEmailAddress(getEmailAddress());
 		ticketImpl.setExtraInfo(getExtraInfo());
 		ticketImpl.setExpirationDate(getExpirationDate());
 
@@ -608,6 +652,8 @@ public class TicketModelImpl
 		ticketImpl.setClassPK(this.<Long>getColumnOriginalValue("classPK"));
 		ticketImpl.setKey(this.<String>getColumnOriginalValue("key_"));
 		ticketImpl.setType(this.<Integer>getColumnOriginalValue("type_"));
+		ticketImpl.setEmailAddress(
+			this.<String>getColumnOriginalValue("emailAddress"));
 		ticketImpl.setExtraInfo(
 			this.<String>getColumnOriginalValue("extraInfo"));
 		ticketImpl.setExpirationDate(
@@ -722,6 +768,14 @@ public class TicketModelImpl
 
 		ticketCacheModel.type = getType();
 
+		ticketCacheModel.emailAddress = getEmailAddress();
+
+		String emailAddress = ticketCacheModel.emailAddress;
+
+		if ((emailAddress != null) && (emailAddress.length() == 0)) {
+			ticketCacheModel.emailAddress = null;
+		}
+
 		ticketCacheModel.extraInfo = getExtraInfo();
 
 		String extraInfo = ticketCacheModel.extraInfo;
@@ -807,6 +861,7 @@ public class TicketModelImpl
 	private long _classPK;
 	private String _key;
 	private int _type;
+	private String _emailAddress;
 	private String _extraInfo;
 	private Date _expirationDate;
 
@@ -848,6 +903,7 @@ public class TicketModelImpl
 		_columnOriginalValues.put("classPK", _classPK);
 		_columnOriginalValues.put("key_", _key);
 		_columnOriginalValues.put("type_", _type);
+		_columnOriginalValues.put("emailAddress", _emailAddress);
 		_columnOriginalValues.put("extraInfo", _extraInfo);
 		_columnOriginalValues.put("expirationDate", _expirationDate);
 	}
@@ -890,9 +946,11 @@ public class TicketModelImpl
 
 		columnBitmasks.put("type_", 128L);
 
-		columnBitmasks.put("extraInfo", 256L);
+		columnBitmasks.put("emailAddress", 256L);
 
-		columnBitmasks.put("expirationDate", 512L);
+		columnBitmasks.put("extraInfo", 512L);
+
+		columnBitmasks.put("expirationDate", 1024L);
 
 		_columnBitmasks = Collections.unmodifiableMap(columnBitmasks);
 	}
@@ -901,4 +959,4 @@ public class TicketModelImpl
 	private Ticket _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1072897083
+// LIFERAY-SERVICE-BUILDER-HASH:1545459266

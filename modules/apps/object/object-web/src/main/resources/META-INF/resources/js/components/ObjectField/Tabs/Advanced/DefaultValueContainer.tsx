@@ -72,9 +72,11 @@ const InputAsValueFieldComponents: Partial<InputAsValueFieldComponents> = {
 	Date: DateDefaultValueInput,
 	DateTime: DateDefaultValueInput,
 	Decimal: NumericDefaultValueInput,
+	EmailAddress: TextDefaultValueInput,
 	Integer: NumericDefaultValueInput,
 	LongInteger: NumericDefaultValueInput,
 	LongText: TextDefaultValueInput,
+	PhoneNumber: TextDefaultValueInput,
 	Picklist: ListTypeDefaultValueSelect,
 	PrecisionDecimal: NumericDefaultValueInput,
 	RichText: RichTextDefaultValue,
@@ -195,29 +197,32 @@ export function DefaultValueContainer({
 				</ClayForm.Group>
 			)}
 
-			{defaultValueToggleEnabled && !values.state && (
-				<ClayButton.Group>
-					<ClayButton
-						className={classNames({
-							active:
-								defaultValueTypeSelection === 'inputAsValue',
-						})}
-						displayType="secondary"
-						onClick={() => {
-							setDefaultValueTypeSelection('inputAsValue');
-							setValues({
-								objectFieldSettings: getUpdatedDefaultValueType(
-									values,
-									'inputAsValue'
-								),
-							});
-						}}
-						size="sm"
-					>
-						{Liferay.Language.get('input-as-value')}
-					</ClayButton>
+			{defaultValueSidebarElements &&
+				defaultValueToggleEnabled &&
+				!values.state && (
+					<ClayButton.Group>
+						<ClayButton
+							className={classNames({
+								active:
+									defaultValueTypeSelection ===
+									'inputAsValue',
+							})}
+							displayType="secondary"
+							onClick={() => {
+								setDefaultValueTypeSelection('inputAsValue');
+								setValues({
+									objectFieldSettings:
+										getUpdatedDefaultValueType(
+											values,
+											'inputAsValue'
+										),
+								});
+							}}
+							size="sm"
+						>
+							{Liferay.Language.get('input-as-value')}
+						</ClayButton>
 
-					{defaultValueSidebarElements && (
 						<ClayButton
 							className={classNames({
 								active:
@@ -241,9 +246,8 @@ export function DefaultValueContainer({
 						>
 							{Liferay.Language.get('expression-builder')}
 						</ClayButton>
-					)}
-				</ClayButton.Group>
-			)}
+					</ClayButton.Group>
+				)}
 
 			{defaultValueToggleEnabled &&
 				defaultValueTypeSelection === 'inputAsValue' &&

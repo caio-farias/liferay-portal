@@ -21,7 +21,7 @@ definition {
 
 	@priority = 5
 	test ViewSearchPortletsConfiguration {
-		property portal.suite.search.engine = "elasticsearch8,solr";
+		property portal.suite.search.engine = "elasticsearch8";
 
 		User.firstLoginUI(
 			password = PropsUtil.get("default.admin.password"),
@@ -53,8 +53,6 @@ definition {
 			portletName = "Type Facet");
 
 		Upgrade.restoreOriginalBundleAndUpgrade();
-
-		TestUtils.hardRefresh();
 
 		SearchPage.searchEmbedded(searchTerm = "WC Title");
 

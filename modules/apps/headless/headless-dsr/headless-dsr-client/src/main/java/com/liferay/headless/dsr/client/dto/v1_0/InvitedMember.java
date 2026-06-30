@@ -12,6 +12,7 @@ import jakarta.annotation.Generated;
 
 import java.io.Serializable;
 
+import java.util.Date;
 import java.util.Objects;
 
 /**
@@ -64,6 +65,50 @@ public class InvitedMember implements Cloneable, Serializable {
 	}
 
 	protected Long id;
+
+	public Date getMembershipExpirationDate() {
+		return membershipExpirationDate;
+	}
+
+	public void setMembershipExpirationDate(Date membershipExpirationDate) {
+		this.membershipExpirationDate = membershipExpirationDate;
+	}
+
+	public void setMembershipExpirationDate(
+		UnsafeSupplier<Date, Exception>
+			membershipExpirationDateUnsafeSupplier) {
+
+		try {
+			membershipExpirationDate =
+				membershipExpirationDateUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected Date membershipExpirationDate;
+
+	public Long getOwnerId() {
+		return ownerId;
+	}
+
+	public void setOwnerId(Long ownerId) {
+		this.ownerId = ownerId;
+	}
+
+	public void setOwnerId(
+		UnsafeSupplier<Long, Exception> ownerIdUnsafeSupplier) {
+
+		try {
+			ownerId = ownerIdUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected Long ownerId;
 
 	public String getRoleKey() {
 		return roleKey;
@@ -118,4 +163,4 @@ public class InvitedMember implements Cloneable, Serializable {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:1078884480
+// LIFERAY-REST-BUILDER-HASH:1401042955

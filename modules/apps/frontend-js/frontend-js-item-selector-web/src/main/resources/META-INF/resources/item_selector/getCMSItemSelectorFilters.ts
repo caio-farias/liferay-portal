@@ -14,8 +14,8 @@ export function getCMSItemSelectorFilters(
 ): TFilterConfig[] {
 	return [
 		{
-			apiURL: '/o/headless-asset-library/v1.0/asset-libraries',
-			entityFieldType: EEntityFieldType.COLLECTION,
+			apiURL: "/o/headless-asset-library/v1.0/asset-libraries?filter=type eq 'Space'",
+			entityFieldType: EEntityFieldType.COLLECTION_INTEGER,
 			id: 'groupIds',
 			itemKey: 'siteId',
 			itemLabel: 'name',
@@ -25,9 +25,9 @@ export function getCMSItemSelectorFilters(
 		},
 		{
 			apiURL: "/o/object-admin/v1.0/object-definitions?filter=objectFolderExternalReferenceCode eq 'L_CMS_FILE_TYPES'",
-			entityFieldType: EEntityFieldType.INTEGER,
-			id: 'objectDefinitionId',
-			itemKey: 'id',
+			entityFieldType: EEntityFieldType.STRING,
+			id: 'objectDefinitionExternalReferenceCode',
+			itemKey: 'externalReferenceCode',
 			itemLabel: 'label.LANG',
 			label: Liferay.Language.get('type'),
 			multiple: true,
@@ -35,7 +35,7 @@ export function getCMSItemSelectorFilters(
 		},
 		{
 			apiURL: `/o/headless-admin-taxonomy/v1.0/sites/${groupId}/taxonomy-categories`,
-			entityFieldType: EEntityFieldType.COLLECTION,
+			entityFieldType: EEntityFieldType.COLLECTION_INTEGER,
 			id: 'taxonomyCategoryIds',
 			itemKey: 'id',
 			itemLabel: 'name',
@@ -45,7 +45,7 @@ export function getCMSItemSelectorFilters(
 		},
 		{
 			apiURL: `/o/headless-admin-taxonomy/v1.0/sites/${groupId}/keywords`,
-			entityFieldType: EEntityFieldType.COLLECTION,
+			entityFieldType: EEntityFieldType.COLLECTION_STRING,
 			id: 'keywords',
 			itemKey: 'name',
 			itemLabel: 'name',
@@ -119,12 +119,6 @@ export function getCMSItemSelectorFilters(
 		},
 		{
 			entityFieldType: EEntityFieldType.DATE_TIME,
-			id: 'datePublish',
-			label: Liferay.Language.get('publish-date'),
-			type: 'dateRange',
-		},
-		{
-			entityFieldType: EEntityFieldType.DATE_TIME,
 			id: 'dateReview',
 			label: Liferay.Language.get('review-date'),
 			type: 'dateRange',
@@ -134,13 +128,19 @@ export function getCMSItemSelectorFilters(
 
 /**
  * Returns the grouped filters configuration for CMS Item Selector data sets.
+ *
+ * The space/group filter ID can be customized via spaceFilterId so the same
+ * groupings can be reused by data sets that register the space filter under a
+ * different ID (e.g. the CMS "Contents" FDS uses "scopeGroupId").
  */
-export function getCMSItemSelectorGroupedFilters(): IGroupedFilterConfig[] {
+export function getCMSItemSelectorGroupedFilters(
+	spaceFilterId: 'groupIds' | 'scopeGroupId' = 'groupIds'
+): IGroupedFilterConfig[] {
 	return [
 		{
 			filters: [
-				'groupIds',
-				'objectDefinitionId',
+				spaceFilterId,
+				'objectDefinitionExternalReferenceCode',
 				'taxonomyCategoryIds',
 				'keywords',
 				'creatorId',
@@ -154,7 +154,6 @@ export function getCMSItemSelectorGroupedFilters(): IGroupedFilterConfig[] {
 				'dateDisplay',
 				'dateExpiration',
 				'dateModified',
-				'datePublish',
 				'dateReview',
 			],
 			label: Liferay.Language.get('filter-by-date'),

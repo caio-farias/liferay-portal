@@ -107,6 +107,10 @@ public class CommerceChannelModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table CommerceChannel";
 
+	public static final String ENTITY_ALIAS = "commerceChannel";
+
+	public static final String FILTER_PK_COLUMN_NAME = "commerceChannelId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY commerceChannel.createDate DESC";
 
@@ -1295,4 +1299,4 @@ public class CommerceChannelModelImpl
 	private CommerceChannel _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:50634852
+// LIFERAY-SERVICE-BUILDER-HASH:-1002297807

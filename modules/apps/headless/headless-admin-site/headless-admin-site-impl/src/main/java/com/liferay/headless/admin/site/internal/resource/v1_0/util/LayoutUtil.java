@@ -9,6 +9,7 @@ import com.liferay.client.extension.constants.ClientExtensionEntryConstants;
 import com.liferay.client.extension.service.ClientExtensionEntryRelLocalServiceUtil;
 import com.liferay.client.extension.type.CET;
 import com.liferay.client.extension.type.manager.CETManager;
+import com.liferay.expando.kernel.util.ExpandoUtil;
 import com.liferay.exportimport.kernel.staging.StagingUtil;
 import com.liferay.fragment.processor.FragmentEntryProcessorRegistry;
 import com.liferay.headless.admin.site.dto.v1_0.BasicWidgetPageWidgetInstance;
@@ -29,6 +30,7 @@ import com.liferay.headless.admin.site.dto.v1_0.WidgetLookAndFeelConfig;
 import com.liferay.headless.admin.site.dto.v1_0.WidgetPageSection;
 import com.liferay.headless.admin.site.dto.v1_0.WidgetPageSpecification;
 import com.liferay.headless.admin.site.dto.v1_0.WidgetPageWidgetInstance;
+import com.liferay.headless.admin.site.dto.v1_0.util.URLUtil;
 import com.liferay.headless.admin.site.internal.dto.v1_0.util.FileEntryUtil;
 import com.liferay.headless.admin.site.internal.dto.v1_0.util.ItemScopeUtil;
 import com.liferay.headless.admin.site.internal.util.LogUtil;
@@ -45,6 +47,7 @@ import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -81,6 +84,8 @@ import com.liferay.segments.model.SegmentsExperience;
 import com.liferay.segments.service.SegmentsExperienceLocalServiceUtil;
 import com.liferay.style.book.model.StyleBookEntry;
 import com.liferay.style.book.service.StyleBookEntryLocalServiceUtil;
+
+import java.io.Serializable;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -440,6 +445,7 @@ public class LayoutUtil {
 			return _updateLayout(
 				layout, nameMap, titleMap, descriptionMap, keywordsMap,
 				robotsMap, layout.getStyleBookEntryERC(),
+				layout.getStyleBookEntryScopeERC(),
 				layout.getFaviconFileEntryERC(),
 				layout.getFaviconFileEntryScopeERC(),
 				layout.getMasterLayoutPageTemplateEntryERC(), friendlyURLMap,
@@ -555,7 +561,7 @@ public class LayoutUtil {
 
 		return _updateLayout(
 			layout, nameMap, null, null, null, null, null, null, null, null,
-			friendlyURLMap, serviceContext);
+			null, friendlyURLMap, serviceContext);
 	}
 
 	public static Layout updatePortletLayout(
@@ -737,11 +743,12 @@ public class LayoutUtil {
 		return itemExternalReference.getExternalReferenceCode();
 	}
 
-	private static String _getStyleBookEntryERC(
-		long companyId, long groupId, Settings settings) {
+	private static StyleBookEntryReference _getStyleBookEntryReference(
+			long companyId, long scopeGroupId, Settings settings)
+		throws Exception {
 
 		if (settings == null) {
-			return null;
+			return new StyleBookEntryReference(null, null);
 		}
 
 		ItemExternalReference itemExternalReference =
@@ -751,22 +758,40 @@ public class LayoutUtil {
 			Validator.isNull(
 				itemExternalReference.getExternalReferenceCode())) {
 
-			return null;
+			return new StyleBookEntryReference(null, null);
 		}
 
-		StyleBookEntry styleBookEntry =
-			StyleBookEntryLocalServiceUtil.
-				fetchStyleBookEntryByExternalReferenceCode(
-					itemExternalReference.getExternalReferenceCode(),
-					StagingUtil.getLiveGroupId(groupId));
+		String styleBookEntryScopeERC =
+			ItemScopeUtil.getItemScopeExternalReferenceCode(
+				itemExternalReference.getScope(), scopeGroupId);
+
+		if (Validator.isNotNull(styleBookEntryScopeERC)) {
+			FeatureFlagManagerUtil.checkEnabled(companyId, "LPD-57283");
+		}
+
+		StyleBookEntry styleBookEntry = null;
+
+		Long groupId = ItemScopeUtil.getItemGroupId(
+			companyId, itemExternalReference.getScope(), scopeGroupId);
+
+		if (groupId != null) {
+			styleBookEntry =
+				StyleBookEntryLocalServiceUtil.
+					fetchStyleBookEntryByExternalReferenceCode(
+						itemExternalReference.getExternalReferenceCode(),
+						StagingUtil.getLiveGroupId(groupId));
+		}
 
 		if (styleBookEntry == null) {
 			LogUtil.logOptionalReference(
-				StyleBookEntry.class,
-				itemExternalReference.getExternalReferenceCode(), companyId);
+				StyleBookEntry.class.getName(),
+				itemExternalReference.getExternalReferenceCode(),
+				itemExternalReference.getScope(), scopeGroupId);
 		}
 
-		return itemExternalReference.getExternalReferenceCode();
+		return new StyleBookEntryReference(
+			itemExternalReference.getExternalReferenceCode(),
+			styleBookEntryScopeERC);
 	}
 
 	private static void _importPortletConfiguration(
@@ -897,10 +922,19 @@ public class LayoutUtil {
 			serviceContext.setExpandoBridgeAttributes(null);
 		}
 		else {
-			serviceContext.setExpandoBridgeAttributes(
+			Map<String, Serializable> expandoBridgeAttributes =
 				CustomFieldsUtil.toMap(
 					Layout.class.getName(), serviceContext.getCompanyId(),
-					pageSpecification.getCustomFields(), null));
+					pageSpecification.getCustomFields(),
+					LocaleUtil.getSiteDefault());
+
+			if (expandoBridgeAttributes != null) {
+				ExpandoUtil.fillMissingDefaultLocaleValues(
+					expandoBridgeAttributes);
+
+				serviceContext.setExpandoBridgeAttributes(
+					expandoBridgeAttributes);
+			}
 		}
 	}
 
@@ -1062,10 +1096,15 @@ public class LayoutUtil {
 			}
 		}
 
+		StyleBookEntryReference styleBookEntryReference =
+			_getStyleBookEntryReference(
+				layout.getCompanyId(), serviceContext.getScopeGroupId(),
+				settings);
+
 		layout = _updateLayout(
 			layout, nameMap, titleMap, descriptionMap, keywordsMap, robotsMap,
-			_getStyleBookEntryERC(
-				layout.getCompanyId(), layout.getGroupId(), settings),
+			styleBookEntryReference.getStyleBookEntryERC(),
+			styleBookEntryReference.getStyleBookEntryScopeERC(),
 			faviconFileEntryERC, faviconFileEntryScopeERC,
 			_getMasterLayoutPageTemplateEntryERC(
 				serviceContext.getScopeGroupId(), layout, settings),
@@ -1081,8 +1120,8 @@ public class LayoutUtil {
 			Layout layout, Map<Locale, String> nameMap,
 			Map<Locale, String> titleMap, Map<Locale, String> descriptionMap,
 			Map<Locale, String> keywordsMap, Map<Locale, String> robotsMap,
-			String styleBookEntryERC, String faviconFileEntryERC,
-			String faviconFileEntryScopeERC,
+			String styleBookEntryERC, String styleBookEntryScopeERC,
+			String faviconFileEntryERC, String faviconFileEntryScopeERC,
 			String masterLayoutPageTemplateEntryERC,
 			Map<Locale, String> friendlyURLMap, ServiceContext serviceContext)
 		throws Exception {
@@ -1102,8 +1141,9 @@ public class LayoutUtil {
 			GetterUtil.getBoolean(
 				serviceContext.getAttribute("hidden"), layout.isHidden()),
 			friendlyURLMap, layout.getIconImage(), null, styleBookEntryERC,
-			faviconFileEntryERC, faviconFileEntryScopeERC,
-			masterLayoutPageTemplateEntryERC, serviceContext);
+			styleBookEntryScopeERC, faviconFileEntryERC,
+			faviconFileEntryScopeERC, masterLayoutPageTemplateEntryERC,
+			serviceContext);
 	}
 
 	private static Layout _updateLookAndFeel(Layout layout, Settings settings)
@@ -1239,6 +1279,7 @@ public class LayoutUtil {
 
 				SegmentsExperienceLocalServiceUtil.
 					updateSegmentsExperiencePriority(
+						serviceContext.getUserId(),
 						actualSegmentsExperience.getSegmentsExperienceId(),
 						SegmentsExperienceUtil.getPriority(
 							pageExperience.getKey(), layout,
@@ -1353,5 +1394,27 @@ public class LayoutUtil {
 		ListUtil.fromArray(
 			"portletSetupUseCustomTitle", "portletSetupPortletDecoratorId",
 			"portletSetupCss");
+
+	private static class StyleBookEntryReference {
+
+		public StyleBookEntryReference(
+			String styleBookEntryERC, String styleBookEntryScopeERC) {
+
+			_styleBookEntryERC = styleBookEntryERC;
+			_styleBookEntryScopeERC = styleBookEntryScopeERC;
+		}
+
+		public String getStyleBookEntryERC() {
+			return _styleBookEntryERC;
+		}
+
+		public String getStyleBookEntryScopeERC() {
+			return _styleBookEntryScopeERC;
+		}
+
+		private final String _styleBookEntryERC;
+		private final String _styleBookEntryScopeERC;
+
+	}
 
 }

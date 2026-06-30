@@ -111,6 +111,10 @@ public class COREntryModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table COREntry";
 
+	public static final String ENTITY_ALIAS = "corEntry";
+
+	public static final String FILTER_PK_COLUMN_NAME = "COREntryId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY corEntry.priority DESC";
 
@@ -1540,4 +1544,4 @@ public class COREntryModelImpl
 	private COREntry _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:396228110
+// LIFERAY-SERVICE-BUILDER-HASH:606678927

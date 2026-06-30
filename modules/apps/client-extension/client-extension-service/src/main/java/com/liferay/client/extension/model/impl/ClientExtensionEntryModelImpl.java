@@ -117,6 +117,10 @@ public class ClientExtensionEntryModelImpl
 	public static final String TABLE_SQL_DROP =
 		"drop table ClientExtensionEntry";
 
+	public static final String ENTITY_ALIAS = "clientExtensionEntry";
+
+	public static final String FILTER_PK_COLUMN_NAME = "clientExtensionEntryId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY clientExtensionEntry.clientExtensionEntryId ASC";
 
@@ -1652,4 +1656,4 @@ public class ClientExtensionEntryModelImpl
 	private ClientExtensionEntry _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-7473165
+// LIFERAY-SERVICE-BUILDER-HASH:2091469176

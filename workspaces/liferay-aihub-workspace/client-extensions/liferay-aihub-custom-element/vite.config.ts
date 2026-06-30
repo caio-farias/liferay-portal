@@ -8,12 +8,28 @@ import {defineConfig} from 'vite';
 
 export default defineConfig({
 	build: {
+		chunkSizeWarningLimit: 2000,
+		cssCodeSplit: false,
 		outDir: 'build/vite',
 		rollupOptions: {
 			output: {
-				assetFileNames: '[name][extname]',
+				assetFileNames: (assetInfo) => {
+					const name = assetInfo.names?.[0] ?? '';
+
+					return name.endsWith('.css')
+						? 'index.css'
+						: '[name][extname]';
+				},
+				banner:
+					'/*!\n' +
+					' * SPDX-FileCopyrightText: (c) 2026 Liferay, Inc. https://liferay.com\n' +
+					' * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06\n' +
+					' */',
 				chunkFileNames: '[name]-[hash].js',
 				entryFileNames: 'index.js',
+				format: 'iife',
+				inlineDynamicImports: true,
+				name: 'liferayAIHubChatbot',
 			},
 		},
 	},

@@ -44,7 +44,14 @@ if (!LanguageUtil.isInheritLocales(siteGroup.getGroupId()) && !siteAdminConfigur
 boolean hasUnlinkLayoutSetPrototypePermission = PortalPermissionUtil.contains(permissionChecker, ActionKeys.UNLINK_LAYOUT_SET_PROTOTYPE);
 %>
 
-<div class="sheet-subtitle"><liferay-ui:message key="pages" /></div>
+<c:choose>
+	<c:when test='<%= FeatureFlagManagerUtil.isEnabled(company.getCompanyId(), "LPD-82107") %>'>
+		<div class="sheet-subtitle"><liferay-ui:message key="site-template-sync" /></div>
+	</c:when>
+	<c:otherwise>
+		<div class="sheet-subtitle"><liferay-ui:message key="pages" /></div>
+	</c:otherwise>
+</c:choose>
 
 <aui:field-wrapper cssClass="form-group">
 	<c:choose>
@@ -94,13 +101,24 @@ boolean hasUnlinkLayoutSetPrototypePermission = PortalPermissionUtil.contains(pe
 		</c:when>
 		<c:otherwise>
 			<c:choose>
-				<c:when test="<%= siteGroup.getPublicLayoutsPageCount() > 0 %>">
-					<aui:a href="<%= siteGroup.getDisplayURL(themeDisplay, false) %>" label="open-pages" target="_blank" />
-				</c:when>
-				<c:otherwise>
+				<c:when test="<%= siteGroup.getPublicLayoutsPageCount() == 0 %>">
 					<p class="small text-secondary">
 						<liferay-ui:message key="this-site-does-not-have-any-pages" />
 					</p>
+				</c:when>
+				<c:when test='<%= FeatureFlagManagerUtil.isEnabled(company.getCompanyId(), "LPD-82107") %>'>
+					<c:if test="<%= publicLayoutSetPrototype == null %>">
+						<p class="small text-secondary">
+							<liferay-ui:message key="this-site-is-not-related-to-a-site-template" />
+						</p>
+					</c:if>
+				</c:when>
+				<c:otherwise>
+					<clay:link
+						href="<%= siteGroup.getDisplayURL(themeDisplay, false) %>"
+						label="open-pages"
+						target="_blank"
+					/>
 				</c:otherwise>
 			</c:choose>
 
@@ -114,18 +132,6 @@ boolean hasUnlinkLayoutSetPrototypePermission = PortalPermissionUtil.contains(pe
 					</c:if>
 
 					<aui:input disabled="<%= disableLayoutSetPrototypeInput %>" inlineLabel="right" label='<%= LanguageUtil.format(request, "enable-propagation-of-changes-from-the-site-template-x", HtmlUtil.escape(publicLayoutSetPrototype.getName(locale)), false) %>' labelCssClass="simple-toggle-switch" name="publicLayoutSetPrototypeLinkEnabled" type="toggle-switch" value="<%= publicLayoutSetPrototypeLinkEnabled %>" />
-
-					<div class="<%= publicLayoutSetPrototypeLinkEnabled ? "" : "hide" %>" id="<portlet:namespace />publicLayoutSetPrototypeMergeAlert">
-
-						<%
-						request.setAttribute("edit_layout_set_prototype.jsp-groupId", String.valueOf(siteGroup.getGroupId()));
-						request.setAttribute("edit_layout_set_prototype.jsp-layoutSet", publicLayoutSet);
-						request.setAttribute("edit_layout_set_prototype.jsp-layoutSetPrototype", publicLayoutSetPrototype);
-						request.setAttribute("edit_layout_set_prototype.jsp-redirect", currentURL);
-						%>
-
-						<liferay-util:include page="/layout_set_merge_alert.jsp" servletContext="<%= application %>" />
-					</div>
 				</c:when>
 				<c:when test="<%= publicLayoutSetPrototype != null %>">
 					<liferay-ui:message arguments="<%= HtmlUtil.escape(publicLayoutSetPrototype.getName(locale)) %>" key="these-pages-are-linked-to-site-template-x" translateArguments="<%= false %>" />
@@ -146,10 +152,5 @@ boolean hasUnlinkLayoutSetPrototypePermission = PortalPermissionUtil.contains(pe
 		'<portlet:namespace />publicLayoutSetPrototypeId',
 		<portlet:namespace />isVisible,
 		'<portlet:namespace />publicLayoutSetPrototypeIdOptions'
-	);
-
-	Liferay.Util.toggleBoxes(
-		'<portlet:namespace />publicLayoutSetPrototypeLinkEnabled',
-		'<portlet:namespace />publicLayoutSetPrototypeMergeAlert'
 	);
 </aui:script>

@@ -104,6 +104,10 @@ public class CTCollectionModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table CTCollection";
 
+	public static final String ENTITY_ALIAS = "ctCollection";
+
+	public static final String FILTER_PK_COLUMN_NAME = "ctCollectionId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY ctCollection.createDate ASC";
 
@@ -1246,4 +1250,4 @@ public class CTCollectionModelImpl
 	private CTCollection _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:666336855
+// LIFERAY-SERVICE-BUILDER-HASH:49190194

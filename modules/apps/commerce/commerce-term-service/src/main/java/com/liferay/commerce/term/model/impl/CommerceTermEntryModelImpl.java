@@ -116,6 +116,10 @@ public class CommerceTermEntryModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table CommerceTermEntry";
 
+	public static final String ENTITY_ALIAS = "commerceTermEntry";
+
+	public static final String FILTER_PK_COLUMN_NAME = "commerceTermEntryId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY commerceTermEntry.priority DESC";
 
@@ -1781,4 +1785,4 @@ public class CommerceTermEntryModelImpl
 	private CommerceTermEntry _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:158141131
+// LIFERAY-SERVICE-BUILDER-HASH:-1847043986

@@ -16,6 +16,7 @@ import CategorizationPermissionService from '../../../common/services/Categoriza
 import VocabularyService from '../../../common/services/VocabularyService';
 import {IVocabulary} from '../../../common/types/IVocabulary';
 import {
+	displayErrorToast,
 	displayNameInUseErrorToast,
 	displaySystemErrorToast,
 } from '../../../common/utils/toastUtil';
@@ -34,6 +35,7 @@ export default function EditVocabulary({
 	backURL,
 	cmsGroupId,
 	defaultLanguageId,
+	externalReferenceCodeMaxLength,
 	locales,
 	spritemap,
 	vocabularyId,
@@ -43,6 +45,7 @@ export default function EditVocabulary({
 	backURL: string;
 	cmsGroupId: number;
 	defaultLanguageId: string;
+	externalReferenceCodeMaxLength: number;
 	locales: any[];
 	spritemap: string;
 	vocabularyId: number;
@@ -57,6 +60,10 @@ export default function EditVocabulary({
 	const [assetTypes, setAssetTypes] = useState<AssetType[]>([]);
 	const [assetTypeChange, setAssetTypeChange] = useState(false);
 	const [assetTypeInputError, setAssetTypeInputError] = useState<string>('');
+	const [
+		externalReferenceCodeInputError,
+		setExternalReferenceCodeInputError,
+	] = useState<string>('');
 	const [nameInputError, setNameInputError] = useState<string>('');
 	const {observer, onOpenChange, open} = useModal();
 	const [spaceChange, setSpaceChange] = useState(false);
@@ -75,11 +82,13 @@ export default function EditVocabulary({
 		description_i18n: {
 			[defaultLanguageId]: '',
 		},
+		externalReferenceCode: '',
 		multiValued: true,
 		name: '',
 		name_i18n: {
 			[defaultLanguageId.replace('_', '-')]: '',
 		},
+		system: false,
 		visibilityType: 'PUBLIC',
 	});
 	const [vocabularyPermissions, setVocabularyPermissions] =
@@ -141,6 +150,38 @@ export default function EditVocabulary({
 		return true;
 	};
 
+	const _handleSaveError = (error: string, status?: string | null): never => {
+		if (status === 'CONFLICT') {
+			if (
+				error ===
+				'A taxonomy vocabulary with the same external reference code already exists'
+			) {
+				const ercErrorMessage = Liferay.Language.get(
+					'please-enter-a-unique-external-reference-code'
+				);
+
+				setExternalReferenceCodeInputError(ercErrorMessage);
+				setActiveVerticalNavKey('general');
+
+				displayErrorToast(ercErrorMessage);
+			}
+			else {
+				setNameInputError(
+					Liferay.Language.get(
+						'please-enter-a-unique-name.-this-one-is-already-in-use'
+					)
+				);
+
+				displayNameInUseErrorToast();
+			}
+		}
+		else {
+			displaySystemErrorToast();
+		}
+
+		throw new Error(error);
+	};
+
 	const _handleSave = async () => {
 		if (!_handleValidateInputs()) {
 			return;
@@ -154,20 +195,7 @@ export default function EditVocabulary({
 				);
 
 			if (error) {
-				if (status === 'CONFLICT') {
-					setNameInputError(
-						Liferay.Language.get(
-							'please-enter-a-unique-name.-this-one-is-already-in-use'
-						)
-					);
-
-					displayNameInUseErrorToast();
-				}
-				else {
-					displaySystemErrorToast();
-				}
-
-				throw new Error(error);
+				_handleSaveError(error, status);
 			}
 			else {
 				const vocabularyId: number = data?.id || 0;
@@ -191,13 +219,11 @@ export default function EditVocabulary({
 			}
 		}
 		else {
-			const {error} =
+			const {error, status} =
 				await VocabularyService.updateVocabulary(vocabulary);
 
 			if (error) {
-				displaySystemErrorToast();
-
-				throw new Error(error);
+				_handleSaveError(error, status);
 			}
 		}
 
@@ -229,138 +255,147 @@ export default function EditVocabulary({
 
 	const shouldDisableSaveBtn =
 		!vocabulary.name.trim().length ||
+		!!externalReferenceCodeInputError ||
 		!!spaceInputError ||
 		!!assetTypeInputError;
 
 	return (
-		<div className="categorization-section">
-			<div className="edit-page">
-				<Toolbar
-					backURL={backURL}
-					title={
-						title
-							? sub(Liferay.Language.get('edit-x'), title)
-							: Liferay.Language.get('new-vocabulary')
-					}
-				>
-					<Toolbar.Item>
-						<ClayButton
-							aria-label={Liferay.Language.get('back')}
-							borderless
-							displayType="secondary"
-							onClick={() => navigate(backURL)}
-							outline
-							size="sm"
-						>
-							{Liferay.Language.get('cancel')}
-						</ClayButton>
+		<>
+			<Toolbar
+				backURL={backURL}
+				title={
+					title
+						? sub(Liferay.Language.get('edit-x'), title)
+						: Liferay.Language.get('new-vocabulary')
+				}
+			>
+				<Toolbar.Item>
+					<ClayButton
+						aria-label={Liferay.Language.get('back')}
+						borderless
+						data-canonical-name={Liferay.Language.get('cancel')}
+						displayType="secondary"
+						onClick={() => navigate(backURL)}
+						outline
+						size="sm"
+					>
+						{Liferay.Language.get('cancel')}
+					</ClayButton>
 
-						<ClayButton
-							className="inline-item-after"
-							disabled={shouldDisableSaveBtn}
-							displayType="primary"
-							onClick={() => {
-								if (assetTypeChange || spaceChange) {
-									onOpenChange(true);
-								}
-								else {
-									_handleSave();
-								}
-							}}
-							size="sm"
-						>
-							{Liferay.Language.get('save')}
-						</ClayButton>
-					</Toolbar.Item>
-				</Toolbar>
+					<ClayButton
+						className="inline-item-after"
+						data-canonical-name={Liferay.Language.get('save')}
+						disabled={shouldDisableSaveBtn}
+						displayType="primary"
+						onClick={() => {
+							if (assetTypeChange || spaceChange) {
+								onOpenChange(true);
+							}
+							else {
+								_handleSave();
+							}
+						}}
+						size="sm"
+					>
+						{Liferay.Language.get('save')}
+					</ClayButton>
+				</Toolbar.Item>
+			</Toolbar>
 
-				<ClayLayout.ContainerFluid size={false}>
-					<ClayLayout.Row className="min-vh-100">
-						<ClayLayout.Col
-							className="cms-sidebar-nav sidebar-layout"
-							md="auto"
-							sm={12}
-						>
-							<div className="px-md-2 py-3 py-md-4">
-								<ClayVerticalNav
-									items={[
-										{
-											active:
-												activeVerticalNavKey ===
-												NAVIGATION_TABS.GENERAL,
-											label: Liferay.Language.get(
-												'general'
+			<ClayLayout.ContainerFluid size={false}>
+				<ClayLayout.Row className="min-vh-100">
+					<ClayLayout.Col
+						className="cms-sidebar-nav sidebar-layout"
+						md="auto"
+						sm={12}
+					>
+						<div className="px-md-2 py-3 py-md-4">
+							<ClayVerticalNav
+								items={[
+									{
+										active:
+											activeVerticalNavKey ===
+											NAVIGATION_TABS.GENERAL,
+										label: Liferay.Language.get('general'),
+										onClick: () =>
+											_handleVerticalNavChange(
+												NAVIGATION_TABS.GENERAL
 											),
-											onClick: () =>
-												_handleVerticalNavChange(
-													NAVIGATION_TABS.GENERAL
-												),
-										},
-										{
-											active:
-												activeVerticalNavKey ===
-												NAVIGATION_TABS.ASSET_TYPES,
-											label: Liferay.Language.get(
-												'associated-asset-types'
-											),
-											onClick: () =>
-												_handleVerticalNavChange(
-													NAVIGATION_TABS.ASSET_TYPES
-												),
-										},
-									]}
-								/>
-							</div>
-						</ClayLayout.Col>
+									},
+									...(vocabulary.system
+										? []
+										: [
+												{
+													active:
+														activeVerticalNavKey ===
+														NAVIGATION_TABS.ASSET_TYPES,
+													label: Liferay.Language.get(
+														'associated-asset-types'
+													),
+													onClick: () =>
+														_handleVerticalNavChange(
+															NAVIGATION_TABS.ASSET_TYPES
+														),
+												},
+											]),
+								]}
+							/>
+						</div>
+					</ClayLayout.Col>
 
-						<ClayLayout.Col className="col-md" sm={12}>
-							{activeVerticalNavKey === 'general' && (
-								<EditGeneralInfo
-									assetLibraries={assetLibraries}
-									defaultLanguageId={defaultLanguageId}
-									isNew={isNew}
-									locales={locales}
-									nameInputError={nameInputError}
-									onChangeVocabulary={setVocabulary}
-									setNameInputError={setNameInputError}
-									setSpaceChange={setSpaceChange}
-									setSpaceInputError={setSpaceInputError}
-									setVocabularyPermissions={
-										setVocabularyPermissions
-									}
-									showPermissions={isNew}
-									spaceInputError={spaceInputError}
-									spritemap={spritemap}
-									vocabulary={vocabulary}
-								/>
-							)}
+					<ClayLayout.Col className="col-md" sm={12}>
+						{activeVerticalNavKey === 'general' && (
+							<EditGeneralInfo
+								assetLibraries={assetLibraries}
+								defaultLanguageId={defaultLanguageId}
+								externalReferenceCodeInputError={
+									externalReferenceCodeInputError
+								}
+								externalReferenceCodeMaxLength={
+									externalReferenceCodeMaxLength
+								}
+								isNew={isNew}
+								locales={locales}
+								nameInputError={nameInputError}
+								onChangeVocabulary={setVocabulary}
+								setExternalReferenceCodeInputError={
+									setExternalReferenceCodeInputError
+								}
+								setNameInputError={setNameInputError}
+								setSpaceChange={setSpaceChange}
+								setSpaceInputError={setSpaceInputError}
+								setVocabularyPermissions={
+									setVocabularyPermissions
+								}
+								showPermissions={isNew}
+								spritemap={spritemap}
+								vocabulary={vocabulary}
+							/>
+						)}
 
-							{activeVerticalNavKey === 'assetTypes' && (
-								<EditAssociatedAssetTypes
-									assetTypeInputError={assetTypeInputError}
-									availableAssetTypes={availableAssetTypes}
-									initialAssetTypes={assetTypes}
-									onChangeVocabulary={setVocabulary}
-									setAssetTypeChange={setAssetTypeChange}
-									setAssetTypeInputError={
-										setAssetTypeInputError
-									}
-									vocabulary={vocabulary}
-								/>
-							)}
-						</ClayLayout.Col>
-					</ClayLayout.Row>
-				</ClayLayout.ContainerFluid>
+						{activeVerticalNavKey === 'assetTypes' && (
+							<EditAssociatedAssetTypes
+								assetTypeInputError={assetTypeInputError}
+								availableAssetTypes={availableAssetTypes}
+								initialAssetTypes={assetTypes}
+								onChangeVocabulary={setVocabulary}
+								setAssetTypeChange={setAssetTypeChange}
+								setAssetTypeInputError={setAssetTypeInputError}
+								vocabulary={vocabulary}
+							/>
+						)}
+					</ClayLayout.Col>
+				</ClayLayout.Row>
+			</ClayLayout.ContainerFluid>
 
-				<ConfirmChangesModal
-					assetTypeChange={assetTypeChange}
-					observer={observer}
-					onOpenChange={onOpenChange}
-					onSave={_handleSave}
-					open={open}
-					spaceChange={spaceChange}
-				/>
-			</div>
-		</div>
+			<ConfirmChangesModal
+				assetTypeChange={assetTypeChange}
+				observer={observer}
+				onOpenChange={onOpenChange}
+				onSave={_handleSave}
+				open={open}
+				spaceChange={spaceChange}
+			/>
+		</>
 	);
 }

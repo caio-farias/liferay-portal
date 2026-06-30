@@ -116,11 +116,7 @@ public class SegmentsEntryPersistenceTest {
 
 	@Test
 	public void testUpdateExisting() throws Exception {
-		long pk = RandomTestUtil.nextLong();
-
-		SegmentsEntry newSegmentsEntry = _persistence.create(pk);
-
-		newSegmentsEntry.setMvccVersion(RandomTestUtil.nextLong());
+		SegmentsEntry newSegmentsEntry = addSegmentsEntry();
 
 		newSegmentsEntry.setCtCollectionId(RandomTestUtil.nextLong());
 
@@ -155,7 +151,9 @@ public class SegmentsEntryPersistenceTest {
 
 		newSegmentsEntry.setLastPublishDate(RandomTestUtil.nextDate());
 
-		_segmentsEntries.add(_persistence.update(newSegmentsEntry));
+		newSegmentsEntry = _persistence.update(newSegmentsEntry);
+
+		_segmentsEntries.add(newSegmentsEntry);
 
 		SegmentsEntry existingSegmentsEntry = _persistence.findByPrimaryKey(
 			newSegmentsEntry.getPrimaryKey());
@@ -335,7 +333,30 @@ public class SegmentsEntryPersistenceTest {
 	public void testCountByG_SRCArrayable() throws Exception {
 		_persistence.countByG_SRC(
 			new long[] {RandomTestUtil.nextLong(), 0L},
-			RandomTestUtil.randomString());
+			new String[] {
+				RandomTestUtil.randomString(), "", "null", null, null
+			});
+	}
+
+	@Test
+	public void testCountByG_A_SRC() throws Exception {
+		_persistence.countByG_A_SRC(
+			RandomTestUtil.nextLong(), RandomTestUtil.randomBoolean(), "");
+
+		_persistence.countByG_A_SRC(0L, RandomTestUtil.randomBoolean(), "null");
+
+		_persistence.countByG_A_SRC(
+			0L, RandomTestUtil.randomBoolean(), (String)null);
+	}
+
+	@Test
+	public void testCountByG_A_SRCArrayable() throws Exception {
+		_persistence.countByG_A_SRC(
+			new long[] {RandomTestUtil.nextLong(), 0L},
+			RandomTestUtil.randomBoolean(),
+			new String[] {
+				RandomTestUtil.randomString(), "", "null", null, null
+			});
 	}
 
 	@Test
@@ -707,8 +728,6 @@ public class SegmentsEntryPersistenceTest {
 
 		SegmentsEntry segmentsEntry = _persistence.create(pk);
 
-		segmentsEntry.setMvccVersion(RandomTestUtil.nextLong());
-
 		segmentsEntry.setCtCollectionId(RandomTestUtil.nextLong());
 
 		segmentsEntry.setUuid(RandomTestUtil.randomString());
@@ -752,4 +771,4 @@ public class SegmentsEntryPersistenceTest {
 	private ClassLoader _dynamicQueryClassLoader;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:2069716228
+// LIFERAY-SERVICE-BUILDER-HASH:717790671

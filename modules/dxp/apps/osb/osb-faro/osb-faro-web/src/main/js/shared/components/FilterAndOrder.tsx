@@ -12,7 +12,7 @@ import {sub} from 'shared/util/lang';
 interface IItemProps {
 	active: boolean;
 	className?: string;
-	field?: string;
+	field: string;
 	label: string;
 	name?: string;
 	onChange: (val: string, field: string) => void;
@@ -51,8 +51,8 @@ const Item: React.FC<IItemProps> = ({
 
 const FlatList: React.FC<Omit<FilterOptionsListPropsType, 'flat'>> = ({
 	className,
-	filterBy,
-	filterByOptions,
+	filterBy = Map(),
+	filterByOptions = [],
 	onChange
 }) => (
 	<>
@@ -84,12 +84,12 @@ const FlatList: React.FC<Omit<FilterOptionsListPropsType, 'flat'>> = ({
 
 const NestedList: React.FC<Omit<FilterOptionsListPropsType, 'flat'>> = ({
 	className,
-	filterBy,
-	filterByOptions,
+	filterBy = Map(),
+	filterByOptions = [],
 	onChange
 }) => (
 	<ClayDropDown.Group header={Liferay.Language.get('filter-by')}>
-		{filterByOptions.map(({key, label, values}) =>
+		{filterByOptions.map(({key, label, type = 'checkbox', values}) =>
 			values.length > 1 ? (
 				<ClayDropDown
 					alignmentPosition={Align.RightCenter}
@@ -112,7 +112,7 @@ const NestedList: React.FC<Omit<FilterOptionsListPropsType, 'flat'>> = ({
 							key={value}
 							label={itemLabel}
 							onChange={onChange}
-							type='checkbox'
+							type={type}
 							value={value}
 						/>
 					))}
@@ -124,7 +124,7 @@ const NestedList: React.FC<Omit<FilterOptionsListPropsType, 'flat'>> = ({
 					key={key}
 					label={get(values, ['0', 'label'])}
 					onChange={onChange}
-					type='checkbox'
+					type={type}
 					value={get(values, ['0', 'value'])}
 				/>
 			)
@@ -144,7 +144,13 @@ const FilterOptionsList: React.FC<FilterOptionsListPropsType> = ({
 	...otherProps
 }) => (flat ? <FlatList {...otherProps} /> : <NestedList {...otherProps} />);
 
-export const getFilterAndOrderLabel = ({filterByOptions, orderByOptions}) => {
+export const getFilterAndOrderLabel = ({
+	filterByOptions = [],
+	orderByOptions = []
+}: {
+	filterByOptions?: FilterOptionType[];
+	orderByOptions?: {label: string; value: string}[];
+}) => {
 	if (filterByOptions.length && orderByOptions.length) {
 		return Liferay.Language.get('filter-and-order');
 	} else if (filterByOptions.length) {
@@ -203,28 +209,33 @@ const FilterAndOrder: React.FC<IFilterAndOrderProps> = ({
 					</ClayButton>
 				}
 			>
-				<FilterOptionsList
-					filterBy={filterBy}
-					filterByOptions={filterByOptions}
-					flat={flat}
-					onChange={(value, field) => {
-						const {type} = filterByOptions.find(
-							({key}) => key === field
-						);
+				<ClayDropDown.ItemList>
+					<FilterOptionsList
+						filterBy={filterBy}
+						filterByOptions={filterByOptions}
+						flat={flat}
+						onChange={(value, field) => {
+							const option = filterByOptions.find(
+								({key}) => key === field
+							);
 
-						onFilterByChange(
-							filterBy.update(field, (values: any = Set()) => {
-								if (type === 'radio') {
-									return Set([value]);
-								}
+							onFilterByChange(
+								filterBy.update(
+									field,
+									(values: any = Set()) => {
+										if (option?.type === 'radio') {
+											return Set([value]);
+										}
 
-								return values.has(value)
-									? values.delete(value)
-									: values.add(value);
-							})
-						);
-					}}
-				/>
+										return values.has(value)
+											? values.delete(value)
+											: values.add(value);
+									}
+								)
+							);
+						}}
+					/>
+				</ClayDropDown.ItemList>
 			</ClayDropDown>
 		)}
 
@@ -260,10 +271,11 @@ const FilterAndOrder: React.FC<IFilterAndOrderProps> = ({
 						{orderByOptions.map(({label, value}) => (
 							<Item
 								active={value === orderField}
+								field='orderBy'
 								key={value}
 								label={label}
 								name={uniqueId('filterAndOrder')}
-								onChange={onOrderFieldChange}
+								onChange={onOrderFieldChange as any}
 								type='radio'
 								value={value}
 							/>

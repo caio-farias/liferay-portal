@@ -11,9 +11,11 @@ import com.liferay.exportimport.kernel.staging.MergeLayoutPrototypesThreadLocal;
 import com.liferay.fragment.model.FragmentEntryLink;
 import com.liferay.fragment.service.FragmentEntryLinkLocalService;
 import com.liferay.headless.admin.site.client.custom.field.CustomField;
+import com.liferay.headless.admin.site.client.dto.v1_0.ContainerPageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.ContentPageSpecification;
 import com.liferay.headless.admin.site.client.dto.v1_0.MasterPage;
 import com.liferay.headless.admin.site.client.dto.v1_0.PageElement;
+import com.liferay.headless.admin.site.client.dto.v1_0.PageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.PageExperience;
 import com.liferay.headless.admin.site.client.dto.v1_0.PageSpecification;
 import com.liferay.headless.admin.site.client.dto.v1_0.ThumbnailURLReference;
@@ -21,23 +23,27 @@ import com.liferay.headless.admin.site.client.pagination.Page;
 import com.liferay.headless.admin.site.client.problem.Problem;
 import com.liferay.headless.admin.site.client.resource.v1_0.MasterPageResource;
 import com.liferay.headless.admin.site.resource.v1_0.test.util.AssetTestUtil;
+import com.liferay.headless.admin.site.resource.v1_0.test.util.FileEntryTestUtil;
 import com.liferay.headless.admin.site.resource.v1_0.test.util.LayoutPageTemplateEntryTestUtil;
 import com.liferay.headless.admin.site.resource.v1_0.test.util.PageElementsTestUtil;
 import com.liferay.headless.admin.site.resource.v1_0.test.util.PageExperiencesTestUtil;
 import com.liferay.headless.admin.site.resource.v1_0.test.util.PageSpecificationsTestUtil;
+import com.liferay.headless.admin.site.resource.v1_0.test.util.ThumbnailHttpServer;
+import com.liferay.headless.admin.site.resource.v1_0.test.util.ThumbnailURLReferenceUtil;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.layout.page.template.service.LayoutPageTemplateEntryLocalService;
 import com.liferay.layout.test.util.ContentLayoutTestUtil;
 import com.liferay.layout.test.util.LayoutTestUtil;
 import com.liferay.petra.function.UnsafeRunnable;
 import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.petra.io.StreamUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutSetPrototype;
-import com.liferay.portal.kernel.model.Repository;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.portletfilerepository.PortletFileRepository;
+import com.liferay.portal.kernel.portletfilerepository.PortletFileRepositoryUtil;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
@@ -48,12 +54,13 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
-import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
+import com.liferay.portal.search.test.util.IdempotentRetryAssert;
 import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LogEntry;
 import com.liferay.portal.test.log.LoggerTestUtil;
@@ -64,6 +71,8 @@ import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.segments.service.SegmentsExperienceLocalService;
 import com.liferay.sites.kernel.util.Sites;
 
+import java.io.InputStream;
+
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -73,8 +82,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -94,6 +106,28 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 		new AggregateTestRule(
 			new LiferayIntegrationTestRule(),
 			PermissionCheckerMethodTestRule.INSTANCE);
+
+	@BeforeClass
+	public static void setUpClass() throws Exception {
+		BaseMasterPageResourceTestCase.setUpClass();
+
+		_thumbnailHttpServer = ThumbnailHttpServer.start(
+			MasterPageResourceTest.class);
+
+		_thumbnail1Base64 = _thumbnailHttpServer.getThumbnail1Base64();
+		_thumbnail1Bytes = _thumbnailHttpServer.getThumbnail1Bytes();
+		_thumbnail1URL = _thumbnailHttpServer.getThumbnail1URL();
+		_thumbnail2Base64 = _thumbnailHttpServer.getThumbnail2Base64();
+		_thumbnail2Bytes = _thumbnailHttpServer.getThumbnail2Bytes();
+		_thumbnail2URL = _thumbnailHttpServer.getThumbnail2URL();
+	}
+
+	@AfterClass
+	public static void tearDownClass() {
+		if (_thumbnailHttpServer != null) {
+			_thumbnailHttpServer.stop();
+		}
+	}
 
 	@Ignore
 	@Override
@@ -130,15 +164,17 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 				testGroup.getExternalReferenceCode(),
 				postMasterPage.getExternalReferenceCode()));
 
-		MasterPage liveGroupMasterPage = testPostSiteMasterPage_addMasterPage(
-			randomMasterPage());
+		MasterPage liveGroupMasterPage =
+			testGetSiteMasterPagesPage_addMasterPage(
+				irrelevantGroup.getExternalReferenceCode(),
+				_randomMasterPage(irrelevantGroup));
 
-		_enableLocalStaging();
+		_enableLocalStaging(irrelevantGroup);
 
 		_assertProblemException(
 			"BAD_REQUEST", null,
 			() -> masterPageResource.deleteSiteMasterPage(
-				testGroup.getExternalReferenceCode(),
+				irrelevantGroup.getExternalReferenceCode(),
 				liveGroupMasterPage.getExternalReferenceCode()));
 	}
 
@@ -172,25 +208,32 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 
 		MasterPage randomMasterPage = randomMasterPage();
 
-		Repository repository = _portletFileRepository.addPortletRepository(
-			testGroup.getGroupId(), RandomTestUtil.randomString(),
-			ServiceContextTestUtil.getServiceContext(
-				testGroup, TestPropsValues.getUserId()));
-
-		FileEntry fileEntry = _addPortletFileEntry(repository.getDlFolderId());
+		FileEntry fileEntry = FileEntryTestUtil.addPreviewFileEntry(
+			testGroup, _portletFileRepository, getClass());
 
 		randomMasterPage.setThumbnailURLReference(
-			() -> new ThumbnailURLReference() {
-				{
-					setExternalReferenceCode(
-						fileEntry.getExternalReferenceCode());
-				}
-			});
+			() -> ThumbnailURLReferenceUtil.getThumbnailURLReference(
+				fileEntry, null));
 
 		MasterPage postMasterPage = testPostSiteMasterPage_addMasterPage(
 			randomMasterPage);
 
 		MasterPageResource masterPageResource = _getMasterPageResource();
+
+		IdempotentRetryAssert.retryAssert(
+			30, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS,
+			() -> {
+				MasterPage getMasterPage = masterPageResource.getSiteMasterPage(
+					testGroup.getExternalReferenceCode(),
+					postMasterPage.getExternalReferenceCode());
+
+				ThumbnailURLReference thumbnailURLReference =
+					getMasterPage.getThumbnailURLReference();
+
+				Assert.assertNotNull(thumbnailURLReference);
+
+				return thumbnailURLReference.getUrl();
+			});
 
 		Page<MasterPage> page = masterPageResource.getSiteMasterPagesPage(
 			testGroup.getExternalReferenceCode(), null, null, null, null, null);
@@ -203,18 +246,9 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 				ThumbnailURLReference thumbnail =
 					masterPage.getThumbnailURLReference();
 
-				_assertThumbnailFileEntryId(
-					false, postMasterPage.getExternalReferenceCode(),
-					thumbnail.getExternalReferenceCode());
-
-				URL url = new URL(thumbnail.getUrl());
-
-				HttpURLConnection httpURLConnection =
-					(HttpURLConnection)url.openConnection();
-
-				Assert.assertEquals(
-					HttpURLConnection.HTTP_OK,
-					httpURLConnection.getResponseCode());
+				_assertThumbnailURLReference(
+					_thumbnail1Bytes, thumbnail.getExternalReferenceCode(),
+					masterPage);
 			}
 			else {
 				Assert.assertNull(masterPage.getThumbnailURLReference());
@@ -252,6 +286,7 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 
 	@Override
 	@Test
+	@TestInfo("LPD-92443")
 	public void testPatchSiteMasterPage() throws Exception {
 		MasterPage masterPage = testPostSiteMasterPage_addMasterPage(
 			randomMasterPage());
@@ -267,12 +302,8 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 				Boolean.TRUE, masterPage.getExternalReferenceCode(), null,
 				thumbnailURL));
 
-		Repository repository = _portletFileRepository.addPortletRepository(
-			testGroup.getGroupId(), RandomTestUtil.randomString(),
-			ServiceContextTestUtil.getServiceContext(
-				testGroup, TestPropsValues.getUserId()));
-
-		FileEntry fileEntry = _addPortletFileEntry(repository.getDlFolderId());
+		FileEntry fileEntry = FileEntryTestUtil.addPreviewFileEntry(
+			testGroup, _portletFileRepository, getClass());
 
 		_testPatchSiteMasterPage(
 			Boolean.TRUE,
@@ -280,7 +311,8 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 				null, masterPage.getExternalReferenceCode(),
 				fileEntry.getExternalReferenceCode(), thumbnailURL));
 
-		fileEntry = _addPortletFileEntry(repository.getDlFolderId());
+		fileEntry = FileEntryTestUtil.addPreviewFileEntry(
+			testGroup, _portletFileRepository, getClass());
 
 		_testPatchSiteMasterPage(
 			Boolean.FALSE,
@@ -292,7 +324,7 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 			Boolean.FALSE,
 			_getMasterPage(
 				Boolean.FALSE, masterPage.getExternalReferenceCode(),
-				StringPool.BLANK, thumbnailURL));
+				StringPool.BLANK, StringPool.BLANK));
 
 		_testPatchSiteMasterPageWithPageSpecifications();
 		_testPatchSiteMasterPageWithThumbnail();
@@ -320,6 +352,7 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 
 	@Override
 	@Test
+	@TestInfo("LPD-92443")
 	public void testPostSiteMasterPage() throws Exception {
 		super.testPostSiteMasterPage();
 
@@ -338,6 +371,15 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 		_testPostSiteMasterPageWithPageSpecifications();
 		_testPostSiteMasterPageWithSiteTemplatePageSpecification();
 		_testPostSiteMasterPageWithThumbnail();
+		_testPostSiteMasterPageWithThumbnailURLReferenceExternalReferenceCodeAndFileBase64();
+		_testPostSiteMasterPageWithThumbnailURLReferenceExternalReferenceCodeEmptyAndFileBase64();
+		_testPostSiteMasterPageWithThumbnailURLReferenceExternalReferenceCodeNullAndFileBase64();
+		_testPostSiteMasterPageWithThumbnailURLReferenceExternalReferenceCodeNullAndURL();
+		_testPostSiteMasterPageWithThumbnailURLReferenceFileBase64();
+		_testPostSiteMasterPageWithThumbnailURLReferenceFileBase64AndURL();
+		_testPostSiteMasterPageWithThumbnailURLReferenceNonexistingProblemException();
+		_testPostSiteMasterPageWithThumbnailURLReferenceURL();
+		_testPostSiteMasterPageWithThumbnailURLReferenceURLUnsupportedProtocolProblemException();
 	}
 
 	@Override
@@ -380,18 +422,15 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 
 	@Override
 	@Test
+	@TestInfo({"LPD-86817", "LPD-92443"})
 	public void testPutSiteMasterPage() throws Exception {
 		_testPutSiteMasterPage(randomMasterPage());
 
 		MasterPage masterPage = testPostSiteMasterPage_addMasterPage(
 			randomMasterPage());
 
-		Repository repository = _portletFileRepository.addPortletRepository(
-			testGroup.getGroupId(), RandomTestUtil.randomString(),
-			ServiceContextTestUtil.getServiceContext(
-				testGroup, TestPropsValues.getUserId()));
-
-		FileEntry fileEntry = _addPortletFileEntry(repository.getDlFolderId());
+		FileEntry fileEntry = FileEntryTestUtil.addPreviewFileEntry(
+			testGroup, _portletFileRepository, getClass());
 
 		String thumbnailURL = RandomTestUtil.randomString();
 
@@ -403,8 +442,13 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 		_testPutSiteMasterPageWithDropZonePageElement();
 		_testPutSiteMasterPageWithPageSpecifications();
 		_testPutSiteMasterPageWithThumbnail();
+		_testPutSiteMasterPageWithThumbnailURLReferenceExternalReferenceCodeAndFileBase64();
+		_testPutSiteMasterPageWithThumbnailURLReferenceFileBase64();
+		_testPutSiteMasterPageWithThumbnailURLReferenceURL();
 
 		_enableLocalStaging();
+
+		_assertStagingGroupMasterPageThumbnail(fileEntry, masterPage);
 
 		_assertProblemException(
 			"BAD_REQUEST", null,
@@ -435,20 +479,7 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 
 	@Override
 	protected MasterPage randomMasterPage() throws Exception {
-		MasterPage masterPage = super.randomMasterPage();
-
-		ServiceContext serviceContext =
-			ServiceContextTestUtil.getServiceContext(
-				testGroup, TestPropsValues.getUserId());
-
-		masterPage.setKeywords(AssetTestUtil.randomKeywords(serviceContext));
-
-		masterPage.setMarkedAsDefault(Boolean.FALSE);
-		masterPage.setTaxonomyCategoryBriefs(
-			AssetTestUtil.randomTaxonomyCategoryBriefs(
-				testCompany.getGroupId(), serviceContext));
-
-		return masterPage;
+		return _randomMasterPage(testGroup);
 	}
 
 	@Override
@@ -475,17 +506,6 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 
 		return testGetSiteMasterPagesPage_addMasterPage(
 			testGroup.getExternalReferenceCode(), masterPage);
-	}
-
-	private FileEntry _addPortletFileEntry(long folderId) throws Exception {
-		Class<?> clazz = getClass();
-
-		return _portletFileRepository.addPortletFileEntry(
-			null, testGroup.getGroupId(), TestPropsValues.getUserId(),
-			LayoutPageTemplateEntry.class.getName(),
-			RandomTestUtil.randomLong(), RandomTestUtil.randomString(),
-			folderId, clazz.getResourceAsStream("dependencies/thumbnail.png"),
-			RandomTestUtil.randomString(), ContentTypes.IMAGE_PNG, false);
 	}
 
 	private void _assertContentPageSpecificationPageElements(
@@ -603,6 +623,28 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 		}
 	}
 
+	private void _assertStagingGroupMasterPageThumbnail(
+			FileEntry liveGroupFileEntry, MasterPage masterPage)
+		throws Exception {
+
+		Group stagingGroup = testGroup.getStagingGroup();
+
+		FileEntry stagingGroupFileEntry =
+			_portletFileRepository.getPortletFileEntryByExternalReferenceCode(
+				liveGroupFileEntry.getExternalReferenceCode(),
+				stagingGroup.getGroupId());
+
+		LayoutPageTemplateEntry layoutPageTemplateEntry =
+			_layoutPageTemplateEntryLocalService.
+				getLayoutPageTemplateEntryByExternalReferenceCode(
+					masterPage.getExternalReferenceCode(),
+					stagingGroup.getGroupId());
+
+		Assert.assertEquals(
+			stagingGroupFileEntry.getFileEntryId(),
+			layoutPageTemplateEntry.getPreviewFileEntryId());
+	}
+
 	private void _assertThumbnailFileEntryId(
 			Boolean defaultValue, String masterPageExternalReferenceCode,
 			String thumbnailExternalReferenceCode)
@@ -628,11 +670,109 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 			layoutPageTemplate.getPreviewFileEntryId(), fileEntryId);
 	}
 
+	private void _assertThumbnailURLReference(
+			byte[] expectedBytes, String expectedExternalReferenceCode,
+			MasterPage masterPage)
+		throws Exception {
+
+		Assert.assertNotNull(expectedExternalReferenceCode);
+
+		ThumbnailURLReference thumbnailURLReference =
+			masterPage.getThumbnailURLReference();
+
+		Assert.assertEquals(
+			expectedExternalReferenceCode,
+			thumbnailURLReference.getExternalReferenceCode());
+
+		_assertThumbnailFileEntryId(
+			false, masterPage.getExternalReferenceCode(),
+			expectedExternalReferenceCode);
+
+		FileEntry fileEntry =
+			PortletFileRepositoryUtil.
+				fetchPortletFileEntryByExternalReferenceCode(
+					expectedExternalReferenceCode, testGroup.getGroupId());
+
+		try (InputStream inputStream = fileEntry.getContentStream()) {
+			Assert.assertArrayEquals(
+				expectedBytes, StreamUtil.toByteArray(inputStream));
+		}
+
+		MasterPageResource masterPageResource = _getMasterPageResource();
+
+		URL url = new URL(
+			IdempotentRetryAssert.retryAssert(
+				30, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS,
+				() -> {
+					MasterPage getMasterPage =
+						masterPageResource.getSiteMasterPage(
+							testGroup.getExternalReferenceCode(),
+							masterPage.getExternalReferenceCode());
+
+					ThumbnailURLReference getThumbnailURLReference =
+						getMasterPage.getThumbnailURLReference();
+
+					Assert.assertNotNull(getThumbnailURLReference);
+
+					return getThumbnailURLReference.getUrl();
+				}));
+
+		HttpURLConnection httpURLConnection =
+			(HttpURLConnection)url.openConnection();
+
+		Assert.assertEquals(
+			HttpURLConnection.HTTP_OK, httpURLConnection.getResponseCode());
+
+		String contentType = httpURLConnection.getContentType();
+
+		Assert.assertTrue(contentType.startsWith("image/"));
+	}
+
 	private void _enableLocalStaging() throws Exception {
-		_stagingLocalService.enableLocalStaging(
-			TestPropsValues.getUserId(), testGroup, true, false,
-			ServiceContextTestUtil.getServiceContext(
-				testGroup, TestPropsValues.getUserId()));
+		_enableLocalStaging(testGroup);
+	}
+
+	private void _enableLocalStaging(Group group) throws Exception {
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.batch.engine.internal." +
+					"BatchEngineImportTaskExecutorImpl",
+				LoggerTestUtil.OFF)) {
+
+			_stagingLocalService.enableLocalStaging(
+				TestPropsValues.getUserId(), group, true, false,
+				ServiceContextTestUtil.getServiceContext(
+					group, TestPropsValues.getUserId()));
+		}
+
+		Assert.assertTrue(group.hasStagingGroup());
+	}
+
+	private PageElement _getContainerPageElement() {
+		PageElement pageElement = new PageElement();
+
+		pageElement.setExternalReferenceCode(
+			() -> StringUtil.toLowerCase(RandomTestUtil.randomString()));
+
+		ContainerPageElementDefinition containerPageElementDefinition =
+			new ContainerPageElementDefinition();
+
+		containerPageElementDefinition.setIndexed(Boolean.FALSE);
+		containerPageElementDefinition.setLayout(
+			() -> new com.liferay.headless.admin.site.client.dto.v1_0.Layout() {
+				{
+					setContentDisplay(ContentDisplay.FLEX_ROW);
+				}
+			});
+		containerPageElementDefinition.setType(
+			PageElementDefinition.Type.CONTAINER);
+
+		pageElement.setPageElementDefinition(containerPageElementDefinition);
+
+		pageElement.setPageElements(new PageElement[0]);
+		pageElement.setParentExternalReferenceCode(StringPool.BLANK);
+		pageElement.setPosition(1);
+
+		return pageElement;
 	}
 
 	private MasterPage _getMasterPage(
@@ -699,11 +839,12 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 		).authentication(
 			user.getEmailAddress(), PropsValues.DEFAULT_ADMIN_PASSWORD
 		).endpoint(
-			testCompany.getVirtualHostname(), 8080, "http"
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
 		).locale(
 			LocaleUtil.getDefault()
 		).parameters(
-			"nestedFields", "pageSpecifications,thumbnail"
+			"nestedFields", "pageSpecifications,thumbnailURLReference"
 		).build();
 	}
 
@@ -731,6 +872,78 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 			testGroup.getGroupId(), postMasterPage.getPageSpecifications());
 
 		return postMasterPage;
+	}
+
+	private MasterPage _postSiteMasterPageAndAssertThumbnailURLReference(
+			byte[] expectedBytes, String expectedExternalReferenceCode,
+			ThumbnailURLReference thumbnailURLReference)
+		throws Exception {
+
+		MasterPage masterPage = randomMasterPage();
+
+		masterPage.setThumbnailURLReference(thumbnailURLReference);
+
+		MasterPageResource masterPageResource = _getMasterPageResource();
+
+		MasterPage postMasterPage = masterPageResource.postSiteMasterPage(
+			testGroup.getExternalReferenceCode(), masterPage);
+
+		if (expectedExternalReferenceCode == null) {
+			ThumbnailURLReference postThumbnailURLReference =
+				postMasterPage.getThumbnailURLReference();
+
+			expectedExternalReferenceCode =
+				postThumbnailURLReference.getExternalReferenceCode();
+		}
+
+		_assertThumbnailURLReference(
+			expectedBytes, expectedExternalReferenceCode, postMasterPage);
+
+		return postMasterPage;
+	}
+
+	private MasterPage _putSiteMasterPageAndAssertThumbnailURLReference(
+			byte[] expectedBytes, String expectedExternalReferenceCode,
+			MasterPage masterPage, ThumbnailURLReference thumbnailURLReference)
+		throws Exception {
+
+		masterPage.setThumbnailURLReference(thumbnailURLReference);
+
+		MasterPageResource masterPageResource = _getMasterPageResource();
+
+		MasterPage putMasterPage = masterPageResource.putSiteMasterPage(
+			testGroup.getExternalReferenceCode(),
+			masterPage.getExternalReferenceCode(), masterPage);
+
+		if (expectedExternalReferenceCode == null) {
+			ThumbnailURLReference putThumbnailURLReference =
+				putMasterPage.getThumbnailURLReference();
+
+			expectedExternalReferenceCode =
+				putThumbnailURLReference.getExternalReferenceCode();
+		}
+
+		_assertThumbnailURLReference(
+			expectedBytes, expectedExternalReferenceCode, putMasterPage);
+
+		return putMasterPage;
+	}
+
+	private MasterPage _randomMasterPage(Group group) throws Exception {
+		MasterPage masterPage = super.randomMasterPage();
+
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext(
+				group, TestPropsValues.getUserId());
+
+		masterPage.setKeywords(AssetTestUtil.randomKeywords(serviceContext));
+
+		masterPage.setMarkedAsDefault(Boolean.FALSE);
+		masterPage.setTaxonomyCategoryBriefs(
+			AssetTestUtil.randomTaxonomyCategoryBriefs(
+				testCompany.getGroupId(), serviceContext));
+
+		return masterPage;
 	}
 
 	private void _testGetSiteMasterPage(MasterPage masterPage)
@@ -974,20 +1187,12 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 	private void _testPatchSiteMasterPageWithThumbnail() throws Exception {
 		MasterPage masterPage1 = randomMasterPage();
 
-		Repository repository = _portletFileRepository.addPortletRepository(
-			testGroup.getGroupId(), RandomTestUtil.randomString(),
-			ServiceContextTestUtil.getServiceContext(
-				testGroup, TestPropsValues.getUserId()));
-
-		FileEntry fileEntry = _addPortletFileEntry(repository.getDlFolderId());
+		FileEntry fileEntry = FileEntryTestUtil.addPreviewFileEntry(
+			testGroup, _portletFileRepository, getClass());
 
 		masterPage1.setThumbnailURLReference(
-			() -> new ThumbnailURLReference() {
-				{
-					setExternalReferenceCode(
-						fileEntry.getExternalReferenceCode());
-				}
-			});
+			() -> ThumbnailURLReferenceUtil.getThumbnailURLReference(
+				fileEntry, null));
 
 		MasterPageResource masterPageResource = _getMasterPageResource();
 
@@ -996,41 +1201,29 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 
 		Assert.assertEquals(masterPage1.getKey(), postMasterPage.getKey());
 
-		_assertThumbnailFileEntryId(
-			false, masterPage1.getExternalReferenceCode(),
-			fileEntry.getExternalReferenceCode());
+		_assertThumbnailURLReference(
+			_thumbnail1Bytes, fileEntry.getExternalReferenceCode(),
+			postMasterPage);
 
-		FileEntry newFileEntry = _addPortletFileEntry(
-			repository.getDlFolderId());
+		FileEntry newFileEntry = FileEntryTestUtil.addPreviewFileEntry(
+			testGroup, _portletFileRepository, getClass());
 
 		masterPage1.setThumbnailURLReference(
-			() -> new ThumbnailURLReference() {
-				{
-					setExternalReferenceCode(
-						newFileEntry.getExternalReferenceCode());
-				}
-			});
+			() -> ThumbnailURLReferenceUtil.getThumbnailURLReference(
+				newFileEntry, null));
 
-		masterPageResource.patchSiteMasterPage(
+		MasterPage patchMasterPage = masterPageResource.patchSiteMasterPage(
 			testGroup.getExternalReferenceCode(),
 			masterPage1.getExternalReferenceCode(), masterPage1);
 
-		_assertThumbnailFileEntryId(
-			false, masterPage1.getExternalReferenceCode(),
-			newFileEntry.getExternalReferenceCode());
+		_assertThumbnailURLReference(
+			_thumbnail1Bytes, newFileEntry.getExternalReferenceCode(),
+			patchMasterPage);
 
 		MasterPage masterPage2 = randomMasterPage();
 
 		ThumbnailURLReference thumbnailURLReference =
-			new ThumbnailURLReference() {
-				{
-					setExternalReferenceCode(RandomTestUtil.randomString());
-					setUrl(
-						() ->
-							"http://localhost:8080/" +
-								RandomTestUtil.randomString());
-				}
-			};
+			ThumbnailURLReferenceUtil.getRandomThumbnailURLReference();
 
 		masterPage2.setThumbnailURLReference(thumbnailURLReference);
 
@@ -1047,6 +1240,36 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 				"Unable to download file from " +
 					thumbnailURLReference.getUrl(),
 				problem.getTitle());
+		}
+	}
+
+	private void _testPostMasterPageThumbnailURLReferenceProblemException(
+			String expectedTitle, String externalReferenceCode, String url)
+		throws Exception {
+
+		MasterPage masterPage = randomMasterPage();
+
+		ThumbnailURLReference thumbnailURLReference =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference.setExternalReferenceCode(externalReferenceCode);
+		thumbnailURLReference.setUrl(url);
+
+		masterPage.setThumbnailURLReference(thumbnailURLReference);
+
+		MasterPageResource masterPageResource = _getMasterPageResource();
+
+		try {
+			masterPageResource.postSiteMasterPage(
+				testGroup.getExternalReferenceCode(), masterPage);
+
+			Assert.fail();
+		}
+		catch (Problem.ProblemException problemException) {
+			Problem problem = problemException.getProblem();
+
+			Assert.assertEquals("BAD_REQUEST", problem.getStatus());
+			Assert.assertEquals(expectedTitle, problem.getTitle());
 		}
 	}
 
@@ -1192,42 +1415,28 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 	private void _testPostSiteMasterPageWithThumbnail() throws Exception {
 		MasterPage masterPage = randomMasterPage();
 
-		Repository repository = _portletFileRepository.addPortletRepository(
-			testGroup.getGroupId(), RandomTestUtil.randomString(),
-			ServiceContextTestUtil.getServiceContext(
-				testGroup, TestPropsValues.getUserId()));
-
-		FileEntry fileEntry = _addPortletFileEntry(repository.getDlFolderId());
+		FileEntry fileEntry = FileEntryTestUtil.addPreviewFileEntry(
+			testGroup, _portletFileRepository, getClass());
 
 		masterPage.setThumbnailURLReference(
-			() -> new ThumbnailURLReference() {
-				{
-					setExternalReferenceCode(
-						fileEntry.getExternalReferenceCode());
-				}
-			});
+			() -> ThumbnailURLReferenceUtil.getThumbnailURLReference(
+				fileEntry, null));
+
+		MasterPageResource masterPageResource = _getMasterPageResource();
 
 		MasterPage postMasterPage = masterPageResource.postSiteMasterPage(
 			testGroup.getExternalReferenceCode(), masterPage);
 
 		Assert.assertEquals(masterPage.getKey(), postMasterPage.getKey());
 
-		_assertThumbnailFileEntryId(
-			false, postMasterPage.getExternalReferenceCode(),
-			fileEntry.getExternalReferenceCode());
+		_assertThumbnailURLReference(
+			_thumbnail1Bytes, fileEntry.getExternalReferenceCode(),
+			postMasterPage);
 
 		masterPage = randomMasterPage();
 
 		ThumbnailURLReference thumbnailURLReference =
-			new ThumbnailURLReference() {
-				{
-					setExternalReferenceCode(RandomTestUtil.randomString());
-					setUrl(
-						() ->
-							"http://localhost:8080/" +
-								RandomTestUtil.randomString());
-				}
-			};
+			ThumbnailURLReferenceUtil.getRandomThumbnailURLReference();
 
 		masterPage.setThumbnailURLReference(thumbnailURLReference);
 
@@ -1243,6 +1452,126 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 					thumbnailURLReference.getUrl(),
 				problem.getTitle());
 		}
+	}
+
+	private void _testPostSiteMasterPageWithThumbnailURLReferenceExternalReferenceCodeAndFileBase64()
+		throws Exception {
+
+		FileEntry fileEntry = FileEntryTestUtil.addPreviewFileEntry(
+			testGroup, _portletFileRepository, getClass());
+
+		String externalReferenceCode = fileEntry.getExternalReferenceCode();
+
+		ThumbnailURLReference thumbnailURLReference =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference.setExternalReferenceCode(externalReferenceCode);
+		thumbnailURLReference.setFileBase64(_thumbnail2Base64);
+
+		_postSiteMasterPageAndAssertThumbnailURLReference(
+			_thumbnail1Bytes, externalReferenceCode, thumbnailURLReference);
+	}
+
+	private void _testPostSiteMasterPageWithThumbnailURLReferenceExternalReferenceCodeEmptyAndFileBase64()
+		throws Exception {
+
+		ThumbnailURLReference thumbnailURLReference =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference.setExternalReferenceCode(StringPool.BLANK);
+		thumbnailURLReference.setFileBase64(_thumbnail1Base64);
+
+		_postSiteMasterPageAndAssertThumbnailURLReference(
+			_thumbnail1Bytes, null, thumbnailURLReference);
+	}
+
+	private void _testPostSiteMasterPageWithThumbnailURLReferenceExternalReferenceCodeNullAndFileBase64()
+		throws Exception {
+
+		ThumbnailURLReference thumbnailURLReference =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference.setFileBase64(_thumbnail1Base64);
+
+		_postSiteMasterPageAndAssertThumbnailURLReference(
+			_thumbnail1Bytes, null, thumbnailURLReference);
+	}
+
+	private void _testPostSiteMasterPageWithThumbnailURLReferenceExternalReferenceCodeNullAndURL()
+		throws Exception {
+
+		ThumbnailURLReference thumbnailURLReference =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference.setUrl(_thumbnail1URL);
+
+		_postSiteMasterPageAndAssertThumbnailURLReference(
+			_thumbnail1Bytes, null, thumbnailURLReference);
+	}
+
+	private void _testPostSiteMasterPageWithThumbnailURLReferenceFileBase64()
+		throws Exception {
+
+		String externalReferenceCode = RandomTestUtil.randomString();
+
+		ThumbnailURLReference thumbnailURLReference =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference.setExternalReferenceCode(externalReferenceCode);
+		thumbnailURLReference.setFileBase64(_thumbnail1Base64);
+
+		_postSiteMasterPageAndAssertThumbnailURLReference(
+			_thumbnail1Bytes, externalReferenceCode, thumbnailURLReference);
+	}
+
+	private void _testPostSiteMasterPageWithThumbnailURLReferenceFileBase64AndURL()
+		throws Exception {
+
+		String externalReferenceCode = RandomTestUtil.randomString();
+
+		ThumbnailURLReference thumbnailURLReference =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference.setExternalReferenceCode(externalReferenceCode);
+		thumbnailURLReference.setFileBase64(_thumbnail1Base64);
+		thumbnailURLReference.setUrl(_thumbnail2URL);
+
+		_postSiteMasterPageAndAssertThumbnailURLReference(
+			_thumbnail1Bytes, externalReferenceCode, thumbnailURLReference);
+	}
+
+	private void _testPostSiteMasterPageWithThumbnailURLReferenceNonexistingProblemException()
+		throws Exception {
+
+		_testPostMasterPageThumbnailURLReferenceProblemException(
+			"Unable to resolve file", RandomTestUtil.randomString(), null);
+	}
+
+	private void _testPostSiteMasterPageWithThumbnailURLReferenceURL()
+		throws Exception {
+
+		String externalReferenceCode = RandomTestUtil.randomString();
+
+		ThumbnailURLReference thumbnailURLReference =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference.setExternalReferenceCode(externalReferenceCode);
+		thumbnailURLReference.setUrl(_thumbnail1URL);
+
+		_postSiteMasterPageAndAssertThumbnailURLReference(
+			_thumbnail1Bytes, externalReferenceCode, thumbnailURLReference);
+	}
+
+	private void _testPostSiteMasterPageWithThumbnailURLReferenceURLUnsupportedProtocolProblemException()
+		throws Exception {
+
+		String url =
+			"ftp://invalid.example.test/" + RandomTestUtil.randomString();
+
+		_testPostMasterPageThumbnailURLReferenceProblemException(
+			"Unable to download file from " + url +
+				" because of unsupported protocol ftp",
+			RandomTestUtil.randomString(), url);
 	}
 
 	private void _testPutSiteMasterPage(MasterPage masterPage)
@@ -1308,7 +1637,7 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 		_testPutSiteMasterPageWithPageSpecifications(
 			PageSpecification.Status.DRAFT, PageSpecification.Status.DRAFT,
 			PageSpecification.Status.APPROVED, PageSpecification.Status.DRAFT);
-		_testPutSiteMasterPageWithPageSpecificationsWithCustomFields();
+		_testPutSiteMasterPageWithPageSpecificationsWithCustomFieldsAndPageElements();
 	}
 
 	private void _testPutSiteMasterPageWithPageSpecifications(
@@ -1352,7 +1681,7 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 			draftContentPageSpecification, publishedContentPageSpecification);
 	}
 
-	private void _testPutSiteMasterPageWithPageSpecificationsWithCustomFields()
+	private void _testPutSiteMasterPageWithPageSpecificationsWithCustomFieldsAndPageElements()
 		throws Exception {
 
 		try (PageSpecificationsTestUtil.ExpandoTableAutocloseable
@@ -1366,6 +1695,12 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 
 			MasterPage putMasterPage = postMasterPage;
 
+			PageElement[] pageElements = {
+				PageElementsTestUtil.getDropZonePageElement(
+					RandomTestUtil.randomString(), testGroup.getGroupId()),
+				_getContainerPageElement()
+			};
+
 			putMasterPage.setPageSpecifications(
 				() -> TransformUtil.transform(
 					putMasterPage.getPageSpecifications(),
@@ -1373,7 +1708,16 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 						pageSpecification.setCustomFields(
 							PageSpecificationsTestUtil.getCustomFields());
 
-						return pageSpecification;
+						ContentPageSpecification contentPageSpecification =
+							(ContentPageSpecification)pageSpecification;
+
+						for (PageExperience pageExperience :
+								contentPageSpecification.getPageExperiences()) {
+
+							pageExperience.setPageElements(pageElements);
+						}
+
+						return contentPageSpecification;
 					},
 					PageSpecification.class));
 
@@ -1388,6 +1732,8 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 					CustomField[].class),
 				testGroup.getGroupId(),
 				updateMasterPage.getPageSpecifications());
+
+			_assertPageElements(pageElements, updateMasterPage);
 		}
 	}
 
@@ -1396,46 +1742,37 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 
 		masterPage.setExternalReferenceCode(RandomTestUtil.randomString());
 
-		Repository repository = _portletFileRepository.addPortletRepository(
-			testGroup.getGroupId(), RandomTestUtil.randomString(),
-			ServiceContextTestUtil.getServiceContext(
-				testGroup, TestPropsValues.getUserId()));
-
-		FileEntry fileEntry1 = _addPortletFileEntry(repository.getDlFolderId());
+		FileEntry fileEntry1 = FileEntryTestUtil.addPreviewFileEntry(
+			testGroup, _portletFileRepository, getClass());
 
 		masterPage.setThumbnailURLReference(
-			() -> new ThumbnailURLReference() {
-				{
-					setExternalReferenceCode(
-						fileEntry1.getExternalReferenceCode());
-				}
-			});
+			() -> ThumbnailURLReferenceUtil.getThumbnailURLReference(
+				fileEntry1, null));
+
+		MasterPageResource masterPageResource = _getMasterPageResource();
 
 		MasterPage putMasterPage = masterPageResource.putSiteMasterPage(
 			testGroup.getExternalReferenceCode(),
 			masterPage.getExternalReferenceCode(), masterPage);
 
-		_assertThumbnailFileEntryId(
-			false, putMasterPage.getExternalReferenceCode(),
-			fileEntry1.getExternalReferenceCode());
+		_assertThumbnailURLReference(
+			_thumbnail1Bytes, fileEntry1.getExternalReferenceCode(),
+			putMasterPage);
 
-		FileEntry fileEntry2 = _addPortletFileEntry(repository.getDlFolderId());
+		FileEntry fileEntry2 = FileEntryTestUtil.addPreviewFileEntry(
+			testGroup, _portletFileRepository, getClass());
 
 		putMasterPage.setThumbnailURLReference(
-			() -> new ThumbnailURLReference() {
-				{
-					setExternalReferenceCode(
-						fileEntry2.getExternalReferenceCode());
-				}
-			});
+			() -> ThumbnailURLReferenceUtil.getThumbnailURLReference(
+				fileEntry2, null));
 
 		putMasterPage = masterPageResource.putSiteMasterPage(
 			testGroup.getExternalReferenceCode(),
 			putMasterPage.getExternalReferenceCode(), putMasterPage);
 
-		_assertThumbnailFileEntryId(
-			false, putMasterPage.getExternalReferenceCode(),
-			fileEntry2.getExternalReferenceCode());
+		_assertThumbnailURLReference(
+			_thumbnail1Bytes, fileEntry2.getExternalReferenceCode(),
+			putMasterPage);
 
 		putMasterPage.setThumbnailURLReference(() -> null);
 
@@ -1449,15 +1786,7 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 		masterPage = randomMasterPage();
 
 		ThumbnailURLReference thumbnailURLReference =
-			new ThumbnailURLReference() {
-				{
-					setExternalReferenceCode(RandomTestUtil.randomString());
-					setUrl(
-						() ->
-							"http://localhost:8080/" +
-								RandomTestUtil.randomString());
-				}
-			};
+			ThumbnailURLReferenceUtil.getRandomThumbnailURLReference();
 
 		masterPage.setThumbnailURLReference(thumbnailURLReference);
 
@@ -1477,6 +1806,82 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 		}
 	}
 
+	private void _testPutSiteMasterPageWithThumbnailURLReferenceExternalReferenceCodeAndFileBase64()
+		throws Exception {
+
+		MasterPage postMasterPage = testPostSiteMasterPage_addMasterPage(
+			randomMasterPage());
+
+		Assert.assertNull(postMasterPage.getThumbnailURLReference());
+
+		FileEntry fileEntry = FileEntryTestUtil.addPreviewFileEntry(
+			testGroup, _portletFileRepository, getClass());
+
+		String externalReferenceCode = fileEntry.getExternalReferenceCode();
+
+		ThumbnailURLReference thumbnailURLReference =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference.setExternalReferenceCode(externalReferenceCode);
+		thumbnailURLReference.setFileBase64(_thumbnail2Base64);
+
+		_putSiteMasterPageAndAssertThumbnailURLReference(
+			_thumbnail1Bytes, externalReferenceCode, postMasterPage,
+			thumbnailURLReference);
+	}
+
+	private void _testPutSiteMasterPageWithThumbnailURLReferenceFileBase64()
+		throws Exception {
+
+		MasterPage postMasterPage = testPostSiteMasterPage_addMasterPage(
+			randomMasterPage());
+
+		Assert.assertNull(postMasterPage.getThumbnailURLReference());
+
+		ThumbnailURLReference thumbnailURLReference1 =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference1.setFileBase64(_thumbnail1Base64);
+
+		MasterPage putMasterPage =
+			_putSiteMasterPageAndAssertThumbnailURLReference(
+				_thumbnail1Bytes, null, postMasterPage, thumbnailURLReference1);
+
+		ThumbnailURLReference thumbnailURLReference2 =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference2.setFileBase64(_thumbnail2Base64);
+
+		_putSiteMasterPageAndAssertThumbnailURLReference(
+			_thumbnail2Bytes, null, putMasterPage, thumbnailURLReference2);
+	}
+
+	private void _testPutSiteMasterPageWithThumbnailURLReferenceURL()
+		throws Exception {
+
+		MasterPage postMasterPage = testPostSiteMasterPage_addMasterPage(
+			randomMasterPage());
+
+		Assert.assertNull(postMasterPage.getThumbnailURLReference());
+
+		ThumbnailURLReference thumbnailURLReference1 =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference1.setUrl(_thumbnail1URL);
+
+		MasterPage putMasterPage =
+			_putSiteMasterPageAndAssertThumbnailURLReference(
+				_thumbnail1Bytes, null, postMasterPage, thumbnailURLReference1);
+
+		ThumbnailURLReference thumbnailURLReference2 =
+			new ThumbnailURLReference();
+
+		thumbnailURLReference2.setUrl(_thumbnail2URL);
+
+		_putSiteMasterPageAndAssertThumbnailURLReference(
+			_thumbnail2Bytes, null, putMasterPage, thumbnailURLReference2);
+	}
+
 	private void _updateLayoutPageTemplateEntryStatus(
 			String externalReferenceCode)
 		throws Exception {
@@ -1491,6 +1896,14 @@ public class MasterPageResourceTest extends BaseMasterPageResourceTestCase {
 			layoutPageTemplateEntry.getLayoutPageTemplateEntryId(),
 			WorkflowConstants.STATUS_APPROVED);
 	}
+
+	private static String _thumbnail1Base64;
+	private static byte[] _thumbnail1Bytes;
+	private static String _thumbnail1URL;
+	private static String _thumbnail2Base64;
+	private static byte[] _thumbnail2Bytes;
+	private static String _thumbnail2URL;
+	private static ThumbnailHttpServer _thumbnailHttpServer;
 
 	@Inject
 	private FragmentEntryLinkLocalService _fragmentEntryLinkLocalService;

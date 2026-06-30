@@ -15,6 +15,7 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.login.AuthLoginGroupSettingsUtil;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutConstants;
+import com.liferay.portal.kernel.model.LayoutType;
 import com.liferay.portal.kernel.model.LayoutTypePortlet;
 import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.model.User;
@@ -322,11 +323,11 @@ public class LayoutAction implements Action {
 					}
 
 					AuditMessage auditMessage = new AuditMessage(
-						ActionKeys.VIEW, realUser.getCompanyId(),
-						layout.getGroupId(), realUser.getUserId(),
-						realUser.getFullName(), Layout.class.getName(),
-						String.valueOf(layout.getPlid()), null, null,
-						additionalInfoJSONObject);
+						layout.getGroupId(), realUser.getCompanyId(),
+						realUser.getUserId(), realUser.getFullName(), null,
+						additionalInfoJSONObject, Layout.class.getName(),
+						String.valueOf(layout.getPlid()), ActionKeys.VIEW,
+						null);
 
 					AuditRouterUtil.route(auditMessage);
 				}
@@ -425,8 +426,19 @@ public class LayoutAction implements Action {
 				// Include layout content before the page loads because portlets
 				// on the page can set the page title and page subtitle
 
-				PortletContainerUtil.processPublicRenderParameters(
-					httpServletRequest, layout, portlet);
+				LayoutType layoutType = layout.getLayoutType();
+
+				if (layoutType instanceof LayoutTypePortlet) {
+					LayoutTypePortlet layoutTypePortlet =
+						(LayoutTypePortlet)layoutType;
+
+					List<Portlet> portlets = layoutTypePortlet.getPortlets();
+
+					portlets.remove(portlet);
+
+					PortletContainerUtil.processPublicRenderParameters(
+						httpServletRequest, layout, portlets);
+				}
 
 				if (layout.includeLayoutContent(
 						httpServletRequest, httpServletResponse)) {

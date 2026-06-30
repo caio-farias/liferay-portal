@@ -1,24 +1,14 @@
-defaults:
-    run:
-        shell: bash
 jobs:
     test-cloud-helm-chart:
-        if: ${{github.repository == 'liferay/liferay-portal'}}
-        runs-on: ubuntu-latest
-        steps:
-            -   name: Checkout code
-                uses: actions/checkout@v4
-            -   name: Create Kind cluster
-                run: kind create cluster
-            -   name: Run Helm test
-                run: |
-                    helm upgrade -i liferay --wait .
-
-                    helm test liferay
-                working-directory: ./cloud/helm
+        if: ${{github.repository == 'cloudnative-team/liferay-portal'}}
+        permissions:
+            checks: write
+            contents: read
+        uses: ./.github/workflows/ci-reusable-test-cloud-helm-chart.yaml
 on:
-    push:
-        branches:
-            -   master
+    pull_request:
         paths:
-            -   cloud/**
+            -   .github/workflows/ci-reusable-test-cloud-helm-chart.yaml
+            -   .github/workflows/ci-test-cloud-helm-chart.yaml
+            -   cloud/helm/**
+            -   cloud/scripts/tests/**

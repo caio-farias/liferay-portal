@@ -45,12 +45,13 @@ export {readConfigFromURL} from './utils/configInURL';
 export {getConfigParamName, serializeFDSConfig} from './utils/configInURL';
 export {default as FDS_EVENT} from './utils/eventsDefinitions';
 
-export {getFDSAtom} from './utils/getFDSAtom';
+export {getOrCreateFDSAtom} from './utils/getOrCreateFDSAtom';
 
 export {
 	DisplayType,
 	EConfigInURLBehavior,
 	IBaseFilterState,
+	IBulkActionItem,
 	ICardSchema,
 	IClientExtensionRenderer,
 	IListSchema,

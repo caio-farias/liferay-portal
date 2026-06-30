@@ -7,17 +7,12 @@ package com.liferay.site.cms.site.initializer.internal.display.context;
 
 import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.document.library.configuration.DLConfiguration;
-import com.liferay.frontend.data.set.model.FDSActionDropdownItem;
-import com.liferay.object.model.ObjectEntryFolder;
 import com.liferay.object.service.ObjectDefinitionService;
-import com.liferay.object.service.ObjectDefinitionSettingLocalService;
-import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.Portal;
@@ -25,7 +20,6 @@ import com.liferay.translation.exporter.TranslationInfoItemFieldValuesExporterRe
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -39,19 +33,13 @@ public class ViewFilesSectionDisplayContext
 		DepotEntryLocalService depotEntryLocalService,
 		DLConfiguration dlConfiguration, GroupLocalService groupLocalService,
 		HttpServletRequest httpServletRequest, Language language,
-		ObjectDefinitionService objectDefinitionService,
-		ObjectDefinitionSettingLocalService objectDefinitionSettingLocalService,
-		ModelResourcePermission<ObjectEntryFolder>
-			objectEntryFolderModelResourcePermission,
-		Portal portal,
+		ObjectDefinitionService objectDefinitionService, Portal portal,
 		TranslationInfoItemFieldValuesExporterRegistry
 			translationInfoItemFieldValuesExporterRegistry) {
 
 		super(
 			depotEntryLocalService, dlConfiguration, groupLocalService,
-			httpServletRequest, language, objectDefinitionService,
-			objectDefinitionSettingLocalService,
-			objectEntryFolderModelResourcePermission, portal,
+			httpServletRequest, language, objectDefinitionService, portal,
 			translationInfoItemFieldValuesExporterRegistry);
 	}
 
@@ -88,29 +76,21 @@ public class ViewFilesSectionDisplayContext
 	}
 
 	@Override
-	public List<FDSActionDropdownItem> getFDSActionDropdownItems() {
-		List<FDSActionDropdownItem> fdsActionDropdownItems =
-			super.getFDSActionDropdownItems();
-
-		fdsActionDropdownItems.add(
-			9,
-			new FDSActionDropdownItem(
-				StringPool.BLANK, "info-circle-open", "show-details",
-				LanguageUtil.get(httpServletRequest, "show-details"), null,
-				null, "infoPanel"));
-
-		return fdsActionDropdownItems;
-	}
-
-	@Override
 	protected String getCMSSectionFilterString() {
 		return appendStatus(
-			appendGroupIds("cmsRoot eq true and cmsSection eq 'files'"));
+			appendGroupIds(
+				"cmsRoot eq true and cmsSection eq 'files' and " +
+					"rootDescendantNode eq false"));
 	}
 
 	@Override
 	protected String getEmptyStateDescriptionKey() {
 		return "click-new-or-drag-and-drop-your-files-here";
+	}
+
+	@Override
+	protected boolean isFolderSearchEnabled() {
+		return true;
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(

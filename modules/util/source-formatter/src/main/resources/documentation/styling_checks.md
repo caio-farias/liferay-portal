@@ -28,6 +28,7 @@ ContractionsCheck | .java, .jsp, .jspf, .jspx, .tag, .tpl, or .vm | Finds contra
 [DefaultComesLastCheck](https://checkstyle.sourceforge.io/checks/coding/defaultcomeslast.html) | .java, .jsp, .jspf, .jspx, .tag, .tpl, or .vm | Checks that the `default` is after all the cases in a `switch` statement. |
 DockerfileEmptyLinesCheck | Dockerfile | Finds missing and unnecessary empty lines. |
 DockerfileInstructionCheck | Dockerfile | Performs styling rules on instructions in `Dockerfile` files. |
+EmbeddedJSONCheck | .action, .function, .jelly, .jrxml, .macro, .markdown, .md, .pom, .project, .properties, .qti, .svg, .testcase, .toggle, .tpl, .wsdl, .xml, or .xsd | Ensures consistent formatting for embedded JSON. |
 EmptyCollectionCheck | .java, .jsp, .jspf, .jspx, .tag, .tpl, or .vm | Checks that there are no calls to `Collections.EMPTY_LIST`, `Collections.EMPTY_MAP` or `Collections.EMPTY_SET`. |
 EnumConstantDividerCheck | .java | Find unnecessary empty lines between enum constants. |
 EnumConstantOrderCheck | .java | Checks the order of enum constants. |
@@ -59,6 +60,7 @@ HTMLWhitespaceCheck | .html or .path | Finds missing and unnecessary whitespace 
 InstanceofOrderCheck | .java, .jsp, .jspf, .jspx, .tag, .tpl, or .vm | Check the order of `instanceof` calls. |
 JSONBatchEngineDataFileCheck | .ipynb, .json, or .npmbridgerc | Remove elements in `*.batch-engine-data.json` files. |
 JSONCommerceCatalogFileCheck | .ipynb, .json, or .npmbridgerc | Sorts `*.options.json`, `*.products.json`, and `*.products.specifications.json` files. |
+JSONObjectDefinitionFileCheck | .ipynb, .json, or .npmbridgerc | Applies rules to enforce consistency in code style. |
 JSONPageFileCheck | .ipynb, .json, or .npmbridgerc | Sorts by `roleName` in `page.json` files. |
 JSONPortletResponseUtilCheck | .java | Checks if `JSONPortletResponseUtil.writeJSON ` should come before method calling `hideDefaultSuccessMessage`. |
 JSONReplacementsFileCheck | .ipynb, .json, or .npmbridgerc | Sorts by `issueKey`, `from` and `to` in `replacements.json` file. |
@@ -218,6 +220,5 @@ XMLWorkflowDefinitionFileStylingCheck | .action, .function, .jelly, .jrxml, .mac
 YMLDefinitionOrderCheck | .tpl, .yaml, or .yml | Sorts definitions alphabetically in `.yml` files. |
 YMLEmptyLinesCheck | .tpl, .yaml, or .yml | Finds missing and unnecessary empty lines. |
 YMLIndentationCheck | .tpl, .yaml, or .yml | Finds incorrect indentation in YAML files. |
-YMLLongLinesCheck | .tpl, .yaml, or .yml | Finds lines that are longer than the specified maximum line length. |
 YMLStylingCheck | .tpl, .yaml, or .yml | Applies rules to enforce consistency in code style. |
 YMLWhitespaceCheck | .tpl, .yaml, or .yml | Finds missing and unnecessary whitespace in `.yml` files. |

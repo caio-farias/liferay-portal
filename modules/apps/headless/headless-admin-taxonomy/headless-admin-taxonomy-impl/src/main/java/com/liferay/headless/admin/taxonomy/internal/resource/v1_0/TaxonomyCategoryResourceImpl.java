@@ -19,6 +19,7 @@ import com.liferay.asset.kernel.service.AssetVocabularyService;
 import com.liferay.depot.constants.DepotConstants;
 import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryService;
+import com.liferay.exportimport.constants.ExportImportConstants;
 import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate;
 import com.liferay.headless.admin.taxonomy.dto.v1_0.ParentTaxonomyCategory;
 import com.liferay.headless.admin.taxonomy.dto.v1_0.ParentTaxonomyVocabulary;
@@ -177,6 +178,11 @@ public class TaxonomyCategoryResourceImpl
 			}
 
 			@Override
+			public String getSectionKey() {
+				return ExportImportConstants.SECTION_KEY_CONTENT_AND_DATA;
+			}
+
+			@Override
 			public boolean isStagingSupported() {
 				return true;
 			}
@@ -199,7 +205,7 @@ public class TaxonomyCategoryResourceImpl
 		}
 
 		dynamicQuery.addOrder(OrderFactoryUtil.desc("assetCount"));
-		dynamicQuery.setProjection(_getProjectionList(), true);
+		dynamicQuery.setProjection(_getProjectionList());
 
 		return Page.of(
 			transform(
@@ -581,7 +587,9 @@ public class TaxonomyCategoryResourceImpl
 			Long assetLibraryId, TaxonomyCategory taxonomyCategory)
 		throws Exception {
 
-		return _postTaxonomyCategory(assetLibraryId, taxonomyCategory);
+		return _postTaxonomyCategory(
+			assetLibraryId, taxonomyCategory.getExternalReferenceCode(),
+			taxonomyCategory);
 	}
 
 	@Override
@@ -589,7 +597,9 @@ public class TaxonomyCategoryResourceImpl
 			Long siteId, TaxonomyCategory taxonomyCategory)
 		throws Exception {
 
-		return _postTaxonomyCategory(siteId, taxonomyCategory);
+		return _postTaxonomyCategory(
+			siteId, taxonomyCategory.getExternalReferenceCode(),
+			taxonomyCategory);
 	}
 
 	@Override
@@ -947,7 +957,8 @@ public class TaxonomyCategoryResourceImpl
 					_assetVocabularyGroupRelLocalService.
 						setAssetVocabularyGroupRels(
 							assetVocabulary.getVocabularyId(),
-							new long[] {GroupConstants.GROUP_ID_ALL});
+							new long[] {GroupConstants.GROUP_ID_ALL},
+							DepotConstants.TYPE_SPACE);
 				}
 			}
 
@@ -1027,7 +1038,8 @@ public class TaxonomyCategoryResourceImpl
 	}
 
 	private TaxonomyCategory _postTaxonomyCategory(
-			long groupId, TaxonomyCategory taxonomyCategory)
+			long groupId, String externalReferenceCode,
+			TaxonomyCategory taxonomyCategory)
 		throws Exception {
 
 		Long taxonomyVocabularyId = _getTaxonomyVocabularyId(
@@ -1040,7 +1052,7 @@ public class TaxonomyCategoryResourceImpl
 		}
 
 		return _addTaxonomyCategory(
-			taxonomyCategory.getExternalReferenceCode(), groupId,
+			externalReferenceCode, groupId,
 			contextAcceptLanguage.getPreferredLanguageId(),
 			_getParentTaxonomyCategoryId(groupId, taxonomyCategory),
 			taxonomyCategory, taxonomyVocabularyId);
@@ -1056,7 +1068,8 @@ public class TaxonomyCategoryResourceImpl
 				externalReferenceCode, groupId);
 
 		if (persistedAssetCategory == null) {
-			return _postTaxonomyCategory(groupId, taxonomyCategory);
+			return _postTaxonomyCategory(
+				groupId, externalReferenceCode, taxonomyCategory);
 		}
 
 		long assetVocabularyId = _getAssetVocabularyId(

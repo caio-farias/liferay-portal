@@ -116,6 +116,10 @@ public class JournalFeedModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table JournalFeed";
 
+	public static final String ENTITY_ALIAS = "journalFeed";
+
+	public static final String FILTER_PK_COLUMN_NAME = "id_";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY journalFeed.feedId ASC";
 
@@ -1508,4 +1512,4 @@ public class JournalFeedModelImpl
 	private JournalFeed _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-893836626
+// LIFERAY-SERVICE-BUILDER-HASH:-565732881

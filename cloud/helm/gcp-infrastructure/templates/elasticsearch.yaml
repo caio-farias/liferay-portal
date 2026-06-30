@@ -1,10 +1,11 @@
 {{- $search := .Values.search.elasticsearch -}}
 {{- $elasticsearchNamespace := printf "%s-elasticsearch" .Release.Namespace -}}
-{{- if $search.enabled }}
+{{- if and .Values.enabled $search.enabled }}
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
     annotations:
+        argocd.argoproj.io/sync-wave: "-25"
         {{- $search.annotations | toYaml | nindent 8 }}
     name: {{ include "elasticsearch.name" . }}
     namespace: {{ $elasticsearchNamespace }}
@@ -56,7 +57,10 @@ spec:
                                     elasticsearch-plugin \
                                         install \
                                         --batch \
-                                        analysis-{icu,kuromoji,smartcn,stempel}
+                                        analysis-icu \
+                                        analysis-kuromoji \
+                                        analysis-smartcn \
+                                        analysis-stempel
                             name: install-plugins
                             securityContext:
                                 {{- $search.securityContext | toYaml | nindent 32 }}
@@ -77,6 +81,8 @@ spec:
 apiVersion: v1
 kind: Namespace
 metadata:
+    annotations:
+        argocd.argoproj.io/sync-wave: "-25"
     labels:
         name: {{ $elasticsearchNamespace }}
         pod-security.kubernetes.io/enforce: restricted

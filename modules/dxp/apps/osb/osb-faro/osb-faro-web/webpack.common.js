@@ -12,7 +12,7 @@ function resolveModule(name = '') {
 	return path.resolve(__dirname, 'src', 'main', 'js', name);
 }
 
-const include = [resolveModule(), path.resolve(__dirname, 'node_modules')];
+const include = [resolveModule()];
 
 const config = {
 	entry: [
@@ -38,6 +38,8 @@ const config = {
 			callback();
 		},
 		{
+			'@liferay/frontend-data-set-web':
+				'/o/frontend-data-set-web/__liferay__/index.js',
 			react: 'react',
 			'react-dom': 'react-dom'
 		}
@@ -60,8 +62,8 @@ const config = {
 						'custom-types': resolveModule('custom-types'),
 						'event-analysis': resolveModule('event-analysis'),
 						experiments: resolveModule('experiments'),
-						home: resolveModule('home'),
 						individual: resolveModule('individual'),
+						lifecycle: resolveModule('lifecycle'),
 						'route-middleware': resolveModule('route-middleware'),
 						segment: resolveModule('segment'),
 						settings: resolveModule('settings'),
@@ -123,7 +125,13 @@ const config = {
 					{
 						loader: 'sass-loader',
 						options: {
+							api: 'modern',
 							implementation: require('sass'),
+							sassOptions: {
+								loadPaths: [path.resolve(__dirname, 'node_modules')],
+								quietDeps: true,
+								silenceDeprecations: ['import', 'global-builtin']
+							},
 							sourceMap: true
 						}
 					}
@@ -169,9 +177,10 @@ const config = {
 			filename: 'main.css'
 		}),
 		new ForkTsCheckerWebpackPlugin({
-			eslint: {
-				files: 'src/main/js/**/*.+(js|ts)?(x)'
-			}
+			issue: {
+				include: [{file: '**/src/main/js/**/*'}]
+			},
+			logger: 'webpack-infrastructure'
 		}),
 		new SpriteLoaderPlugin(),
 		new webpack.DefinePlugin({

@@ -38,6 +38,9 @@ import java.util.function.Supplier;
 @GraphQLName(
 	description = "The settings of a widget page.", value = "WidgetPageSettings"
 )
+@io.swagger.v3.oas.annotations.media.Schema(
+	description = "The settings of a widget page."
+)
 @JsonFilter("Liferay.Vulcan")
 @XmlRootElement(name = "WidgetPageSettings")
 public class WidgetPageSettings extends PageSettings implements Serializable {
@@ -183,6 +186,55 @@ public class WidgetPageSettings extends PageSettings implements Serializable {
 
 	@JsonIgnore
 	private Supplier<String[]> _customizableSectionIdsSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "The portlet ID of the asset publisher configured as the default for this page, if any."
+	)
+	public String getDefaultAssetPublisherPortletId() {
+		if (_defaultAssetPublisherPortletIdSupplier != null) {
+			defaultAssetPublisherPortletId =
+				_defaultAssetPublisherPortletIdSupplier.get();
+
+			_defaultAssetPublisherPortletIdSupplier = null;
+		}
+
+		return defaultAssetPublisherPortletId;
+	}
+
+	public void setDefaultAssetPublisherPortletId(
+		String defaultAssetPublisherPortletId) {
+
+		this.defaultAssetPublisherPortletId = defaultAssetPublisherPortletId;
+
+		_defaultAssetPublisherPortletIdSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setDefaultAssetPublisherPortletId(
+		UnsafeSupplier<String, Exception>
+			defaultAssetPublisherPortletIdUnsafeSupplier) {
+
+		_defaultAssetPublisherPortletIdSupplier = () -> {
+			try {
+				return defaultAssetPublisherPortletIdUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "The portlet ID of the asset publisher configured as the default for this page, if any."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String defaultAssetPublisherPortletId;
+
+	@JsonIgnore
+	private Supplier<String> _defaultAssetPublisherPortletIdSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "Whether this widget page will inherit changes made to the associated widget page template."
@@ -495,6 +547,23 @@ public class WidgetPageSettings extends PageSettings implements Serializable {
 			sb.append("]");
 		}
 
+		String defaultAssetPublisherPortletId =
+			getDefaultAssetPublisherPortletId();
+
+		if (defaultAssetPublisherPortletId != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"defaultAssetPublisherPortletId\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(defaultAssetPublisherPortletId));
+
+			sb.append("\"");
+		}
+
 		Boolean inheritChanges = getInheritChanges();
 
 		if (inheritChanges != null) {
@@ -711,4 +780,4 @@ public class WidgetPageSettings extends PageSettings implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:-306045032
+// LIFERAY-REST-BUILDER-HASH:-445707704

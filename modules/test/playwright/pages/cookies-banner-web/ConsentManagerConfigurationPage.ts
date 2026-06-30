@@ -16,10 +16,13 @@ export class ConsentManagerConfigurationPage {
 	readonly explicitCookieConsentModeCheckbox: Locator;
 	readonly floatingIconEnabledCheckbox: Locator;
 	readonly forcedReconsentButton: Locator;
+	readonly globalPrivacyControlEnabledCheckbox: Locator;
 	readonly page: Page;
 	readonly saveButton: Locator;
 	readonly storeConsentCheckbox: Locator;
 	readonly systemSettingsPortletForm: Locator;
+	readonly toggleActivateButton: Locator;
+	readonly toggleDeactivateButton: Locator;
 	readonly updateButton: Locator;
 
 	constructor(page: Page) {
@@ -66,6 +69,11 @@ export class ConsentManagerConfigurationPage {
 				name: 'Forced Re-Consent',
 			}
 		);
+		this.globalPrivacyControlEnabledCheckbox =
+			this.systemSettingsPortletForm.getByRole('checkbox', {
+				exact: true,
+				name: 'Global Privacy Control (GPC)',
+			});
 		this.page = page;
 		this.saveButton = this.systemSettingsPortletForm.getByRole('button', {
 			exact: true,
@@ -76,6 +84,20 @@ export class ConsentManagerConfigurationPage {
 			{
 				exact: true,
 				name: 'Store Consent',
+			}
+		);
+		this.toggleActivateButton = this.systemSettingsPortletForm.getByRole(
+			'button',
+			{
+				exact: true,
+				name: 'Activate',
+			}
+		);
+		this.toggleDeactivateButton = this.systemSettingsPortletForm.getByRole(
+			'button',
+			{
+				exact: true,
+				name: 'Deactivate',
 			}
 		);
 		this.updateButton = this.systemSettingsPortletForm.getByRole('button', {

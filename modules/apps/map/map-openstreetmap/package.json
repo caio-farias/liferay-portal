@@ -1,7 +1,8 @@
 {
 	"dependencies": {
 		"@liferay/map-common": "*",
-		"frontend-js-web": "*"
+		"frontend-js-web": "*",
+		"leaflet": "1.7.1"
 	},
 	"main": "js/index.js",
 	"name": "@liferay/map-openstreetmap",
@@ -11,5 +12,5 @@
 		"checkFormat": "node-scripts format --check",
 		"format": "node-scripts format"
 	},
-	"version": "6.0.48"
+	"version": "6.0.50"
 }

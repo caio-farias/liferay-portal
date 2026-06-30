@@ -9,6 +9,7 @@ import com.liferay.change.tracking.constants.CTConstants;
 import com.liferay.change.tracking.model.CTCollectionModel;
 import com.liferay.change.tracking.service.CTCollectionLocalService;
 import com.liferay.petra.lang.SafeCloseable;
+import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
 import com.liferay.portal.kernel.change.tracking.sql.CTSQLModeThreadLocal;
@@ -208,9 +209,7 @@ public class IndexerWriterImpl<T extends BaseModel<?>>
 
 	@Override
 	public void reindexCompany(long companyId) {
-		if (!isEnabled() ||
-			!_modelIndexerWriterContributor.shouldRun(companyId)) {
-
+		if (!isEnabled() || !shouldRun(companyId)) {
 			return;
 		}
 
@@ -224,6 +223,11 @@ public class IndexerWriterImpl<T extends BaseModel<?>>
 	@Override
 	public void setEnabled(boolean enabled) {
 		_indexerEnabled = enabled;
+	}
+
+	@Override
+	public boolean shouldRun(long companyId) {
+		return _modelIndexerWriterContributor.shouldRun(companyId);
 	}
 
 	@Override
@@ -295,15 +299,15 @@ public class IndexerWriterImpl<T extends BaseModel<?>>
 					indexableActionableDynamicQuery.performActions();
 				}
 				catch (Exception exception) {
-					if (_log.isWarnEnabled()) {
-						_log.warn(
-							StringBundler.concat(
-								"Unable to reindex ",
-								_modelSearchSettings.getClassName(),
-								" for change tracking collection ID ",
-								ctCollectionId, " and company ID ", companyId),
-							exception);
-					}
+					_log.error(
+						StringBundler.concat(
+							"Unable to reindex ",
+							_modelSearchSettings.getClassName(),
+							" for change tracking collection ID ",
+							ctCollectionId, " and company ID ", companyId),
+						exception);
+
+					ReflectionUtil.throwException(exception);
 				}
 			}
 		}

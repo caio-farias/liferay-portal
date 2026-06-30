@@ -74,7 +74,7 @@ public class SiteNavigationMenuItemUpgradeProcess extends UpgradeProcess {
 				getPersistedModelLocalService(className);
 
 		PersistedModel persistedModel =
-			persistedModelLocalService.getPersistedModel(
+			persistedModelLocalService.fetchPersistedModel(
 				GetterUtil.getLong(
 					typeSettingsUnicodeProperties.getProperty("classPK")));
 
@@ -90,7 +90,7 @@ public class SiteNavigationMenuItemUpgradeProcess extends UpgradeProcess {
 			String sql = StringBundler.concat(
 				"select CProduct.externalReferenceCode from CProduct inner ",
 				"join CPDefinition on CProduct.CProductId = CPDefinition.",
-				"CProductId where CPDefinition.cpDefinitionId = ",
+				"CProductId where CPDefinition.CPDefinitionId = ",
 				GetterUtil.getLong(
 					typeSettingsUnicodeProperties.getProperty("classPK")));
 

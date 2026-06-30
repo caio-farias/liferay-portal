@@ -6,16 +6,14 @@
 package com.liferay.frontend.data.set.fragment.web.internal.fragment.renderer;
 
 import com.liferay.fragment.entry.processor.constants.FragmentEntryProcessorConstants;
-import com.liferay.fragment.entry.processor.helper.FragmentEntryProcessorHelper;
 import com.liferay.fragment.model.FragmentEntryLink;
-import com.liferay.fragment.processor.DefaultFragmentEntryProcessorContext;
-import com.liferay.fragment.processor.FragmentEntryProcessorRegistry;
 import com.liferay.fragment.renderer.FragmentRenderer;
 import com.liferay.fragment.renderer.FragmentRendererContext;
 import com.liferay.fragment.util.configuration.FragmentEntryConfigurationParser;
 import com.liferay.frontend.data.set.renderer.FDSRenderer;
 import com.liferay.info.constants.InfoDisplayWebKeys;
 import com.liferay.info.item.ClassPKInfoItemIdentifier;
+import com.liferay.info.item.ERCInfoItemIdentifier;
 import com.liferay.info.item.InfoItemIdentifier;
 import com.liferay.info.item.InfoItemReference;
 import com.liferay.object.entry.util.ObjectEntryThreadLocal;
@@ -27,21 +25,25 @@ import com.liferay.object.rest.manager.v1_0.ObjectEntryManagerRegistry;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
+import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONException;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.language.Language;
-import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.servlet.taglib.aui.ScriptData;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.ResourceBundleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.template.react.renderer.ComponentDescriptor;
+import com.liferay.portal.template.react.renderer.ReactRenderer;
 import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -50,10 +52,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -125,13 +126,16 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 			FragmentEntryLink fragmentEntryLink =
 				fragmentRendererContext.getFragmentEntryLink();
 
-			JSONObject jsonObject =
+			JSONObject configurationJSONObject = getConfigurationJSONObject(
+				fragmentRendererContext);
+
+			JSONObject itemSelectorJSONObject =
 				(JSONObject)_fragmentEntryConfigurationParser.getFieldValue(
-					getConfigurationJSONObject(fragmentRendererContext),
+					configurationJSONObject,
 					fragmentEntryLink.getEditableValuesJSONObject(),
 					fragmentRendererContext.getLocale(), "itemSelector");
 
-			String externalReferenceCode = jsonObject.getString(
+			String externalReferenceCode = itemSelectorJSONObject.getString(
 				"externalReferenceCode");
 
 			ObjectEntry dataSetObjectEntry = null;
@@ -162,9 +166,8 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 				catch (Exception exception) {
 					if (_log.isWarnEnabled()) {
 						_log.warn(
-							"Unable to get frontend data set view with " +
-								"external reference code " +
-									externalReferenceCode,
+							"Unable to get frontend data set with external " +
+								"reference code " + externalReferenceCode,
 							exception);
 					}
 				}
@@ -176,16 +179,13 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 				printWriter.write(
 					StringBundler.concat(
 						"<div class=\"portlet-msg-info\">",
-						_language.get(
-							httpServletRequest, "select-a-data-set-view"),
+						_language.get(httpServletRequest, "select-a-data-set"),
 						"</div>"));
 			}
 
 			if (dataSetObjectEntry == null) {
 				return;
 			}
-
-			Map<String, Object> properties = dataSetObjectEntry.getProperties();
 
 			if (!FeatureFlagManagerUtil.isEnabled(
 					_portal.getCompanyId(httpServletRequest), "LPD-38564")) {
@@ -195,8 +195,6 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 						"namespace",
 						fragmentRendererContext.getFragmentElementId()
 					).put(
-						"snapshotsEnabled", properties.get("snapshotsEnabled")
-					).put(
 						"style", "fluid"
 					).build(),
 					fragmentRendererContext.getFragmentElementId(),
@@ -206,31 +204,57 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 				return;
 			}
 
-			DefaultFragmentEntryProcessorContext
-				defaultFragmentEntryProcessorContext =
-					_getDefaultFragmentEntryProcessorContext(
-						fragmentEntryLink.getCompanyId(),
-						fragmentRendererContext, httpServletRequest,
-						httpServletResponse, fragmentEntryLink.getGroupId());
+			String componentId = externalReferenceCode;
 
 			boolean hasTokens = _hasTokens(
 				externalReferenceCode, httpServletRequest);
 
-			if (fragmentRendererContext.isEditMode() && hasTokens) {
-				_renderMappingUI(
-					defaultFragmentEntryProcessorContext, externalReferenceCode,
-					fragmentEntryLink, httpServletRequest);
+			JSONObject tokenResolutionsJSONObject =
+				_getTokenResolutionsJSONObject(
+					_getAPIURLTokenMappingsJSONObject(
+						(String)_fragmentEntryConfigurationParser.getFieldValue(
+							configurationJSONObject,
+							fragmentEntryLink.getEditableValuesJSONObject(),
+							fragmentRendererContext.getLocale(),
+							"apiURLTokenMappings")),
+					externalReferenceCode, httpServletRequest);
 
-				printWriter.write(
-					_processFragmentEntryLinkHTML(
-						defaultFragmentEntryProcessorContext,
-						fragmentRendererContext));
+			boolean resolved = _isResolved(
+				externalReferenceCode, httpServletRequest,
+				tokenResolutionsJSONObject);
+
+			if (fragmentRendererContext.isEditMode()) {
+				if (hasTokens) {
+					_writeAutoResolvedTokenNames(
+						externalReferenceCode, fragmentEntryLink,
+						httpServletRequest);
+				}
+
+				componentId = StringBundler.concat(
+					componentId, StringPool.DASH,
+					fragmentEntryLink.getFragmentEntryLinkId());
+
+				_writeDestroyPreviousComponentScript(
+					componentId, fragmentEntryLink, httpServletRequest,
+					printWriter);
+
+				if (hasTokens && !resolved) {
+					_reactRenderer.renderReact(
+						new ComponentDescriptor(
+							"{UnresolvedDataSetPreview} from " +
+								"frontend-data-set-fragment-web",
+							componentId, null, true),
+						HashMapBuilder.<String, Object>put(
+							"apiURL",
+							_fdsRenderer.getFDSAPIURL(
+								externalReferenceCode, httpServletRequest, true,
+								tokenResolutionsJSONObject)
+						).build(),
+						httpServletRequest, printWriter);
+				}
 			}
 
-			if (_isResolved(
-					defaultFragmentEntryProcessorContext, externalReferenceCode,
-					fragmentEntryLink, httpServletRequest)) {
-
+			if (resolved) {
 				printWriter.write("<div>");
 
 				_fdsRenderer.render(
@@ -238,31 +262,25 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 						"namespace",
 						fragmentRendererContext.getFragmentElementId()
 					).put(
-						"snapshotsEnabled", properties.get("snapshotsEnabled")
-					).put(
 						"style", "fluid"
 					).put(
 						"tokenResolutions",
 						() -> {
 							if (hasTokens) {
-								return _getTokenResolutionsJSONObject(
-									defaultFragmentEntryProcessorContext,
-									externalReferenceCode, fragmentEntryLink,
-									httpServletRequest);
+								return tokenResolutionsJSONObject;
 							}
 
 							return null;
 						}
 					).build(),
-					fragmentRendererContext.getFragmentElementId(),
-					externalReferenceCode, httpServletRequest,
+					componentId, externalReferenceCode, httpServletRequest,
 					httpServletResponse, true, null, printWriter);
 
 				printWriter.write("</div>");
 			}
 		}
 		catch (Exception exception) {
-			_log.error("Unable to render frontend data set view", exception);
+			_log.error("Unable to render frontend data set", exception);
 
 			throw new IOException(exception);
 		}
@@ -271,39 +289,40 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 		}
 	}
 
-	private DefaultFragmentEntryProcessorContext
-		_getDefaultFragmentEntryProcessorContext(
-			long companyId, FragmentRendererContext fragmentRendererContext,
-			HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse, long scopeGroupId) {
+	private JSONObject _getAPIURLTokenMappingsJSONObject(String value) {
+		if (Validator.isNull(value)) {
+			return _jsonFactory.createJSONObject();
+		}
 
-		DefaultFragmentEntryProcessorContext
-			defaultFragmentEntryProcessorContext =
-				new DefaultFragmentEntryProcessorContext(
-					companyId, httpServletRequest, httpServletResponse,
-					fragmentRendererContext.getLocale(),
-					fragmentRendererContext.getMode(), scopeGroupId);
+		try {
+			return _jsonFactory.createJSONObject(value);
+		}
+		catch (JSONException jsonException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					"Unable to create JSON object from: " + value,
+					jsonException);
+			}
+		}
 
-		defaultFragmentEntryProcessorContext.setAttributes(
-			fragmentRendererContext.getAttributes());
-		defaultFragmentEntryProcessorContext.setContextInfoItemReference(
-			fragmentRendererContext.getContextInfoItemReference());
-		defaultFragmentEntryProcessorContext.setFragmentElementId(
-			fragmentRendererContext.getFragmentElementId());
-		defaultFragmentEntryProcessorContext.setInfoForm(
-			fragmentRendererContext.getInfoForm());
-		defaultFragmentEntryProcessorContext.setPreviewClassNameId(
-			fragmentRendererContext.getPreviewClassNameId());
-		defaultFragmentEntryProcessorContext.setPreviewClassPK(
-			fragmentRendererContext.getPreviewClassPK());
-		defaultFragmentEntryProcessorContext.setPreviewType(
-			fragmentRendererContext.getPreviewType());
-		defaultFragmentEntryProcessorContext.setPreviewVersion(
-			fragmentRendererContext.getPreviewVersion());
-		defaultFragmentEntryProcessorContext.setSegmentsEntryIds(
-			fragmentRendererContext.getSegmentsEntryIds());
+		return _jsonFactory.createJSONObject();
+	}
 
-		return defaultFragmentEntryProcessorContext;
+	private Set<String> _getAutoResolvedTokenNames(
+		String externalReferenceCode, HttpServletRequest httpServletRequest) {
+
+		Set<String> tokenNames = _getTokenNames(
+			externalReferenceCode, httpServletRequest);
+
+		Matcher matcher = _pattern.matcher(
+			_fdsRenderer.getFDSAPIURL(
+				externalReferenceCode, httpServletRequest, true, null));
+
+		while (matcher.find()) {
+			tokenNames.remove(matcher.group(1));
+		}
+
+		return tokenNames;
 	}
 
 	private Set<String> _getTokenNames(
@@ -323,23 +342,34 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 	}
 
 	private JSONObject _getTokenResolutionsJSONObject(
-		DefaultFragmentEntryProcessorContext
-			defaultFragmentEntryProcessorContext,
-		String externalReferenceCode, FragmentEntryLink fragmentEntryLink,
+		JSONObject apiURLTokenMappingsJSONObject, String externalReferenceCode,
 		HttpServletRequest httpServletRequest) {
-
-		Set<String> tokenNames = _getTokenNames(
-			externalReferenceCode, httpServletRequest);
 
 		JSONObject tokenResolutionsJSONObject = _jsonFactory.createJSONObject();
 
+		Set<String> autoResolvedTokenNames = _getAutoResolvedTokenNames(
+			externalReferenceCode, httpServletRequest);
+		Set<String> tokenNames = _getTokenNames(
+			externalReferenceCode, httpServletRequest);
+
 		for (String tokenName : tokenNames) {
 			String tokenValue = _getTokenValue(
-				defaultFragmentEntryProcessorContext, fragmentEntryLink,
-				httpServletRequest, tokenName);
+				apiURLTokenMappingsJSONObject, httpServletRequest, tokenName);
 
 			if (Validator.isNotNull(tokenValue)) {
-				tokenResolutionsJSONObject.put(tokenName, tokenValue);
+				tokenResolutionsJSONObject.put(
+					tokenName, HtmlUtil.escape(tokenValue));
+			}
+			else if (autoResolvedTokenNames.contains(tokenName) &&
+					 _hasManualMapping(
+						 apiURLTokenMappingsJSONObject, tokenName)) {
+
+				// The user picked a manual mapping and left it empty. Mark the
+				// token with an empty JSON object so the URL builder leaves it
+				// unresolved instead of applying the automatic resolution.
+
+				tokenResolutionsJSONObject.put(
+					tokenName, _jsonFactory.createJSONObject());
 			}
 		}
 
@@ -347,61 +377,29 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 	}
 
 	private String _getTokenValue(
-		DefaultFragmentEntryProcessorContext
-			defaultFragmentEntryProcessorContext,
-		FragmentEntryLink fragmentEntryLink,
+		JSONObject apiURLTokenMappingsJSONObject,
 		HttpServletRequest httpServletRequest, String tokenName) {
 
-		JSONObject editableValuesJSONObject =
-			fragmentEntryLink.getEditableValuesJSONObject();
+		JSONObject mappingJSONObject =
+			apiURLTokenMappingsJSONObject.getJSONObject(tokenName);
 
-		if (editableValuesJSONObject == null) {
+		if (mappingJSONObject == null) {
+			return apiURLTokenMappingsJSONObject.getString(tokenName);
+		}
+
+		String mappingMode = mappingJSONObject.getString("mappingMode");
+
+		if (Objects.equals(mappingMode, "autoResolved")) {
 			return null;
 		}
 
-		JSONObject tokenValuesJSONObject =
-			editableValuesJSONObject.getJSONObject(
-				FragmentEntryProcessorConstants.
-					KEY_EDITABLE_FRAGMENT_ENTRY_PROCESSOR);
+		String fieldId = mappingJSONObject.getString("fieldId");
 
-		if (tokenValuesJSONObject == null) {
+		if (Validator.isNull(fieldId)) {
 			return null;
 		}
 
-		JSONObject tokenValueJSONObject = tokenValuesJSONObject.getJSONObject(
-			tokenName);
-
-		if (tokenValueJSONObject == null) {
-			return null;
-		}
-
-		String tokenValue = tokenValueJSONObject.getString(
-			LanguageUtil.getLanguageId(httpServletRequest));
-
-		if (Validator.isNull(tokenValue)) {
-			try {
-				tokenValue = String.valueOf(
-					_fragmentEntryProcessorHelper.getFieldValue(
-						tokenValueJSONObject, new HashMap<>(),
-						defaultFragmentEntryProcessorContext));
-			}
-			catch (PortalException portalException) {
-				_log.error("Unable to get token value", portalException);
-			}
-		}
-
-		if (Validator.isNull(tokenValue) &&
-			tokenName.equals("externalReferenceCode")) {
-
-			tokenValue = tokenValueJSONObject.getString(
-				"externalReferenceCode");
-		}
-
-		if (Validator.isNull(tokenValue)) {
-			tokenValue = tokenValueJSONObject.getString("classPK");
-		}
-
-		if (Validator.isNull(tokenValue)) {
+		if (Objects.equals(mappingMode, "context")) {
 			InfoItemReference infoItemReference =
 				(InfoItemReference)httpServletRequest.getAttribute(
 					InfoDisplayWebKeys.INFO_ITEM_REFERENCE);
@@ -413,18 +411,48 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 			InfoItemIdentifier infoItemIdentifier =
 				infoItemReference.getInfoItemIdentifier();
 
-			if (!(infoItemIdentifier instanceof ClassPKInfoItemIdentifier)) {
-				return null;
+			if (Objects.equals(fieldId, "externalReferenceCode") &&
+				(infoItemIdentifier instanceof ERCInfoItemIdentifier)) {
+
+				ERCInfoItemIdentifier ercInfoItemIdentifier =
+					(ERCInfoItemIdentifier)infoItemIdentifier;
+
+				return ercInfoItemIdentifier.getExternalReferenceCode();
 			}
 
-			ClassPKInfoItemIdentifier classPKInfoItemIdentifier =
-				(ClassPKInfoItemIdentifier)
-					infoItemReference.getInfoItemIdentifier();
+			if (infoItemIdentifier instanceof ClassPKInfoItemIdentifier) {
+				ClassPKInfoItemIdentifier classPKInfoItemIdentifier =
+					(ClassPKInfoItemIdentifier)infoItemIdentifier;
 
-			tokenValue = String.valueOf(classPKInfoItemIdentifier.getClassPK());
+				return String.valueOf(classPKInfoItemIdentifier.getClassPK());
+			}
+
+			return null;
 		}
 
-		return tokenValue;
+		if (Objects.equals(fieldId, "externalReferenceCode")) {
+			return mappingJSONObject.getString("externalReferenceCode");
+		}
+
+		return mappingJSONObject.getString("classPK");
+	}
+
+	private boolean _hasManualMapping(
+		JSONObject apiURLTokenMappingsJSONObject, String tokenName) {
+
+		if (!apiURLTokenMappingsJSONObject.has(tokenName)) {
+			return false;
+		}
+
+		JSONObject mappingJSONObject =
+			apiURLTokenMappingsJSONObject.getJSONObject(tokenName);
+
+		if (mappingJSONObject == null) {
+			return true;
+		}
+
+		return !Objects.equals(
+			mappingJSONObject.getString("mappingMode"), "autoResolved");
 	}
 
 	private boolean _hasTokens(
@@ -438,126 +466,82 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 	}
 
 	private boolean _isResolved(
-		DefaultFragmentEntryProcessorContext
-			defaultFragmentEntryProcessorContext,
-		String externalReferenceCode, FragmentEntryLink fragmentEntryLink,
-		HttpServletRequest httpServletRequest) {
+		String externalReferenceCode, HttpServletRequest httpServletRequest,
+		JSONObject tokenResolutionsJSONObject) {
 
 		Matcher matcher = _pattern.matcher(
 			_fdsRenderer.getFDSAPIURL(
 				externalReferenceCode, httpServletRequest, true,
-				_getTokenResolutionsJSONObject(
-					defaultFragmentEntryProcessorContext, externalReferenceCode,
-					fragmentEntryLink, httpServletRequest)));
+				tokenResolutionsJSONObject));
 
 		return !matcher.find();
 	}
 
-	private boolean _isResolvedToken(String url, String tokenName) {
-		return !url.contains(
-			StringPool.OPEN_CURLY_BRACE + tokenName +
-				StringPool.CLOSE_CURLY_BRACE);
-	}
-
-	private String _processFragmentEntryLinkHTML(
-			DefaultFragmentEntryProcessorContext
-				defaultFragmentEntryProcessorContext,
-			FragmentRendererContext fragmentRendererContext)
-		throws PortalException {
-
-		FragmentEntryLink fragmentEntryLink =
-			fragmentRendererContext.getFragmentEntryLink();
-
-		String html = StringPool.BLANK;
-
-		if (Validator.isNotNull(fragmentEntryLink.getHtml()) ||
-			Validator.isNotNull(fragmentEntryLink.getEditableValues())) {
-
-			html = _fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
-				fragmentEntryLink, defaultFragmentEntryProcessorContext);
-		}
-
-		return html;
-	}
-
-	private void _renderMappingUI(
-		DefaultFragmentEntryProcessorContext
-			defaultFragmentEntryProcessorContext,
+	private void _writeAutoResolvedTokenNames(
 		String externalReferenceCode, FragmentEntryLink fragmentEntryLink,
 		HttpServletRequest httpServletRequest) {
 
-		StringBundler htmlSB = new StringBundler();
+		JSONObject editableValuesJSONObject =
+			fragmentEntryLink.getEditableValuesJSONObject();
 
-		htmlSB.append("<div class=\"p-2\" data-fragment-namespace=");
-		htmlSB.append("\"${fragmentEntryLinkNamespace}\">");
+		if (editableValuesJSONObject == null) {
+			editableValuesJSONObject = _jsonFactory.createJSONObject();
 
-		for (String tokenName :
-				_getTokenNames(externalReferenceCode, httpServletRequest)) {
+			fragmentEntryLink.setEditableValues(
+				editableValuesJSONObject.toString());
+		}
 
-			htmlSB.append("<div><span><strong>");
-			htmlSB.append(tokenName);
+		JSONObject configurationJSONObject =
+			editableValuesJSONObject.getJSONObject(
+				FragmentEntryProcessorConstants.
+					KEY_FREEMARKER_FRAGMENT_ENTRY_PROCESSOR);
 
-			if (!_isResolvedToken(
-					_fdsRenderer.getFDSAPIURL(
-						externalReferenceCode, httpServletRequest, true, null),
-					tokenName)) {
+		if (configurationJSONObject == null) {
+			configurationJSONObject = _jsonFactory.createJSONObject();
 
-				htmlSB.append(" (*) ");
+			editableValuesJSONObject.put(
+				FragmentEntryProcessorConstants.
+					KEY_FREEMARKER_FRAGMENT_ENTRY_PROCESSOR,
+				configurationJSONObject);
+		}
+
+		try {
+			JSONArray jsonArray = JSONUtil.toJSONArray(
+				_getAutoResolvedTokenNames(
+					externalReferenceCode, httpServletRequest),
+				autoResolvedTokenName -> autoResolvedTokenName);
+
+			configurationJSONObject.put(
+				"autoResolvedTokenNames", jsonArray.toString());
+		}
+		catch (Exception exception) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(
+					"Unable to write auto resolved token names", exception);
 			}
-
-			htmlSB.append(": </strong></span>");
-			htmlSB.append("<span class=\"navbar-text-truncate\"");
-			htmlSB.append("data-lfr-editable-id=\"");
-			htmlSB.append(tokenName);
-			htmlSB.append("\" data-lfr-editable-type=\"text\">\n\t{");
-			htmlSB.append(tokenName);
-			htmlSB.append("}\n</span>");
-			htmlSB.append("</div>");
 		}
+	}
 
-		htmlSB.append("<span class=\"workflow-status\"><strong class=\"label ");
+	private void _writeDestroyPreviousComponentScript(
+			String componentId, FragmentEntryLink fragmentEntryLink,
+			HttpServletRequest httpServletRequest, PrintWriter printWriter)
+		throws IOException {
 
-		if (_isResolved(
-				defaultFragmentEntryProcessorContext, externalReferenceCode,
-				fragmentEntryLink, httpServletRequest)) {
+		ScriptData scriptData = new ScriptData();
 
-			htmlSB.append("label-success\">Resolved");
-		}
-		else {
-			htmlSB.append("label-info\">Unresolved");
-		}
+		scriptData.append(
+			_portal.getPortletId(httpServletRequest),
+			StringUtil.replace(
+				StringUtil.read(
+					getClass(), "dependencies/destroy_previous_component.js"),
+				new String[] {"[$COMPONENT_ID$]", "[$FRAGMENT_ENTRY_LINK_ID$]"},
+				new String[] {
+					HtmlUtil.escapeJS(componentId),
+					String.valueOf(fragmentEntryLink.getFragmentEntryLinkId())
+				}),
+			null, ScriptData.ModulesType.ES6);
 
-		htmlSB.append("</strong></span> Data Set API URL: ");
-
-		Matcher matcher = _pattern.matcher(
-			_fdsRenderer.getFDSAPIURL(
-				externalReferenceCode, httpServletRequest, true,
-				_getTokenResolutionsJSONObject(
-					defaultFragmentEntryProcessorContext, externalReferenceCode,
-					fragmentEntryLink, httpServletRequest)));
-
-		htmlSB.append(
-			matcher.replaceAll(
-				match -> {
-					String tokenName = match.group(1);
-
-					String tokenValue = _getTokenValue(
-						defaultFragmentEntryProcessorContext, fragmentEntryLink,
-						httpServletRequest, tokenName);
-
-					if (Validator.isNull(tokenValue)) {
-						tokenValue = "{" + tokenName + "}";
-					}
-
-					String editableMarkup =
-						"<span><strong>" + tokenValue + "</strong></span>";
-
-					return Matcher.quoteReplacement(editableMarkup);
-				}));
-
-		htmlSB.append("</div>");
-
-		fragmentEntryLink.setHtml(htmlSB.toString());
+		scriptData.writeTo(printWriter);
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
@@ -578,12 +562,6 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 	private FragmentEntryConfigurationParser _fragmentEntryConfigurationParser;
 
 	@Reference
-	private FragmentEntryProcessorHelper _fragmentEntryProcessorHelper;
-
-	@Reference
-	private FragmentEntryProcessorRegistry _fragmentEntryProcessorRegistry;
-
-	@Reference
 	private JSONFactory _jsonFactory;
 
 	@Reference
@@ -591,5 +569,8 @@ public class FDSFragmentRenderer implements FragmentRenderer {
 
 	@Reference
 	private Portal _portal;
+
+	@Reference
+	private ReactRenderer _reactRenderer;
 
 }

@@ -22,6 +22,7 @@ import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Repository;
 import com.liferay.portal.kernel.model.User;
@@ -38,6 +39,7 @@ import com.liferay.portal.kernel.test.portlet.MockLiferayPortletURL;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.theme.PortletDisplay;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
@@ -84,6 +86,7 @@ public class DocumentLibraryDDMFormFieldTemplateContextContributorTest {
 		_setUpItemSelector();
 		_setUpJSONFactory();
 		_setUpJSONFactoryUtil();
+		_setUpLanguage();
 		_setUpPortal();
 		_setUpPortletFileRepository();
 		_setUpRequestBackedPortletURLFactory();
@@ -253,6 +256,33 @@ public class DocumentLibraryDDMFormFieldTemplateContextContributorTest {
 	}
 
 	@Test
+	public void testGetParametersInReadOnlyContextDoesNotEmitFileEntryDeleteURL() {
+		ThemeDisplay themeDisplay = _mockThemeDisplay();
+
+		Mockito.when(
+			themeDisplay.isSignedIn()
+		).thenReturn(
+			Boolean.TRUE
+		);
+
+		DocumentLibraryDDMFormFieldTemplateContextContributor
+			documentLibraryDDMFormFieldTemplateContextContributor = _createSpy(
+				true, themeDisplay);
+
+		DDMFormFieldRenderingContext ddmFormFieldRenderingContext =
+			_createDDMFormFieldRenderingContext();
+
+		ddmFormFieldRenderingContext.setReadOnly(true);
+
+		Map<String, Object> parameters =
+			documentLibraryDDMFormFieldTemplateContextContributor.getParameters(
+				new DDMFormField("field", "document_library"),
+				ddmFormFieldRenderingContext);
+
+		Assert.assertNull(parameters.get("fileEntryDeleteURL"));
+	}
+
+	@Test
 	public void testGetParametersShouldContainFileEntryURL()
 		throws PortalException {
 
@@ -313,6 +343,49 @@ public class DocumentLibraryDDMFormFieldTemplateContextContributorTest {
 				ddmFormField, _createDDMFormFieldRenderingContext());
 
 		Assert.assertEquals(8, parameters.get("maximumRepetitions"));
+	}
+
+	@Test
+	public void testGetParametersShouldLocalizeStringsUsingDisplayLocale() {
+		DocumentLibraryDDMFormFieldTemplateContextContributor
+			documentLibraryDDMFormFieldTemplateContextContributor = _createSpy(
+				_mockThemeDisplay());
+
+		ResourceBundle resourceBundle = Mockito.mock(ResourceBundle.class);
+
+		Mockito.doReturn(
+			resourceBundle
+		).when(
+			documentLibraryDDMFormFieldTemplateContextContributor
+		).getResourceBundle(
+			LocaleUtil.BRAZIL
+		);
+
+		Mockito.when(
+			_language.get(Mockito.eq(resourceBundle), Mockito.anyString())
+		).thenAnswer(
+			invocation -> invocation.getArgument(1) + "_pt_BR"
+		);
+
+		DDMFormFieldRenderingContext ddmFormFieldRenderingContext =
+			_createDDMFormFieldRenderingContext();
+
+		ddmFormFieldRenderingContext.setLocale(LocaleUtil.BRAZIL);
+
+		Map<String, Object> parameters =
+			documentLibraryDDMFormFieldTemplateContextContributor.getParameters(
+				new DDMFormField("field", "document_library"),
+				ddmFormFieldRenderingContext);
+
+		Map<String, String> stringsMap = (Map<String, String>)parameters.get(
+			"strings");
+
+		Assert.assertEquals("clear_pt_BR", stringsMap.get("clearLabel"));
+		Assert.assertEquals("file_pt_BR", stringsMap.get("fileLabel"));
+		Assert.assertEquals("select_pt_BR", stringsMap.get("selectLabel"));
+		Assert.assertEquals(
+			"you-need-to-be-signed-in-to-edit-this-field_pt_BR",
+			stringsMap.get("signInRequiredErrorMessage"));
 	}
 
 	@Test
@@ -419,6 +492,7 @@ public class DocumentLibraryDDMFormFieldTemplateContextContributorTest {
 
 		ddmFormFieldRenderingContext.setHttpServletRequest(
 			_createHttpServletRequest());
+		ddmFormFieldRenderingContext.setLocale(LocaleUtil.US);
 		ddmFormFieldRenderingContext.setPortletNamespace(_PORTLET_NAMESPACE);
 		ddmFormFieldRenderingContext.setProperty("groupId", _GROUP_ID);
 		ddmFormFieldRenderingContext.setValue(
@@ -706,6 +780,19 @@ public class DocumentLibraryDDMFormFieldTemplateContextContributorTest {
 		jsonFactoryUtil.setJSONFactory(new JSONFactoryImpl());
 	}
 
+	private void _setUpLanguage() {
+		ReflectionTestUtil.setFieldValue(
+			_documentLibraryDDMFormFieldTemplateContextContributor, "_language",
+			_language);
+
+		Mockito.when(
+			_language.get(
+				Mockito.any(ResourceBundle.class), Mockito.anyString())
+		).thenAnswer(
+			invocation -> invocation.getArgument(1)
+		);
+	}
+
 	private void _setUpPortal() throws Exception {
 		ReflectionTestUtil.setFieldValue(
 			_documentLibraryDDMFormFieldTemplateContextContributor, "_portal",
@@ -817,6 +904,7 @@ public class DocumentLibraryDDMFormFieldTemplateContextContributorTest {
 		GroupLocalService.class);
 	private final ItemSelector _itemSelector = Mockito.mock(ItemSelector.class);
 	private final JSONFactory _jsonFactory = new JSONFactoryImpl();
+	private final Language _language = Mockito.mock(Language.class);
 	private final Portal _portal = Mockito.mock(Portal.class);
 	private final PortletFileRepository _portletFileRepository = Mockito.mock(
 		PortletFileRepository.class);

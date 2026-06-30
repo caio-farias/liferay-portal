@@ -356,6 +356,7 @@ test('can export as JSON with all field types mapped', async ({
 			},
 			customAttachment: {
 				alternativeText: expect.any(String),
+				extension: expect.any(String),
 				externalReferenceCode: expect.any(String),
 				id: expect.any(Number),
 				link: {
@@ -368,6 +369,7 @@ test('can export as JSON with all field types mapped', async ({
 					externalReferenceCode: expect.any(String),
 					type: expect.any(String),
 				},
+				size: expect.any(String),
 			},
 			customBoolean: true,
 			customLongText: 'This is a custom LongText field',
@@ -509,3 +511,53 @@ test('can see ObjectDefinition entity type in dropdown', async ({
 			.textContent()
 	).toContain('ObjectDefinition (v1.0 - Liferay Object Admin REST)');
 });
+
+test(
+	'does not allow javascript URL in backURL when viewing an exported plan',
+	{tag: '@LPD-90347'},
+	async ({apiHelpers, dataMigrationCenterPage}) => {
+		const objectDefinitionAPIClient =
+			await apiHelpers.buildRestClient(ObjectDefinitionAPI);
+
+		const {body: objectDefinition} =
+			await objectDefinitionAPIClient.postObjectDefinition(
+				stockObjectDefinition
+			);
+
+		apiHelpers.data.push({
+			id: objectDefinition.id,
+			type: 'objectDefinition',
+		});
+
+		await apiHelpers.objectEntry.postObjectEntry(
+			stockObjectEntry,
+			'c/stocks'
+		);
+
+		await dataMigrationCenterPage.exportFile(
+			'JSON',
+			'Stock (v1.0 - Liferay Object REST)'
+		);
+
+		await dataMigrationCenterPage.gotoPage();
+
+		const {page} = dataMigrationCenterPage;
+
+		await page.getByRole('table').getByRole('link').first().click();
+
+		await expect(page.getByText('Batch Engine Task Details')).toBeVisible();
+
+		const url = new URL(page.url());
+
+		url.searchParams.set(
+			'_com_liferay_batch_planner_web_internal_portlet_BatchPlannerPortlet_backURL',
+			'javascript:alert(1)'
+		);
+
+		await page.goto(url.toString());
+
+		await expect(
+			page.locator('a[href^="javascript:" i], a[href^=" javascript:" i]')
+		).toHaveCount(0);
+	}
+);

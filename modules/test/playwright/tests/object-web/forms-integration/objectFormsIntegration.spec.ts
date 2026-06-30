@@ -10,6 +10,7 @@ import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
 import {formsPagesTest} from '../../../fixtures/formsPagesTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {objectPagesTest} from '../../../fixtures/objectPagesTest';
+import {smtpPagesTest} from '../../../fixtures/smtpPagesTest';
 import {liferayConfig} from '../../../liferay.config';
 import {getRandomInt} from '../../../utils/getRandomInt';
 import getRandomString from '../../../utils/getRandomString';
@@ -27,7 +28,8 @@ const test = mergeTests(
 	dataApiHelpersTest,
 	formsPagesTest,
 	loginTest(),
-	objectPagesTest
+	objectPagesTest,
+	smtpPagesTest
 );
 
 test.afterEach(async ({formsPage}) => {
@@ -1412,24 +1414,85 @@ test(
 	}
 );
 
-test.skip('can send form email when form is related with Object', async () => {
+test(
+	'can send form email when form is related with Object',
+	{tag: '@LPS-200847'},
+	async ({
+		apiHelpers,
+		formBuilderPage,
+		formBuilderSidePanelPage,
+		formSettingsModalPage,
+		mockMockPage,
+		page,
+	}) => {
+		const objectDefinition =
+			await apiHelpers.objectAdmin.postRandomObjectDefinition({
+				status: {code: 0},
+			});
 
-	// Original Poshi test (CanSendFormEmailWhenItIsRelatedWithObject):
-	// 1. Creates an object with a Text field and publishes it
-	// 2. Creates a form mapped to the object's storage type with a Text field
-	// 3. Configures email notifications (from: test@liferay.com, to: formreviewer@liferay.com,
-	//    subject: "Form Subject", sender: "Sender Name")
-	// 4. Publishes the form
-	// 5. Creates a widget page with a Form widget displaying the form
-	// 6. Submits an entry ("Entry test") through the widget page
-	// 7. Verifies the email was sent via MockMock SMTP server
-	//
-	// Requirements not yet available in this test project:
-	// - MockMock SMTP server (requires env/set_up.sh, see users-admin-web/email/ for reference)
-	// - Form email notification configuration (no page object exists)
-	// - Widget page creation with Form widget portlet configuration
+		apiHelpers.data.push({
+			id: objectDefinition.id,
+			type: 'objectDefinition',
+		});
 
-});
+		await formBuilderPage.goToNew();
+
+		await formBuilderPage.fillFormTitle('Form' + getRandomInt());
+
+		await formBuilderPage.formSettingsButton.click();
+
+		await formSettingsModalPage.selectStorageType('Object');
+
+		await formSettingsModalPage.selectObject(
+			objectDefinition.label['en_US']
+		);
+
+		await page.getByRole('tab', {name: 'Notifications'}).click();
+
+		await page
+			.getByLabel('Send an Email Notification for Each Entry')
+			.click();
+
+		await page.getByLabel('From Name').fill('Sender Name');
+
+		await page.getByLabel('From Address').fill('test@liferay.com');
+
+		await page.getByLabel('To Address').fill('formreviewer@liferay.com');
+
+		await page.getByLabel('Subject').fill('Form Subject');
+
+		await formSettingsModalPage.clickDoneButton();
+
+		await formBuilderSidePanelPage.addFieldByDoubleClick('Text');
+
+		await formBuilderSidePanelPage.clickAdvancedTab();
+
+		await formBuilderSidePanelPage.selectObjectField('textField');
+
+		await page.waitForTimeout(1000);
+
+		await formBuilderPage.clickPublishFormButton();
+
+		await mockMockPage.deleteAll();
+
+		const formSubmissionURL = await formBuilderPage.getFormSubmissionURL();
+
+		await page.goto(formSubmissionURL, {waitUntil: 'networkidle'});
+
+		await page.getByLabel('Text').fill('Entry test');
+
+		await page.getByRole('button', {name: 'Save'}).click();
+
+		await expect(
+			page.getByText('Your request completed successfully.')
+		).toBeVisible();
+
+		await mockMockPage.assertEmail({
+			body: 'Entry test',
+			subject: 'Form Subject',
+		});
+	}
+);
 
 test(
 	'can submit blank form entry with object field of Decimal type that is not required',
@@ -1960,5 +2023,182 @@ test(
 		).not.toBeVisible();
 
 		await expect(page.getByLabel('Searchable')).not.toBeVisible();
+	}
+);
+
+test(
+	'verify that form entry submission is blocked when an Object is inactivated and restored when reactivated',
+	{tag: '@LPS-139005'},
+	async ({
+		apiHelpers,
+		formBuilderPage,
+		formBuilderSidePanelPage,
+		formSettingsModalPage,
+		formsPage,
+		page,
+		viewObjectDefinitionsPage,
+		viewObjectEntriesPage,
+	}) => {
+		const objectDefinition =
+			await apiHelpers.objectAdmin.postRandomObjectDefinition({
+				status: {code: 0},
+			});
+
+		apiHelpers.data.push({
+			id: objectDefinition.id,
+			type: 'objectDefinition',
+		});
+
+		await formBuilderPage.goToNew();
+
+		const formTitle = 'Form' + getRandomInt();
+
+		await formBuilderPage.fillFormTitle(formTitle);
+
+		await formBuilderPage.formSettingsButton.click();
+
+		await formSettingsModalPage.selectStorageType('Object');
+
+		await formSettingsModalPage.selectObject(
+			objectDefinition.label['en_US']
+		);
+
+		await formSettingsModalPage.clickDoneButton();
+
+		await formBuilderSidePanelPage.addFieldByDoubleClick('Text');
+
+		await formBuilderSidePanelPage.clickAdvancedTab();
+
+		await formBuilderSidePanelPage.selectObjectField('textField');
+
+		await page.waitForTimeout(1000);
+
+		await formBuilderSidePanelPage.clickBackButton();
+
+		await formBuilderPage.clickSaveButton();
+
+		await formBuilderPage.clickPublishFormButton();
+
+		const formSubmissionURL = await formBuilderPage.getFormSubmissionURL();
+
+		await viewObjectDefinitionsPage.goto();
+
+		await viewObjectDefinitionsPage.changeObjectActivateStatus(
+			objectDefinition.name
+		);
+
+		await formsPage.goTo();
+
+		await page.reload();
+
+		await expect(
+			page.getByRole('cell', {
+				exact: true,
+				name: `This form was created using an inactive object as storage type. 
+				Activate "${objectDefinition.name}" object to make it available for 
+				editing. ${formTitle}`,
+			})
+		).toBeVisible();
+
+		await viewObjectDefinitionsPage.goto();
+
+		await viewObjectDefinitionsPage.changeObjectActivateStatus(
+			objectDefinition.name
+		);
+
+		await formsPage.goTo();
+
+		await page.reload();
+
+		await expect(
+			page.getByRole('cell', {
+				exact: true,
+				name: `This form was created using an inactive object as storage type. 
+				Activate "${objectDefinition.name}" object to make it available for 
+				editing. ${formTitle}`,
+			})
+		).toBeHidden();
+
+		await page.goto(formSubmissionURL);
+
+		await page.getByLabel('Text').fill('Entry 1');
+
+		await page.getByRole('button', {name: 'Save'}).click();
+
+		await expect(
+			page.getByText(
+				'Your information was successfully received. Thank you for filling out the form.'
+			)
+		).toBeVisible();
+
+		await viewObjectEntriesPage.goto(objectDefinition.className);
+
+		await expect(page.getByText('Entry 1')).toBeVisible();
+	}
+);
+
+test(
+	'verify that the Object visibility in the Form storage type changes according to activation status',
+	{tag: '@LPS-139005'},
+	async ({
+		apiHelpers,
+		formBuilderPage,
+		formSettingsModalPage,
+		page,
+		viewObjectDefinitionsPage,
+	}) => {
+		const objectDefinition =
+			await apiHelpers.objectAdmin.postRandomObjectDefinition({
+				status: {code: 0},
+			});
+
+		apiHelpers.data.push({
+			id: objectDefinition.id,
+			type: 'objectDefinition',
+		});
+
+		await viewObjectDefinitionsPage.goto();
+
+		await viewObjectDefinitionsPage.changeObjectActivateStatus(
+			objectDefinition.name
+		);
+
+		await formBuilderPage.goToNew();
+
+		await formBuilderPage.formSettingsButton.click();
+
+		await formSettingsModalPage.storageTypeSelect.click();
+
+		await page.getByRole('option', {name: 'Object'}).click();
+
+		await formSettingsModalPage.objectSelect.click();
+
+		await expect(
+			page.getByRole('option', {
+				name: objectDefinition.label['en_US'],
+			})
+		).toBeHidden();
+
+		await viewObjectDefinitionsPage.goto();
+
+		await viewObjectDefinitionsPage.changeObjectActivateStatus(
+			objectDefinition.name
+		);
+
+		await formBuilderPage.goToNew();
+
+		await formBuilderPage.formSettingsButton.click();
+
+		await formSettingsModalPage.storageTypeSelect.click();
+
+		await page.getByRole('option', {name: 'Object'}).click();
+
+		await formSettingsModalPage.objectSelect.click();
+
+		await expect(
+			page.getByRole('option', {
+				name: objectDefinition.label['en_US'],
+			})
+		).toBeVisible();
 	}
 );

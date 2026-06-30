@@ -7,7 +7,7 @@ import com.bmuschko.gradle.docker.tasks.container.extras.DockerWaitHealthyContai
 buildscript {
 	dependencies {
 		classpath group: "com.bmuschko", name: "gradle-docker-plugin", version: "6.7.0"
-		classpath group: "com.liferay", name: "com.liferay.gradle.plugins.app.docker", version: "1.0.16"
+		classpath group: "com.liferay", name: "com.liferay.gradle.plugins.app.docker", version: "1.0.17"
 	}
 
 	repositories {
@@ -35,7 +35,6 @@ buildscript {
 
 apply plugin: "com.liferay.app.docker"
 apply plugin: "com.liferay.root.defaults.plugin"
-apply plugin: "com.liferay.yarn.defaults.plugin"
 
 task buildNexusCredentials(type: Exec)
 task checkDocker(type: DockerWaitHealthyContainer)

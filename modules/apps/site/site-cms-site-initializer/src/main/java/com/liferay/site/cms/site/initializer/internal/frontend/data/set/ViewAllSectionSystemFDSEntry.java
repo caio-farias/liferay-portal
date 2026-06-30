@@ -5,24 +5,15 @@
 
 package com.liferay.site.cms.site.initializer.internal.frontend.data.set;
 
-import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.frontend.data.set.SystemFDSEntry;
-import com.liferay.object.model.ObjectEntryFolder;
-import com.liferay.object.service.ObjectDefinitionSettingLocalService;
-import com.liferay.portal.kernel.language.Language;
-import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
-import com.liferay.portal.kernel.service.GroupLocalService;
-import com.liferay.portal.kernel.util.HttpComponentsUtil;
-import com.liferay.portal.kernel.util.Portal;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.util.URLCodec;
 import com.liferay.site.cms.site.initializer.internal.constants.CMSSiteInitializerFDSNames;
-import com.liferay.site.cms.site.initializer.internal.display.context.SectionDisplayContextHelper;
+import com.liferay.site.cms.site.initializer.internal.display.context.SectionDisplayContextUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.osgi.framework.BundleContext;
-import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Daniel Sanz
@@ -37,21 +28,25 @@ public class ViewAllSectionSystemFDSEntry implements SystemFDSEntry {
 	public String getAdditionalAPIURLParameters(
 		HttpServletRequest httpServletRequest) {
 
-		String filterString = _sectionDisplayContextHelper.appendStatus(
-			_sectionDisplayContextHelper.appendGroupIds(
+		String filterString = SectionDisplayContextUtil.appendStatus(
+			SectionDisplayContextUtil.appendGroupIds(
 				"cmsKind eq 'object' and (cmsSection eq 'contents' or " +
-					"cmsSection eq 'files')",
+					"cmsSection eq 'files') and rootDescendantNode eq false",
 				httpServletRequest));
 
-		if (httpServletRequest.getParameter("q") != null) {
-			return HttpComponentsUtil.addParameters(
-				_sectionDisplayContextHelper.getAdditionalAPIURLParameters(
-					filterString, httpServletRequest, null),
-				"search", httpServletRequest.getParameter("q"));
+		String additionalAPIURLParameters =
+			SectionDisplayContextUtil.getAdditionalAPIURLParameters(
+				filterString, httpServletRequest, null);
+
+		String searchQuery = httpServletRequest.getParameter("q");
+
+		if (searchQuery != null) {
+			return StringBundler.concat(
+				additionalAPIURLParameters, "&search=",
+				URLCodec.encodeURL(searchQuery));
 		}
 
-		return _sectionDisplayContextHelper.getAdditionalAPIURLParameters(
-			filterString, httpServletRequest, null);
+		return additionalAPIURLParameters;
 	}
 
 	@Override
@@ -109,37 +104,5 @@ public class ViewAllSectionSystemFDSEntry implements SystemFDSEntry {
 	public String getTitle() {
 		return "All Section";
 	}
-
-	@Activate
-	protected void activate(BundleContext bundleContext) {
-		_sectionDisplayContextHelper = new SectionDisplayContextHelper(
-			_depotEntryLocalService, _groupLocalService, _language,
-			_objectDefinitionSettingLocalService,
-			_objectEntryFolderModelResourcePermission, _portal);
-	}
-
-	@Reference
-	private DepotEntryLocalService _depotEntryLocalService;
-
-	@Reference
-	private GroupLocalService _groupLocalService;
-
-	@Reference
-	private Language _language;
-
-	@Reference
-	private ObjectDefinitionSettingLocalService
-		_objectDefinitionSettingLocalService;
-
-	@Reference(
-		target = "(model.class.name=com.liferay.object.model.ObjectEntryFolder)"
-	)
-	private ModelResourcePermission<ObjectEntryFolder>
-		_objectEntryFolderModelResourcePermission;
-
-	@Reference
-	private Portal _portal;
-
-	private SectionDisplayContextHelper _sectionDisplayContextHelper;
 
 }

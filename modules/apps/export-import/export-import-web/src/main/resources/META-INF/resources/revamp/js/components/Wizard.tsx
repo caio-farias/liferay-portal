@@ -8,13 +8,14 @@ import {Form, Formik, FormikConfig, FormikHelpers, FormikValues} from 'formik';
 import React, {ReactElement, useState} from 'react';
 
 import Footer from './Footer';
-import {FormikDebug} from './forms/formik';
+import SectionHeader from './SectionHeader';
 
 interface WizardStepProps {
 	actionButton?: React.ReactElement;
 	children: React.ReactNode;
 	description: string;
 	initialValues?: FormikValues;
+	isStepValid?: (values: FormikValues) => boolean;
 	onSubmit?: FormikConfig<FormikValues>['onSubmit'];
 	title: string;
 	validate?: FormikConfig<FormikValues>['validate'];
@@ -27,11 +28,9 @@ export function WizardStep({children}: WizardStepProps) {
 export function Wizard({
 	backURL,
 	children,
-	debug = process.env.NODE_ENV === 'development',
 }: {
 	backURL: string;
 	children: React.ReactElement<WizardStepProps>[];
-	debug?: boolean;
 }) {
 	const [stepNumber, setStepNumber] = useState(0);
 	const [formState, setFormState] = useState({});
@@ -43,14 +42,17 @@ export function Wizard({
 	const totalSteps = steps.length;
 
 	const step = steps[stepNumber] as React.ReactElement<WizardStepProps>;
-	const {
-		actionButton,
-		description,
-		initialValues,
-		onSubmit,
-		title,
-		validate,
-	} = step.props;
+
+	const {actionButton, description, isStepValid, onSubmit, title, validate} =
+		step.props;
+
+	const initialValues = steps.reduce(
+		(accumulator, {props}) => ({
+			...accumulator,
+			...props.initialValues,
+		}),
+		{} as FormikValues
+	);
 
 	const next = () => {
 		setStepNumber((stepNumber) => Math.min(stepNumber + 1, totalSteps - 1));
@@ -116,15 +118,7 @@ export function Wizard({
 						})}
 					</ClayMultiStepNav>
 
-					<header className="mb-1 sheet-header">
-						<div className="mb-1 sheet-title">{title}</div>
-
-						{description && (
-							<p className="sheet-text text-secondary">
-								{description}
-							</p>
-						)}
-					</header>
+					<SectionHeader subtitle={description} title={title} />
 
 					{step}
 
@@ -132,14 +126,13 @@ export function Wizard({
 						actionButton={actionButton}
 						backURL={backURL}
 						continueDisabled={
-							formik.isValidating ||
 							formik.isSubmitting ||
-							!formik.isValid
+							(isStepValid
+								? !isStepValid(formik.values)
+								: !formik.isValid)
 						}
 						onPrevious={stepNumber > 0 ? previous : undefined}
 					/>
-
-					{debug && <FormikDebug />}
 				</Form>
 			)}
 		</Formik>

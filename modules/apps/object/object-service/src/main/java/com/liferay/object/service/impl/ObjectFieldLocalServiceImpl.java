@@ -764,6 +764,10 @@ public class ObjectFieldLocalServiceImpl
 			_validateObjectRelationshipDeletionType(objectFieldId, required);
 		}
 
+		if (objectField.isRequired() == required) {
+			return objectField;
+		}
+
 		objectField.setRequired(required);
 
 		return objectFieldPersistence.update(objectField);
@@ -1256,7 +1260,12 @@ public class ObjectFieldLocalServiceImpl
 		if (ObjectDefinitionThreadLocal.isDeleteObjectDefinitionId(
 				objectField.getObjectDefinitionId())) {
 
-			return objectFieldPersistence.remove(objectField);
+			objectField = objectFieldPersistence.remove(objectField);
+
+			_objectFieldSettingLocalService.deleteObjectFieldObjectFieldSetting(
+				objectField);
+
+			return objectField;
 		}
 
 		if (objectDefinition.isSystem() && objectField.isSystem() &&

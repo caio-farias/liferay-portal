@@ -15,6 +15,7 @@ import com.liferay.changeset.service.ChangesetEntryLocalService;
 import com.liferay.exportimport.changeset.Changeset;
 import com.liferay.exportimport.changeset.ChangesetManager;
 import com.liferay.exportimport.changeset.constants.ChangesetPortletKeys;
+import com.liferay.exportimport.constants.ExportImportConstants;
 import com.liferay.exportimport.kernel.exception.ExportImportRuntimeException;
 import com.liferay.exportimport.kernel.lar.BasePortletDataHandler;
 import com.liferay.exportimport.kernel.lar.ExportImportClassedModelUtil;
@@ -48,6 +49,7 @@ import com.liferay.portal.model.adapter.util.ModelAdapterUtil;
 
 import jakarta.portlet.PortletPreferences;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -100,6 +102,11 @@ public class ChangesetPortletDataHandler extends BasePortletDataHandler {
 	@Override
 	public String getSchemaVersion() {
 		return SCHEMA_VERSION;
+	}
+
+	@Override
+	public String getSectionKey() {
+		return ExportImportConstants.SECTION_KEY_OTHER;
 	}
 
 	@Activate
@@ -211,6 +218,8 @@ public class ChangesetPortletDataHandler extends BasePortletDataHandler {
 					portletDataContext, entityElement);
 			}
 		}
+
+		_importPostProcessStagedModels(entityTypeElements, portletDataContext);
 
 		String[] portletResourceNames = _getPortletResourceNames(
 			portletDataContext);
@@ -351,6 +360,48 @@ public class ChangesetPortletDataHandler extends BasePortletDataHandler {
 			portletDataContext.getParameterMap();
 
 		return parameterMap.getOrDefault("portletResourceNames", new String[0]);
+	}
+
+	private void _importPostProcessStagedModels(
+			List<Element> entityTypeElements,
+			PortletDataContext portletDataContext)
+		throws Exception {
+
+		Map<String, Map<?, ?>> newPrimaryKeysMaps =
+			portletDataContext.getNewPrimaryKeysMaps();
+		Map<String, String> postProcessStagedModelPaths = new HashMap<>();
+
+		for (Map.Entry<String, Map<?, ?>> entry :
+				newPrimaryKeysMaps.entrySet()) {
+
+			String key = entry.getKey();
+
+			if (key.endsWith(".postProcessStagedModelPath")) {
+				postProcessStagedModelPaths.putAll(
+					(Map<String, String>)entry.getValue());
+			}
+		}
+
+		if (postProcessStagedModelPaths.isEmpty()) {
+			return;
+		}
+
+		for (String modelPath : postProcessStagedModelPaths.values()) {
+			portletDataContext.removePrimaryKey(modelPath);
+		}
+
+		for (Element entityTypeElement : entityTypeElements) {
+			List<Element> entityElements = entityTypeElement.elements();
+
+			for (Element entityElement : entityElements) {
+				String uuid = entityElement.attributeValue("uuid");
+
+				if (postProcessStagedModelPaths.remove(uuid) != null) {
+					StagedModelDataHandlerUtil.importStagedModel(
+						portletDataContext, entityElement);
+				}
+			}
+		}
 	}
 
 	private boolean _isExportModel(

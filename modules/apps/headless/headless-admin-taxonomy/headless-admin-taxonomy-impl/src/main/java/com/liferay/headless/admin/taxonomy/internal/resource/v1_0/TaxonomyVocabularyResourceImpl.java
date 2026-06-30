@@ -18,7 +18,9 @@ import com.liferay.asset.kernel.model.ClassTypeReader;
 import com.liferay.asset.kernel.service.AssetVocabularyGroupRelLocalService;
 import com.liferay.asset.kernel.service.AssetVocabularyLocalService;
 import com.liferay.asset.kernel.service.AssetVocabularyService;
+import com.liferay.depot.constants.DepotConstants;
 import com.liferay.depot.util.SiteConnectedGroupGroupProviderUtil;
+import com.liferay.exportimport.constants.ExportImportConstants;
 import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate;
 import com.liferay.headless.admin.taxonomy.dto.v1_0.AssetLibrary;
 import com.liferay.headless.admin.taxonomy.dto.v1_0.AssetType;
@@ -35,19 +37,17 @@ import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Group;
-import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.Organization;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.search.BooleanClause;
-import com.liferay.portal.kernel.search.BooleanClauseFactoryUtil;
 import com.liferay.portal.kernel.search.BooleanClauseOccur;
+import com.liferay.portal.kernel.search.BooleanQuery;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.filter.BooleanFilter;
 import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.search.filter.TermsFilter;
-import com.liferay.portal.kernel.search.generic.BooleanQueryImpl;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
 import com.liferay.portal.kernel.service.GroupLocalService;
@@ -60,6 +60,7 @@ import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.odata.entity.EntityModel;
 import com.liferay.portal.vulcan.aggregation.Aggregation;
 import com.liferay.portal.vulcan.dto.action.DTOActionProvider;
@@ -174,6 +175,11 @@ public class TaxonomyVocabularyResourceImpl
 			}
 
 			@Override
+			public String getSectionKey() {
+				return ExportImportConstants.SECTION_KEY_CONTENT_AND_DATA;
+			}
+
+			@Override
 			public boolean isStagingSupported() {
 				return true;
 			}
@@ -229,7 +235,9 @@ public class TaxonomyVocabularyResourceImpl
 			_getSettings(
 				assetTypes, assetVocabulary.getGroupId(),
 				GetterUtil.getBoolean(
-					taxonomyVocabulary.getMultiValued(), true)),
+					taxonomyVocabulary.getMultiValued(),
+					assetVocabulary.isMultiValued()),
+				assetVocabulary.isSystem()),
 			_getVisibilityType(taxonomyVocabulary.getVisibilityType()),
 			ServiceContextBuilder.create(
 				assetVocabulary.getGroupId(), contextHttpServletRequest,
@@ -492,10 +500,11 @@ public class TaxonomyVocabularyResourceImpl
 
 		Map<Locale, String> titleMap = LocalizedMapUtil.getLocalizedMap(
 			contextAcceptLanguage.getPreferredLocale(),
-			taxonomyVocabulary.getName(), taxonomyVocabulary.getName_i18n());
+			_getLocalizedMapDefaultValue(taxonomyVocabulary.getName()),
+			taxonomyVocabulary.getName_i18n());
 		Map<Locale, String> descriptionMap = LocalizedMapUtil.getLocalizedMap(
 			contextAcceptLanguage.getPreferredLocale(),
-			taxonomyVocabulary.getDescription(),
+			_getLocalizedMapDefaultValue(taxonomyVocabulary.getDescription()),
 			taxonomyVocabulary.getDescription_i18n());
 
 		LocalizedMapUtil.validateI18n(
@@ -509,7 +518,8 @@ public class TaxonomyVocabularyResourceImpl
 			_getSettings(
 				taxonomyVocabulary.getAssetTypes(), siteId,
 				GetterUtil.getBoolean(
-					taxonomyVocabulary.getMultiValued(), true)),
+					taxonomyVocabulary.getMultiValued(), true),
+				GetterUtil.getBoolean(taxonomyVocabulary.getSystem())),
 			_getVisibilityType(taxonomyVocabulary.getVisibilityType()),
 			_getServiceContext(siteId, taxonomyVocabulary));
 
@@ -523,10 +533,29 @@ public class TaxonomyVocabularyResourceImpl
 			_assetVocabularyGroupRelLocalService.setAssetVocabularyGroupRels(
 				assetVocabulary.getVocabularyId(),
 				_getAssetLibraryGroupIds(
-					group.getCompanyId(), taxonomyVocabulary));
+					group.getCompanyId(), taxonomyVocabulary),
+				DepotConstants.TYPE_SPACE);
 		}
 
 		return assetVocabulary;
+	}
+
+	private Map<String, Map<String, String>> _getActions(
+		AssetVocabulary assetVocabulary) {
+
+		Map<String, Map<String, String>> actions =
+			_dtoActionProvider.getActions(
+				assetVocabulary.getGroupId(), assetVocabulary.getVocabularyId(),
+				contextUriInfo, contextUser.getUserId());
+
+		if (FeatureFlagManagerUtil.isEnabled(
+				assetVocabulary.getCompanyId(), "LPD-86291") &&
+			assetVocabulary.isSystem()) {
+
+			actions.remove("delete");
+		}
+
+		return actions;
 	}
 
 	private AssetLibrary[] _getAssetLibraries(AssetVocabulary assetVocabulary) {
@@ -795,6 +824,14 @@ public class TaxonomyVocabularyResourceImpl
 		return null;
 	}
 
+	private String _getLocalizedMapDefaultValue(String value) {
+		if (Validator.isBlank(value)) {
+			return null;
+		}
+
+		return value;
+	}
+
 	private String _getModelResource(
 		AssetRendererFactory<?> assetRendererFactory) {
 
@@ -829,10 +866,14 @@ public class TaxonomyVocabularyResourceImpl
 	}
 
 	private String _getSettings(
-		AssetType[] assetTypes, long groupId, boolean multiValued) {
+		AssetType[] assetTypes, long groupId, boolean multiValued,
+		boolean system) {
 
 		AssetVocabularySettingsHelper assetVocabularySettingsHelper =
 			new AssetVocabularySettingsHelper();
+
+		assetVocabularySettingsHelper.setMultiValued(multiValued);
+		assetVocabularySettingsHelper.setSystem(system);
 
 		if (ArrayUtil.isEmpty(assetTypes)) {
 			return assetVocabularySettingsHelper.toString();
@@ -871,8 +912,6 @@ public class TaxonomyVocabularyResourceImpl
 		assetVocabularySettingsHelper.setClassNameIdsAndClassTypePKs(
 			classNameIds, classTypePKs, requiredClassNameIds);
 
-		assetVocabularySettingsHelper.setMultiValued(multiValued);
-
 		return assetVocabularySettingsHelper.toString();
 	}
 
@@ -908,8 +947,8 @@ public class TaxonomyVocabularyResourceImpl
 
 					searchContext.setBooleanClauses(
 						new BooleanClause[] {
-							BooleanClauseFactoryUtil.create(
-								new BooleanQueryImpl() {
+							new BooleanClause<>(
+								new BooleanQuery() {
 									{
 										if (filter != null) {
 											booleanFilter.add(
@@ -920,7 +959,7 @@ public class TaxonomyVocabularyResourceImpl
 										setPreBooleanFilter(booleanFilter);
 									}
 								},
-								BooleanClauseOccur.MUST.getName())
+								BooleanClauseOccur.MUST)
 						});
 				}
 				else {
@@ -958,11 +997,7 @@ public class TaxonomyVocabularyResourceImpl
 
 		return new TaxonomyVocabulary() {
 			{
-				setActions(
-					() -> _dtoActionProvider.getActions(
-						assetVocabulary.getGroupId(),
-						assetVocabulary.getVocabularyId(), contextUriInfo,
-						contextUser.getUserId()));
+				setActions(() -> _getActions(assetVocabulary));
 				setAssetLibraries(() -> _getAssetLibraries(assetVocabulary));
 				setAssetLibraryKey(
 					() -> {
@@ -1024,6 +1059,7 @@ public class TaxonomyVocabularyResourceImpl
 
 						return GroupUtil.getSiteId(group);
 					});
+				setSystem(assetVocabulary::isSystem);
 				setUuid(assetVocabulary::getUuid);
 				setVisibilityType(
 					() -> {
@@ -1057,11 +1093,11 @@ public class TaxonomyVocabularyResourceImpl
 
 		Map<Locale, String> titleMap = LocalizedMapUtil.getLocalizedMap(
 			contextAcceptLanguage.getPreferredLocale(),
-			taxonomyVocabulary.getName(), taxonomyVocabulary.getName_i18n(),
-			assetVocabulary.getTitleMap());
+			_getLocalizedMapDefaultValue(taxonomyVocabulary.getName()),
+			taxonomyVocabulary.getName_i18n(), assetVocabulary.getTitleMap());
 		Map<Locale, String> descriptionMap = LocalizedMapUtil.getLocalizedMap(
 			contextAcceptLanguage.getPreferredLocale(),
-			taxonomyVocabulary.getDescription(),
+			_getLocalizedMapDefaultValue(taxonomyVocabulary.getDescription()),
 			taxonomyVocabulary.getDescription_i18n(),
 			assetVocabulary.getDescriptionMap());
 
@@ -1070,19 +1106,10 @@ public class TaxonomyVocabularyResourceImpl
 			new HashSet<>(descriptionMap.keySet()));
 
 		if (FeatureFlagManagerUtil.isEnabled(companyId, "LPD-17564")) {
-			if (ArrayUtil.isNotEmpty(taxonomyVocabulary.getAssetLibraries())) {
-				_assetVocabularyGroupRelLocalService.
-					setAssetVocabularyGroupRels(
-						assetVocabulary.getVocabularyId(),
-						_getAssetLibraryGroupIds(
-							companyId, taxonomyVocabulary));
-			}
-			else {
-				_assetVocabularyGroupRelLocalService.
-					setAssetVocabularyGroupRels(
-						assetVocabulary.getVocabularyId(),
-						new long[] {GroupConstants.GROUP_ID_ALL});
-			}
+			_assetVocabularyGroupRelLocalService.setAssetVocabularyGroupRels(
+				assetVocabulary.getVocabularyId(),
+				_getAssetLibraryGroupIds(companyId, taxonomyVocabulary),
+				DepotConstants.TYPE_SPACE);
 		}
 
 		return _assetVocabularyService.updateVocabulary(
@@ -1093,7 +1120,10 @@ public class TaxonomyVocabularyResourceImpl
 			_getSettings(
 				taxonomyVocabulary.getAssetTypes(),
 				assetVocabulary.getGroupId(),
-				taxonomyVocabulary.getMultiValued()),
+				GetterUtil.getBoolean(
+					taxonomyVocabulary.getMultiValued(),
+					assetVocabulary.isMultiValued()),
+				assetVocabulary.isSystem()),
 			_getVisibilityType(taxonomyVocabulary.getVisibilityType()),
 			ServiceContextBuilder.create(
 				assetVocabulary.getGroupId(), contextHttpServletRequest,

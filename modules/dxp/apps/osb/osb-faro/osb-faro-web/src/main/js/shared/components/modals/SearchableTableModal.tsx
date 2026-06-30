@@ -15,7 +15,7 @@ import {useRequest} from 'shared/hooks/useRequest';
 import {useStatefulPagination} from 'shared/hooks/useStatefulPagination';
 
 interface ISearchableTableModalProps {
-	checkDisabled: (item: {[key: string]: any}) => boolean;
+	checkDisabled: (item?: object) => boolean;
 	className: string;
 	columns: Column[];
 	dataSourceFn: (params: {[key: string]: any}) => Promise<any>;
@@ -75,7 +75,7 @@ const SearchableTableModal: React.FC<ISearchableTableModalProps> = ({
 		orderIOMap,
 		page,
 		query
-	} = useStatefulPagination(null, {
+	} = useStatefulPagination(undefined, {
 		initialDelta,
 		initialFilterBy,
 		initialOrderIOMap,
@@ -84,8 +84,9 @@ const SearchableTableModal: React.FC<ISearchableTableModalProps> = ({
 	});
 
 	useEffect(() => {
-		if (initialSelectedItems) {
-			selectionDispatch({
+		if (initialSelectedItems?.length) {
+			selectionDispatch?.({type: ActionTypes.ClearAll});
+			selectionDispatch?.({
 				payload: {items: initialSelectedItems},
 				type: ActionTypes.Add
 			});
@@ -108,37 +109,37 @@ const SearchableTableModal: React.FC<ISearchableTableModalProps> = ({
 		<Modal className={className} size='lg'>
 			<Modal.Header onClose={onClose} title={title} />
 
-			<Modal.Body>
+			<Modal.Body className='p-0'>
 				<div className='text-secondary'>{instruction}</div>
-			</Modal.Body>
 
-			<CrossPageSelect
-				autoFocusSearch
-				checkDisabled={checkDisabled}
-				columns={columns}
-				dataSourceFn={dataSourceFn}
-				delta={delta}
-				entityLabel={entityLabel}
-				error={error}
-				items={data?.items}
-				loading={loading}
-				noResultsIcon={noResultsIcon}
-				onDeltaChange={onDeltaChange}
-				onFilterByChange={onFilterByChange}
-				onOrderIOMapChange={onOrderIOMapChange}
-				onPageChange={onPageChange}
-				onQueryChange={onQueryChange}
-				orderByOptions={orderByOptions}
-				orderIOMap={orderIOMap}
-				page={page}
-				pageDisplay={false}
-				query={query}
-				rowIdentifier='id'
-				selectedItems={selectedItems.map(({id}) => id)}
-				selectedItemsIOMap={selectedItems}
-				showCheckbox
-				total={data?.total}
-			/>
+				<CrossPageSelect
+					autoFocusSearch
+					checkDisabled={checkDisabled}
+					columns={columns}
+					dataSourceFn={dataSourceFn}
+					delta={delta}
+					entityLabel={entityLabel}
+					error={error}
+					items={data?.items}
+					loading={loading}
+					noResultsIcon={noResultsIcon}
+					onDeltaChange={onDeltaChange}
+					onFilterByChange={onFilterByChange}
+					onOrderIOMapChange={onOrderIOMapChange}
+					onPageChange={onPageChange}
+					onQueryChange={onQueryChange}
+					orderByOptions={orderByOptions}
+					orderIOMap={orderIOMap}
+					page={page}
+					pageDisplay={false}
+					query={query}
+					rowIdentifier='id'
+					selectedItems={selectedItems.map(({id}) => id)}
+					selectedItemsIOMap={selectedItems}
+					showCheckbox
+					total={data?.total}
+				/>
+			</Modal.Body>
 
 			<Modal.Footer>
 				<ClayButton

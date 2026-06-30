@@ -12,6 +12,7 @@ import com.liferay.asset.kernel.service.AssetTagGroupRelLocalService;
 import com.liferay.asset.kernel.service.AssetTagLocalServiceUtil;
 import com.liferay.asset.test.util.AssetTestUtil;
 import com.liferay.depot.constants.DepotConstants;
+import com.liferay.depot.constants.DepotRolesConstants;
 import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.headless.admin.taxonomy.client.dto.v1_0.AssetLibrary;
@@ -24,9 +25,14 @@ import com.liferay.headless.admin.taxonomy.client.resource.v1_0.KeywordResource;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
+import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.portal.kernel.service.GroupLocalService;
+import com.liferay.portal.kernel.service.RoleLocalService;
+import com.liferay.portal.kernel.service.UserGroupRoleLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.DataGuard;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
@@ -36,6 +42,7 @@ import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
@@ -43,8 +50,10 @@ import com.liferay.portal.test.rule.Inject;
 import com.liferay.site.cms.site.initializer.test.util.CMSTestUtil;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -215,8 +224,11 @@ public class KeywordResourceTest extends BaseKeywordResourceTestCase {
 				"delete",
 				HashMapBuilder.put(
 					"href",
-					"http://localhost:8080/o/headless-admin-taxonomy/v1.0" +
-						"/keywords/" + getKeyword.getId()
+					StringBundler.concat(
+						"http://localhost:",
+						PortalUtil.getPortalServerPort(false),
+						"/o/headless-admin-taxonomy/v1.0/keywords/",
+						getKeyword.getId())
 				).put(
 					"method", "DELETE"
 				).build()
@@ -224,8 +236,11 @@ public class KeywordResourceTest extends BaseKeywordResourceTestCase {
 				"get",
 				HashMapBuilder.put(
 					"href",
-					"http://localhost:8080/o/headless-admin-taxonomy/v1.0" +
-						"/keywords/" + getKeyword.getId()
+					StringBundler.concat(
+						"http://localhost:",
+						PortalUtil.getPortalServerPort(false),
+						"/o/headless-admin-taxonomy/v1.0/keywords/",
+						getKeyword.getId())
 				).put(
 					"method", "GET"
 				).build()
@@ -233,8 +248,11 @@ public class KeywordResourceTest extends BaseKeywordResourceTestCase {
 				"replace",
 				HashMapBuilder.put(
 					"href",
-					"http://localhost:8080/o/headless-admin-taxonomy/v1.0" +
-						"/keywords/" + getKeyword.getId()
+					StringBundler.concat(
+						"http://localhost:",
+						PortalUtil.getPortalServerPort(false),
+						"/o/headless-admin-taxonomy/v1.0/keywords/",
+						getKeyword.getId())
 				).put(
 					"method", "PUT"
 				).build()
@@ -243,8 +261,10 @@ public class KeywordResourceTest extends BaseKeywordResourceTestCase {
 				HashMapBuilder.put(
 					"href",
 					StringBundler.concat(
-						"http://localhost:8080/o/headless-admin-taxonomy/v1.0",
-						"/keywords/", getKeyword.getId(), "/subscribe")
+						"http://localhost:",
+						PortalUtil.getPortalServerPort(false),
+						"/o/headless-admin-taxonomy/v1.0/keywords/",
+						getKeyword.getId(), "/subscribe")
 				).put(
 					"method", "PUT"
 				).build()
@@ -253,8 +273,10 @@ public class KeywordResourceTest extends BaseKeywordResourceTestCase {
 				HashMapBuilder.put(
 					"href",
 					StringBundler.concat(
-						"http://localhost:8080/o/headless-admin-taxonomy/v1.0",
-						"/keywords/", getKeyword.getId(), "/unsubscribe")
+						"http://localhost:",
+						PortalUtil.getPortalServerPort(false),
+						"/o/headless-admin-taxonomy/v1.0/keywords/",
+						getKeyword.getId(), "/unsubscribe")
 				).put(
 					"method", "PUT"
 				).build()
@@ -369,6 +391,7 @@ public class KeywordResourceTest extends BaseKeywordResourceTestCase {
 	@FeatureFlag("LPD-17564")
 	@Override
 	@Test
+	@TestInfo("LPD-90751")
 	public void testGetSiteKeywordsPage() throws Exception {
 		super.testGetSiteKeywordsPage();
 
@@ -386,7 +409,9 @@ public class KeywordResourceTest extends BaseKeywordResourceTestCase {
 		irrelevantGroup = originalIrrelevantGroup;
 		testGroup = originalTestGroup;
 
-		_cmsAdministratorUser = UserTestUtil.addUser(
+		_testGetSiteKeywordsPageWithSpaceDepotEntry();
+
+		_cmsAdministratorUser = UserTestUtil.addCompanyUser(
 			testCompany, RoleConstants.CMS_ADMINISTRATOR);
 
 		_userLocalService.updatePassword(
@@ -450,7 +475,7 @@ public class KeywordResourceTest extends BaseKeywordResourceTestCase {
 
 		testGroup = CMSTestUtil.getOrAddGroup(KeywordResourceTest.class);
 
-		_cmsAdministratorUser = UserTestUtil.addUser(
+		_cmsAdministratorUser = UserTestUtil.addCompanyUser(
 			testCompany, RoleConstants.CMS_ADMINISTRATOR);
 
 		_userLocalService.updatePassword(
@@ -462,13 +487,90 @@ public class KeywordResourceTest extends BaseKeywordResourceTestCase {
 		).authentication(
 			_cmsAdministratorUser.getEmailAddress(), "test"
 		).endpoint(
-			testCompany.getVirtualHostname(), 8080, "http"
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
 		).locale(
 			LocaleUtil.getDefault()
 		).build();
 
 		Keyword postKeyword = cmsAdminKeywordResource.postSiteKeyword(
 			testGroup.getGroupId(), randomKeyword);
+
+		assertEquals(randomKeyword, postKeyword);
+		assertValid(postKeyword);
+
+		List<AssetTagGroupRel> assetTagGroupRels =
+			_assetTagGroupRelLocalService.getAssetTagGroupRelsByTagId(
+				postKeyword.getId());
+
+		Assert.assertEquals(
+			assetTagGroupRels.toString(), 1, assetTagGroupRels.size());
+
+		AssetTagGroupRel assetTagGroupRel = assetTagGroupRels.get(0);
+
+		Assert.assertEquals(
+			assetTagGroupRels.toString(), GroupConstants.ANY_PARENT_GROUP_ID,
+			assetTagGroupRel.getGroupId());
+
+		testGroup = originalTestGroup;
+	}
+
+	@FeatureFlag("LPD-17564")
+	@Test
+	public void testPostSiteKeywordAsSpaceContentReviewer() throws Exception {
+		Group originalTestGroup = testGroup;
+
+		testGroup = CMSTestUtil.getOrAddGroup(KeywordResourceTest.class);
+
+		DepotEntry space = _depotEntryLocalService.addDepotEntry(
+			RandomTestUtil.randomLocaleStringMap(), null,
+			DepotConstants.TYPE_SPACE,
+			ServiceContextTestUtil.getServiceContext(testGroup.getGroupId()));
+
+		Group spaceGroup = space.getGroup();
+
+		_spaceContentReviewerUser = UserTestUtil.addUser();
+
+		_userLocalService.updatePassword(
+			_spaceContentReviewerUser.getUserId(), "test", "test", false, true);
+
+		_groupLocalService.addUserGroup(
+			_spaceContentReviewerUser.getUserId(), spaceGroup);
+
+		Role contentReviewerRole = _roleLocalService.getRole(
+			testCompany.getCompanyId(),
+			DepotRolesConstants.ASSET_LIBRARY_CONTENT_REVIEWER);
+
+		_userGroupRoleLocalService.addUserGroupRoles(
+			_spaceContentReviewerUser.getUserId(), spaceGroup.getGroupId(),
+			new long[] {contentReviewerRole.getRoleId()});
+
+		KeywordResource spaceContentReviewerKeywordResource =
+			KeywordResource.builder(
+			).authentication(
+				_spaceContentReviewerUser.getEmailAddress(), "test"
+			).endpoint(
+				testCompany.getVirtualHostname(),
+				PortalUtil.getPortalServerPort(false), "http"
+			).locale(
+				LocaleUtil.getDefault()
+			).build();
+
+		Keyword randomKeyword = randomKeyword();
+
+		randomKeyword.setAssetLibraries(
+			new AssetLibrary[] {
+				new AssetLibrary() {
+					{
+						id = spaceGroup.getGroupId();
+						scopeKey = spaceGroup.getGroupKey();
+					}
+				}
+			});
+
+		Keyword postKeyword =
+			spaceContentReviewerKeywordResource.postSiteKeyword(
+				testGroup.getGroupId(), randomKeyword);
 
 		assertEquals(randomKeyword, postKeyword);
 		assertValid(postKeyword);
@@ -552,9 +654,10 @@ public class KeywordResourceTest extends BaseKeywordResourceTestCase {
 		httpInvoker.httpMethod(HttpInvoker.HttpMethod.PUT);
 		httpInvoker.path(
 			StringBundler.concat(
-				"http://localhost:8080/o/headless-admin-taxonomy/v1.0/keywords",
-				"/", keyword1.getId(), "/merge?fromKeywordIds=",
-				keyword4.getId(), "&fromKeywordIds=", keyword5.getId()));
+				"http://localhost:", PortalUtil.getPortalServerPort(false),
+				"/o/headless-admin-taxonomy/v1.0/keywords/", keyword1.getId(),
+				"/merge?fromKeywordIds=", keyword4.getId(), "&fromKeywordIds=",
+				keyword5.getId()));
 		httpInvoker.userNameAndPassword(
 			"test@liferay.com:" + PropsValues.DEFAULT_ADMIN_PASSWORD);
 
@@ -712,12 +815,54 @@ public class KeywordResourceTest extends BaseKeywordResourceTestCase {
 		};
 	}
 
+	private void _testGetSiteKeywordsPageWithSpaceDepotEntry()
+		throws Exception {
+
+		Group originalTestGroup = testGroup;
+
+		testGroup = CMSTestUtil.getOrAddGroup(KeywordResourceTest.class);
+
+		DepotEntry depotEntry = _depotEntryLocalService.addDepotEntry(
+			RandomTestUtil.randomLocaleStringMap(), null,
+			DepotConstants.TYPE_SPACE,
+			ServiceContextTestUtil.getServiceContext(testGroup.getGroupId()));
+
+		Group depotEntryGroup = depotEntry.getGroup();
+
+		Keyword keyword1 = _postKeywordWithAssetLibraries();
+		Keyword keyword2 = _postKeywordWithAssetLibraries(
+			new AssetLibrary() {
+				{
+					id = depotEntryGroup.getGroupId();
+					scopeKey = depotEntryGroup.getGroupKey();
+				}
+			});
+
+		Page<Keyword> page = keywordResource.getSiteKeywordsPage(
+			depotEntryGroup.getGroupId(), null, null, null,
+			Pagination.of(1, 100), null);
+
+		Set<String> keywordNames = new HashSet<>();
+
+		for (Keyword keyword : page.getItems()) {
+			keywordNames.add(keyword.getName());
+		}
+
+		Assert.assertTrue(
+			keywordNames.toString(), keywordNames.contains(keyword1.getName()));
+		Assert.assertTrue(
+			keywordNames.toString(), keywordNames.contains(keyword2.getName()));
+
+		testGroup = originalTestGroup;
+	}
+
 	private void _testGetSiteKeywordsPageWithUser(User user) throws Exception {
 		KeywordResource userKeywordResource = KeywordResource.builder(
 		).authentication(
 			user.getEmailAddress(), "test"
 		).endpoint(
-			testCompany.getVirtualHostname(), 8080, "http"
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
 		).locale(
 			LocaleUtil.getDefault()
 		).build();
@@ -747,8 +892,20 @@ public class KeywordResourceTest extends BaseKeywordResourceTestCase {
 	@Inject
 	private DepotEntryLocalService _depotEntryLocalService;
 
+	@Inject
+	private GroupLocalService _groupLocalService;
+
 	@DeleteAfterTestRun
 	private User _regularUser;
+
+	@Inject
+	private RoleLocalService _roleLocalService;
+
+	@DeleteAfterTestRun
+	private User _spaceContentReviewerUser;
+
+	@Inject
+	private UserGroupRoleLocalService _userGroupRoleLocalService;
 
 	@Inject
 	private UserLocalService _userLocalService;

@@ -3,10 +3,14 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {Locator, Page} from '@playwright/test';
+import {Locator, Page, expect} from '@playwright/test';
 
+import {OBJECT_ENTRY_FOLDER_CLASS_NAME} from '../../../../../../apps/site/site-cms-site-initializer/src/main/resources/META-INF/resources/js/common/utils/constants';
+import {ApiHelpers} from '../../../../helpers/ApiHelpers';
 import {clickAndExpectToBeVisible} from '../../../../utils/clickAndExpectToBeVisible';
 import {PORTLET_URLS} from '../../../../utils/portletUrls';
+import {getTempDir} from '../../../../utils/temp';
+import {waitForAlert} from '../../../../utils/waitForAlert';
 import {DataSetPage} from './DataSetPage';
 
 // Page for All, Content and Files page
@@ -16,17 +20,33 @@ interface ExecItemActionArgs {
 		| 'Copy To'
 		| 'Delete'
 		| 'Download'
+		| 'Duplicate'
 		| 'Edit'
 		| 'Expire'
+		| 'Export for Translation'
+		| 'Move'
+		| 'Move To'
 		| 'Share'
 		| 'Show Details'
 		| 'View'
 		| 'View History';
 	filter: string;
+	parentAction?: 'Copy';
+}
+
+interface CopyOrMoveDestinationArgs {
+	destinationFolder: string;
+	destinationSpace: string;
+}
+
+interface ItemCopyOrMoveArgs extends CopyOrMoveDestinationArgs {
+	itemTitle: string;
 }
 
 export class AssetsPage {
 	readonly page: Page;
+
+	readonly apiHelpers: ApiHelpers;
 
 	readonly dataSetFragmentPage: DataSetPage;
 	readonly galleryNavigation: Locator;
@@ -57,6 +77,8 @@ export class AssetsPage {
 
 	constructor(page: Page) {
 		this.page = page;
+
+		this.apiHelpers = new ApiHelpers(page);
 
 		this.dataSetFragmentPage = new DataSetPage(page);
 		this.galleryNavigation = page.locator('.fds-gallery-view__navigation');
@@ -103,14 +125,37 @@ export class AssetsPage {
 		await this.page.getByRole('heading', {name: 'All'}).waitFor();
 	}
 
-	async gotoContents() {
-		await this.page.goto(PORTLET_URLS.cmsContents);
-		await this.page.getByRole('heading', {name: 'Contents'}).waitFor();
+	async gotoContents(spaceName?: string) {
+		if (spaceName) {
+			const rootFolder =
+				await this.apiHelpers.objectFolder.getObjectEntryFolderByExternalReferenceCode(
+					{externalReferenceCode: 'L_CONTENTS', scopeKey: spaceName}
+				);
+
+			await this.gotoFolder(rootFolder.id, rootFolder.title);
+		}
+		else {
+			await this.page.goto(PORTLET_URLS.cmsContents);
+			await this.page.getByRole('heading', {name: 'Contents'}).waitFor();
+		}
 	}
 
 	async gotoFiles() {
 		await this.page.goto(PORTLET_URLS.cmsFiles);
 		await this.page.getByRole('heading', {name: 'Files'}).waitFor();
+	}
+
+	async gotoFolder(folderId: string, folderTitle: string) {
+		const className =
+			await this.apiHelpers.jsonWebServicesClassName.fetchClassName(
+				OBJECT_ENTRY_FOLDER_CLASS_NAME
+			);
+
+		await this.page.goto(
+			`${PORTLET_URLS.cmsViewFolder}/${className.classNameId}/${folderId}`
+		);
+
+		await this.page.getByTestId(`testId${folderTitle}`).waitFor();
 	}
 
 	async createContent(type: string) {
@@ -129,10 +174,104 @@ export class AssetsPage {
 		await this.dataSetFragmentPage.execBulkItemAction({action});
 	}
 
-	async execItemAction({action, filter}: ExecItemActionArgs) {
+	async expectBulkItemActionHidden(action: string) {
+		await this.dataSetFragmentPage.expectBulkItemActionHidden({action});
+	}
+
+	async bulkCopyTo(args: CopyOrMoveDestinationArgs) {
+		await this.page
+			.getByRole('button', {exact: true, name: 'Copy To'})
+			.click();
+
+		await this.selectCopyOrMoveDestination(args);
+	}
+
+	async bulkMoveTo(args: CopyOrMoveDestinationArgs) {
+		await this.page
+			.getByRole('button', {exact: true, name: 'Move To'})
+			.click();
+
+		await this.selectCopyOrMoveDestination(args);
+	}
+
+	async copyTo({itemTitle, ...destination}: ItemCopyOrMoveArgs) {
+		await this.execItemAction({
+			action: 'Copy To',
+			filter: itemTitle,
+			parentAction: 'Copy',
+		});
+
+		await this.selectCopyOrMoveDestination(destination);
+	}
+
+	async moveTo({itemTitle, ...destination}: ItemCopyOrMoveArgs) {
+		await this.execItemAction({
+			action: 'Move',
+			filter: itemTitle,
+		});
+
+		await this.selectCopyOrMoveDestination(destination);
+	}
+
+	getCopyOrMoveDestinationDialog() {
+		return this.page.getByRole('dialog', {name: /^(Copy|Move) .+ To$/});
+	}
+
+	async selectCopyOrMoveDestination({
+		destinationFolder,
+		destinationSpace,
+	}: CopyOrMoveDestinationArgs) {
+		const dialog = this.getCopyOrMoveDestinationDialog();
+
+		await dialog.waitFor();
+
+		await dialog.getByLabel(destinationSpace).click();
+
+		await dialog
+			.getByRole('radio', {
+				exact: true,
+				name: `Select ${destinationFolder}`,
+			})
+			.click();
+
+		await dialog.getByRole('button', {exact: true, name: 'Select'}).click();
+	}
+
+	async gotoSpaceContents(spaceName: string) {
+		await this.gotoAll();
+
+		await this.page
+			.getByRole('menuitem', {exact: true, name: spaceName})
+			.click();
+
+		await this.page
+			.getByRole('menuitem', {exact: true, name: 'Contents'})
+			.click();
+
+		await this.page.getByRole('heading', {name: 'Contents'}).waitFor();
+	}
+
+	async gotoSpaceFiles(spaceName: string) {
+		await this.gotoAll();
+
+		await this.page
+			.getByRole('menuitem', {exact: true, name: spaceName})
+			.click();
+
+		await this.page
+			.getByRole('menuitem', {exact: true, name: 'Files'})
+			.click();
+
+		await this.page.getByRole('heading', {name: 'Files'}).waitFor();
+
+		await this.changeVisualizationMode('Table');
+	}
+
+	async execItemAction({action, filter, parentAction}: ExecItemActionArgs) {
 		await this.dataSetFragmentPage.execItemAction({
 			action,
 			filter,
+			parentAction,
 		});
 	}
 
@@ -150,6 +289,23 @@ export class AssetsPage {
 
 			await card.getByRole('checkbox').check();
 		}
+	}
+
+	async selectAllItems(spanMultiplePages: boolean) {
+		await this.page.getByTitle('Select Items').click();
+
+		if (spanMultiplePages) {
+			const selectAllLink = this.page.getByRole('button', {
+				exact: true,
+				name: 'Select All',
+			});
+
+			await expect(selectAllLink).toBeVisible();
+
+			await selectAllLink.click();
+		}
+
+		await expect(this.page.getByText('All Selected')).toBeVisible();
 	}
 
 	async navigateByGalleryArrows(direction: 'Previous' | 'Next') {
@@ -171,5 +327,48 @@ export class AssetsPage {
 			}),
 			trigger: this.getCardItem(filter).getByLabel(`${filter} Actions`),
 		});
+	}
+
+	async exportForTranslation(
+		isBulk: boolean,
+		targetLanguages: string[]
+	): Promise<string> {
+		for (const targetLanguage of targetLanguages) {
+			const targetLanguageCheckbox = this.page
+				.locator('.modal')
+				.getByLabel(targetLanguage);
+
+			await targetLanguageCheckbox.check();
+		}
+
+		const downloadPromise = this.page.waitForEvent('download');
+
+		await this.page
+			.locator('.modal-footer')
+			.getByRole('button', {exact: true, name: 'Export'})
+			.click();
+
+		if (isBulk) {
+			await waitForAlert(
+				this.page,
+				'Warning:The export of all selected contents is being prepared. Please do not close this window or navigate to another section.',
+				{
+					type: 'warning',
+				}
+			);
+		}
+
+		await waitForAlert(
+			this.page,
+			'Success:The download will begin shortly'
+		);
+
+		const download = await downloadPromise;
+
+		const filePath = getTempDir() + download.suggestedFilename();
+
+		await download.saveAs(filePath);
+
+		return filePath;
 	}
 }

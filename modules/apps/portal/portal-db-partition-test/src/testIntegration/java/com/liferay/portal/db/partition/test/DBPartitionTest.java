@@ -55,6 +55,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import javax.sql.DataSource;
 
@@ -681,11 +682,11 @@ public class DBPartitionTest extends BaseDBPartitionTestCase {
 	public void testGetClassNameIdsSupplier() throws Exception {
 		_assertClassNameIds(
 			classNameIds -> {
-				for (long classNameId :
-						_classNameLocalService.getClassNameIdsSupplier(
-							new String[] {"class.name.test"}
-						).get()) {
+				Supplier<long[]> classNameIdsSupplier =
+					_classNameLocalService.getClassNameIdsSupplier(
+						new String[] {"class.name.test"});
 
+				for (long classNameId : classNameIdsSupplier.get()) {
 					classNameIds.add(classNameId);
 				}
 			});
@@ -694,10 +695,13 @@ public class DBPartitionTest extends BaseDBPartitionTestCase {
 	@Test
 	public void testGetClassNameIdSupplier() throws Exception {
 		_assertClassNameIds(
-			classNameIds -> classNameIds.add(
-				_classNameLocalService.getClassNameIdSupplier(
-					"class.name.test"
-				).get()));
+			classNameIds -> {
+				Supplier<Long> classNameIdSupplier =
+					_classNameLocalService.getClassNameIdSupplier(
+						"class.name.test");
+
+				classNameIds.add(classNameIdSupplier.get());
+			});
 	}
 
 	@Test
@@ -945,9 +949,6 @@ public class DBPartitionTest extends BaseDBPartitionTestCase {
 	private static final String _CLASS_NAME = DBPartitionTest.class.getName();
 
 	@Inject
-	private static ResourceActionLocalService _resourceActionLocalService;
-
-	@Inject
 	private ClassNameLocalService _classNameLocalService;
 
 	@Inject
@@ -958,5 +959,8 @@ public class DBPartitionTest extends BaseDBPartitionTestCase {
 
 	@Inject
 	private PortletPersistence _portletPersistence;
+
+	@Inject
+	private ResourceActionLocalService _resourceActionLocalService;
 
 }

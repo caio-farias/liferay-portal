@@ -82,7 +82,7 @@ resource "kubernetes_manifest" "argocd_gateway_proxy_config" {
 					envoyDeployment={
 						pod={
 							annotations={
-								"eks.amazonaws.com/role-arn"=data.aws_iam_role.envoy_proxy_role.arn
+								"eks.amazonaws.com/role-arn"=local.envoy_proxy_role_arn
 							}
 						}
 						replicas=2
@@ -93,6 +93,7 @@ resource "kubernetes_manifest" "argocd_gateway_proxy_config" {
 							"service.beta.kubernetes.io/aws-load-balancer-manage-backend-security-group-rules"="false"
 							"service.beta.kubernetes.io/aws-load-balancer-scheme"="internet-facing"
 							"service.beta.kubernetes.io/aws-load-balancer-type"="nlb"
+							"service.beta.kubernetes.io/load-balancer-source-ranges"=join(",", local.argocd_source_ranges)
 						}
 					}
 				}

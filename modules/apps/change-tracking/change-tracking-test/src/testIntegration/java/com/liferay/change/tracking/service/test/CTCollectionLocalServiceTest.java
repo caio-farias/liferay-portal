@@ -30,9 +30,12 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
+import com.liferay.portal.kernel.model.WorkflowDefinitionLink;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.service.WorkflowDefinitionLinkLocalService;
+import com.liferay.portal.kernel.service.WorkflowInstanceLinkLocalService;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
@@ -497,6 +500,59 @@ public class CTCollectionLocalServiceTest {
 	}
 
 	@Test
+	public void testDiscardCTEntry() throws Exception {
+		WorkflowDefinitionLink workflowDefinitionLink =
+			_workflowDefinitionLinkLocalService.updateWorkflowDefinitionLink(
+				TestPropsValues.getUserId(), TestPropsValues.getCompanyId(),
+				_group.getGroupId(), JournalFolder.class.getName(),
+				JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+				JournalArticleConstants.DDM_STRUCTURE_ID_ALL, "Single Approver",
+				1);
+
+		try {
+			JournalArticle journalArticle;
+
+			try (SafeCloseable safeCloseable =
+					CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
+						_ctCollection1.getCtCollectionId())) {
+
+				journalArticle = JournalTestUtil.addArticleWithWorkflow(
+					_group.getGroupId(),
+					JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID, true);
+
+				Assert.assertEquals(
+					WorkflowConstants.STATUS_PENDING,
+					journalArticle.getStatus());
+
+				Assert.assertNotNull(
+					_workflowInstanceLinkLocalService.fetchWorkflowInstanceLink(
+						TestPropsValues.getCompanyId(), _group.getGroupId(),
+						JournalArticle.class.getName(),
+						journalArticle.getId()));
+			}
+
+			_ctCollectionLocalService.discardCTEntry(
+				_ctCollection1.getCtCollectionId(), _journalArticleClassNameId,
+				journalArticle.getId(), false);
+
+			try (SafeCloseable safeCloseable =
+					CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
+						_ctCollection1.getCtCollectionId())) {
+
+				Assert.assertNull(
+					_workflowInstanceLinkLocalService.fetchWorkflowInstanceLink(
+						TestPropsValues.getCompanyId(), _group.getGroupId(),
+						JournalArticle.class.getName(),
+						journalArticle.getId()));
+			}
+		}
+		finally {
+			_workflowDefinitionLinkLocalService.deleteWorkflowDefinitionLink(
+				workflowDefinitionLink);
+		}
+	}
+
+	@Test
 	public void testMoveCTEntryFromExpiredCTCollection() throws Exception {
 		ServiceContext serviceContext =
 			ServiceContextTestUtil.getServiceContext(_group.getGroupId());
@@ -710,38 +766,21 @@ public class CTCollectionLocalServiceTest {
 	}
 
 	@Inject
-	private static AssetEntryLocalService _assetEntryLocalService;
+	private AssetEntryLocalService _assetEntryLocalService;
 
 	@Inject
-	private static AssetTagLocalService _assetTagLocalService;
+	private AssetTagLocalService _assetTagLocalService;
 
 	@Inject
-	private static ClassNameLocalService _classNameLocalService;
-
-	@Inject
-	private static CTCollectionLocalService _ctCollectionLocalService;
-
-	@Inject
-	private static CTEntryLocalService _ctEntryLocalService;
-
-	@Inject
-	private static CTProcessLocalService _ctProcessLocalService;
-
-	private static long _journalArticleClassNameId;
-	private static long _journalFolderClassNameId;
-
-	@Inject
-	private static JournalFolderLocalService _journalFolderLocalService;
-
-	private static long _layoutClassNameId;
-
-	@Inject
-	private static LayoutLocalService _layoutLocalService;
+	private ClassNameLocalService _classNameLocalService;
 
 	private CTCollection _ctCollection1;
 	private CTCollection _ctCollection2;
 	private CTCollection _ctCollection3;
 	private CTCollection _ctCollection4;
+
+	@Inject
+	private CTCollectionLocalService _ctCollectionLocalService;
 
 	@DeleteAfterTestRun
 	private final List<CTCollection> _ctCollections = new ArrayList<>();
@@ -749,9 +788,33 @@ public class CTCollectionLocalServiceTest {
 	@Inject
 	private CTCollectionService _ctCollectionService;
 
+	@Inject
+	private CTEntryLocalService _ctEntryLocalService;
+
+	@Inject
+	private CTProcessLocalService _ctProcessLocalService;
+
 	private Group _group;
+	private long _journalArticleClassNameId;
 
 	@Inject
 	private JournalArticleLocalService _journalArticleLocalService;
+
+	private long _journalFolderClassNameId;
+
+	@Inject
+	private JournalFolderLocalService _journalFolderLocalService;
+
+	private long _layoutClassNameId;
+
+	@Inject
+	private LayoutLocalService _layoutLocalService;
+
+	@Inject
+	private WorkflowDefinitionLinkLocalService
+		_workflowDefinitionLinkLocalService;
+
+	@Inject
+	private WorkflowInstanceLinkLocalService _workflowInstanceLinkLocalService;
 
 }

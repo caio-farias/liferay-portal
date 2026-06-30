@@ -14,6 +14,8 @@ import com.liferay.object.constants.ObjectFolderConstants;
 import com.liferay.object.model.ObjectEntryFolder;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.Sync;
 import com.liferay.portal.kernel.util.HashMapBuilder;
@@ -51,6 +53,78 @@ public class ViewContentsSectionDisplayContextTest
 		new AggregateTestRule(
 			new LiferayIntegrationTestRule(),
 			PermissionCheckerMethodTestRule.INSTANCE);
+
+	@Override
+	public Map<String, Object> getBaseAdditionalProps() throws Exception {
+		return new HashMapBuilder<>().putAll(
+			super.getBaseAdditionalProps()
+		).put(
+			"breadcrumbProps",
+			HashMapBuilder.<String, Object>put(
+				"breadcrumbItems",
+				JSONUtil.putAll(
+					JSONUtil.put(
+						"active", false
+					).put(
+						"href", (String)null
+					).put(
+						"label", "test"
+					))
+			).put(
+				"hideSpace", true
+			).build()
+		).build();
+	}
+
+	@Test
+	@TestInfo("LPD-87118")
+	public void testGetBulkActionDropdownItems() throws Exception {
+		List<FDSActionDropdownItem> bulkActionDropdownItems =
+			getBulkActionDropdownItems();
+
+		Assert.assertEquals(
+			bulkActionDropdownItems.toString(), 13,
+			bulkActionDropdownItems.size());
+
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"trash", "delete", "Delete", null, bulkActionDropdownItems.get(0));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"move-folder", "move-to", "Move To", null,
+			bulkActionDropdownItems.get(1));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"copy", "copy-to", "Copy To", null, bulkActionDropdownItems.get(2));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"copy", "duplicate", "Duplicate", null,
+			bulkActionDropdownItems.get(3));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"time", "expire", "Expire", null, bulkActionDropdownItems.get(4));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"upload", "export-for-translation", "Export for Translation", null,
+			bulkActionDropdownItems.get(5));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"pencil", "edit-categories", "Edit Categories", "post",
+			bulkActionDropdownItems.get(6));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"pencil", "edit-tags", "Edit Tags", "post",
+			bulkActionDropdownItems.get(7));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"password-policies", "permissions", "Permissions", null,
+			bulkActionDropdownItems.get(8));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"password-policies", "default-permissions", "Default Permissions",
+			null, bulkActionDropdownItems.get(9));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"password-policies", "edit-default-permissions-by-role",
+			"Edit Default Permissions by Role", null,
+			bulkActionDropdownItems.get(10));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"password-policies", "edit-permissions-by-role",
+			"Edit Permissions by Role", null, bulkActionDropdownItems.get(11));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"password-policies", "reset-to-default-permissions",
+			"Reset to Default Permissions", null,
+			bulkActionDropdownItems.get(12));
+	}
 
 	@Test
 	public void testGetFDSActionDropdownItems() throws Exception {
@@ -97,8 +171,27 @@ public class ViewContentsSectionDisplayContextTest
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
 			"move-folder", "move", "Move", null,
 			fdsActionDropdownItems.get(10));
+
+		FDSActionDropdownItem copyFDSActionDropdownItem =
+			fdsActionDropdownItems.get(11);
+
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
-			"copy", "copy", "Copy To", null, fdsActionDropdownItems.get(11));
+			"copy", "copy-menu", "Copy", null, "contextual", null,
+			copyFDSActionDropdownItem);
+
+		List<FDSActionDropdownItem> copyFDSActionDropdownItems =
+			(List<FDSActionDropdownItem>)copyFDSActionDropdownItem.get("items");
+
+		Assert.assertEquals(
+			copyFDSActionDropdownItems.toString(), 2,
+			copyFDSActionDropdownItems.size());
+
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"copy", "copy", "Copy To", null, copyFDSActionDropdownItems.get(0));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"copy", "duplicate", "Duplicate", null,
+			copyFDSActionDropdownItems.get(1));
+
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
 			"upload", "export-for-translation", "Export for Translation", null,
 			fdsActionDropdownItems.get(12));
@@ -162,7 +255,8 @@ public class ViewContentsSectionDisplayContextTest
 
 	@Override
 	protected String getFilterString() {
-		return "cmsRoot eq true and cmsSection eq 'contents'";
+		return "cmsRoot eq true and cmsSection eq 'contents' and " +
+			"rootDescendantNode eq false";
 	}
 
 	@Override
@@ -190,6 +284,11 @@ public class ViewContentsSectionDisplayContextTest
 		Assert.assertNotNull(contentsSectionDisplayContext);
 
 		return contentsSectionDisplayContext;
+	}
+
+	@Override
+	protected boolean isFolderSearchEnabled() {
+		return true;
 	}
 
 	@Inject(

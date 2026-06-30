@@ -8,11 +8,8 @@ spec:
     arguments:
         parameters:
             -   name: recovery-point-arn
-    artifactGC:
-        {{- .Values.argo.workflowSpec.artifactGC | toYaml | nindent 8 }}
-    artifactRepositoryRef:
-        configMap: backup-restore-artifact-repository
     entrypoint: main
+    onExit: reset-restore-phase
     podGC:
         {{- .Values.argo.workflowSpec.podGC | toYaml | nindent 8 }}
     serviceAccountName: backup-restore-service-account
@@ -69,8 +66,8 @@ spec:
                             parameters:
                                 -   name: expected-generation
                                     value: "{{ "{{" }}steps.apply-infrastructure.outputs.parameters.generation}}"
-                        name: wait-infrastructure-ready
-                        template: wait-infrastructure-ready
+                        name: wait-for-infrastructure
+                        template: wait-for-infrastructure
         -   inputs:
                 parameters:
                     -   name: liferay-infrastructure-name
@@ -120,10 +117,10 @@ spec:
                             path: /tmp/backup-vault-name.txt
                     -   name: data-active
                         valueFrom:
-                            path: /tmp/data-active.txt
+                            path: /tmp/data-plane-active.txt
                     -   name: data-inactive
                         valueFrom:
-                            path: /tmp/data-inactive.txt
+                            path: /tmp/data-plane-inactive.txt
                     -   name: liferay-infrastructure-name
                         valueFrom:
                             path: /tmp/liferay-infrastructure-name.txt
@@ -280,6 +277,14 @@ spec:
                         name: roll-back-restart
                         template: roll-back-restart
             name: main
+        -   name: reset-restore-phase
+            script:
+                command: [sh]
+                image: "{{ .Values.images.helmKubectl.repository }}:{{ .Values.images.helmKubectl.tag }}"
+                resources:
+                    {{- .Values.resources.default | toYaml | nindent 20 }}
+                source: |-
+                    {{- tpl (.Files.Get "scripts/reset-restore-phase.sh") . | nindent 20 }}
         -   inputs:
                 parameters:
                     -   name: backup-service-role-arn
@@ -347,13 +352,13 @@ spec:
         -   inputs:
                 parameters:
                     -   name: expected-generation
-            name: wait-infrastructure-ready
+            name: wait-for-infrastructure
             script:
                 command: [sh]
                 image: "{{ .Values.images.helmKubectl.repository }}:{{ .Values.images.helmKubectl.tag }}"
                 resources:
                     {{- .Values.resources.default | toYaml | nindent 20 }}
                 source: |-
-                    {{- tpl (.Files.Get "scripts/wait-infrastructure-ready.sh") . | nindent 20 }}
+                    {{- tpl (.Files.Get "scripts/wait-for-infrastructure.sh") . | nindent 20 }}
     ttlStrategy:
         {{- .Values.argo.workflowSpec.ttlStrategy | toYaml | nindent 8 }}

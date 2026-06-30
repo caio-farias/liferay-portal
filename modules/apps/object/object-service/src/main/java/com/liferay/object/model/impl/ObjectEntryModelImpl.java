@@ -114,9 +114,11 @@ public class ObjectEntryModelImpl
 	}
 
 	public static final String TABLE_SQL_CREATE =
-		"create table ObjectEntry (mvccVersion LONG default 0 not null,uuid_ VARCHAR(75) null,externalReferenceCode VARCHAR(1000) null,objectEntryId LONG not null primary key,groupId LONG,companyId LONG,userId LONG,userName VARCHAR(75) null,createDate DATE null,modifiedDate DATE null,headObjectEntryId LONG,objectDefinitionId LONG,objectEntryFolderId LONG,rootObjectEntryId LONG,defaultLanguageId VARCHAR(75) null,displayDate DATE null,expirationDate DATE null,reviewDate DATE null,treePath STRING null,version INTEGER,lastPublishDate DATE null,status INTEGER,statusByUserId LONG,statusByUserName VARCHAR(75) null,statusDate DATE null)";
+		"create table ObjectEntry (mvccVersion LONG default 0 not null,uuid_ VARCHAR(75) null,externalReferenceCode VARCHAR(500) null,objectEntryId LONG not null primary key,groupId LONG,companyId LONG,userId LONG,userName VARCHAR(75) null,createDate DATE null,modifiedDate DATE null,headObjectEntryId LONG,objectDefinitionId LONG,objectEntryFolderId LONG,rootObjectEntryId LONG,defaultLanguageId VARCHAR(75) null,displayDate DATE null,expirationDate DATE null,reviewDate DATE null,treePath STRING null,version INTEGER,lastPublishDate DATE null,status INTEGER,statusByUserId LONG,statusByUserName VARCHAR(75) null,statusDate DATE null)";
 
 	public static final String TABLE_SQL_DROP = "drop table ObjectEntry";
+
+	public static final String ENTITY_ALIAS = "objectEntry";
 
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY objectEntry.objectEntryId ASC";
@@ -1694,4 +1696,4 @@ public class ObjectEntryModelImpl
 	private ObjectEntry _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-2035548214
+// LIFERAY-SERVICE-BUILDER-HASH:-1138446778

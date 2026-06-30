@@ -111,11 +111,7 @@ public class UserGroupPersistenceTest {
 
 	@Test
 	public void testUpdateExisting() throws Exception {
-		long pk = RandomTestUtil.nextLong();
-
-		UserGroup newUserGroup = _persistence.create(pk);
-
-		newUserGroup.setMvccVersion(RandomTestUtil.nextLong());
+		UserGroup newUserGroup = addUserGroup();
 
 		newUserGroup.setCtCollectionId(RandomTestUtil.nextLong());
 
@@ -141,7 +137,11 @@ public class UserGroupPersistenceTest {
 
 		newUserGroup.setAddedByLDAPImport(RandomTestUtil.randomBoolean());
 
-		_userGroups.add(_persistence.update(newUserGroup));
+		newUserGroup.setStatus(RandomTestUtil.nextInt());
+
+		newUserGroup = _persistence.update(newUserGroup);
+
+		_userGroups.add(newUserGroup);
 
 		UserGroup existingUserGroup = _persistence.findByPrimaryKey(
 			newUserGroup.getPrimaryKey());
@@ -180,6 +180,8 @@ public class UserGroupPersistenceTest {
 		Assert.assertEquals(
 			existingUserGroup.isAddedByLDAPImport(),
 			newUserGroup.isAddedByLDAPImport());
+		Assert.assertEquals(
+			existingUserGroup.getStatus(), newUserGroup.getStatus());
 	}
 
 	@Test(expected = DuplicateUserGroupExternalReferenceCodeException.class)
@@ -300,7 +302,7 @@ public class UserGroupPersistenceTest {
 			true, "externalReferenceCode", true, "userGroupId", true,
 			"companyId", true, "userId", true, "userName", true, "createDate",
 			true, "modifiedDate", true, "parentUserGroupId", true, "name", true,
-			"description", true, "addedByLDAPImport", true);
+			"description", true, "addedByLDAPImport", true, "status", true);
 	}
 
 	@Test
@@ -591,8 +593,6 @@ public class UserGroupPersistenceTest {
 
 		UserGroup userGroup = _persistence.create(pk);
 
-		userGroup.setMvccVersion(RandomTestUtil.nextLong());
-
 		userGroup.setCtCollectionId(RandomTestUtil.nextLong());
 
 		userGroup.setUuid(RandomTestUtil.randomString());
@@ -617,6 +617,8 @@ public class UserGroupPersistenceTest {
 
 		userGroup.setAddedByLDAPImport(RandomTestUtil.randomBoolean());
 
+		userGroup.setStatus(RandomTestUtil.nextInt());
+
 		_userGroups.add(_persistence.update(userGroup));
 
 		return userGroup;
@@ -627,4 +629,4 @@ public class UserGroupPersistenceTest {
 	private ClassLoader _dynamicQueryClassLoader;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1377195954
+// LIFERAY-SERVICE-BUILDER-HASH:1322531418

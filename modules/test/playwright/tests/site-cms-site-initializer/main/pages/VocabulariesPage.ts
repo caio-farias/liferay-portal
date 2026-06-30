@@ -29,6 +29,10 @@ export class VocabulariesPage {
 		return this.dataSetFragmentPage.getRow(filter);
 	}
 
+	async clickCategoriesLink(name: string) {
+		await this.getItem(name).locator('a[href*="view-categories"]').click();
+	}
+
 	async deleteVocabulary(name: string) {
 		await this.execItemAction({
 			action: 'Delete',
@@ -52,5 +56,19 @@ export class VocabulariesPage {
 			action,
 			filter,
 		});
+	}
+
+	async expectItemActionHidden({
+		action,
+		filter,
+	}: {
+		action: string;
+		filter: string;
+	}) {
+		await this.dataSetFragmentPage.expectItemActionHidden({action, filter});
+	}
+
+	async search(value: string) {
+		await this.dataSetFragmentPage.search(value);
 	}
 }

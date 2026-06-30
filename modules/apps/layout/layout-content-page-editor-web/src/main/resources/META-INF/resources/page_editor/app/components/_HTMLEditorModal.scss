@@ -1,5 +1,3 @@
-@import 'atlas-variables';
-
 html#{$cadmin-selector} {
 	.page-editor__html-editor-modal {
 		&__editor-container {
@@ -13,5 +11,9 @@ html#{$cadmin-selector} {
 		&__preview-rows {
 			border-top: 2px solid $gray-400;
 		}
+	}
+
+	.CodeMirror-error {
+		width: 20px;
 	}
 }

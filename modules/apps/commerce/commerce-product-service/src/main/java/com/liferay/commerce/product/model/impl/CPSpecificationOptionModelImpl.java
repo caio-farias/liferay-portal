@@ -113,6 +113,11 @@ public class CPSpecificationOptionModelImpl
 	public static final String TABLE_SQL_DROP =
 		"drop table CPSpecificationOption";
 
+	public static final String ENTITY_ALIAS = "cpSpecificationOption";
+
+	public static final String FILTER_PK_COLUMN_NAME =
+		"CPSpecificationOptionId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY cpSpecificationOption.priority DESC";
 
@@ -1584,4 +1589,4 @@ public class CPSpecificationOptionModelImpl
 	private CPSpecificationOption _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:2109181529
+// LIFERAY-SERVICE-BUILDER-HASH:2044842050

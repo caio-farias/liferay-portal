@@ -3,11 +3,13 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import ClayForm from '@clayui/form';
 import Label from '@clayui/label';
 import ClayPanel from '@clayui/panel';
 import {ItemSelector} from '@liferay/frontend-js-item-selector-web';
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useCallback, useId, useMemo, useState} from 'react';
 
+import ErrorFeedback from '../../../common/components/forms/ErrorFeedback';
 import {
 	IAssetObjectEntry,
 	IGroupedTaxonomies,
@@ -17,24 +19,51 @@ import {CategorizationInputSize} from './AssetCategorization';
 
 import type {EntryCategorizationDTO} from '../services/ObjectEntryService';
 
+/**
+ * Renders an asset's categories in one of two modes:
+ *
+ * - Generic mode (no vocabularyId): shows categories from every vocabulary,
+ *   grouped under vocabulary-name headers. Pass systemVocabularyIds to hide
+ *   the vocabularies that have their own dedicated panel (Personas, Funnel
+ *   Stage) so they are not shown twice.
+ *
+ * - Scoped mode (vocabularyId set): shows the categories of that single
+ *   vocabulary only, with no header, and ignores systemVocabularyIds.
+ */
 const AssetCategories = ({
 	cmsGroupId,
 	collapsable = true,
+	errorMessage,
 	hasUpdatePermission,
 	inputSize,
 	objectEntry,
+	placeholder,
+	systemVocabularyIds,
+	title,
 	updateObjectEntry,
+	vocabularyId,
 }: {
 	cmsGroupId: number | string;
 	collapsable?: boolean;
+	errorMessage?: string;
 	hasUpdatePermission?: boolean;
 	inputSize?: CategorizationInputSize;
 	objectEntry: IAssetObjectEntry | EntryCategorizationDTO;
+	placeholder?: string;
+	systemVocabularyIds?: number[];
+	title?: string;
 	updateObjectEntry: (object: EntryCategorizationDTO) => void | Promise<void>;
+	vocabularyId?: number;
 }) => {
 	const [value, setValue] = useState('');
 
+	const feedbackId = useId();
+
 	const apiURL = useMemo(() => {
+		if (vocabularyId) {
+			return `${Liferay.ThemeDisplay.getPortalURL()}/o/headless-admin-taxonomy/v1.0/taxonomy-vocabularies/${vocabularyId}/taxonomy-categories`;
+		}
+
 		const {
 			scopeId,
 			systemProperties: {objectDefinitionBrief: {classNameId = -1} = {}},
@@ -61,7 +90,29 @@ const AssetCategories = ({
 		const filterString = `?filter=${filterStrings.join(' and ')}`;
 
 		return `${Liferay.ThemeDisplay.getPortalURL()}/o/headless-admin-taxonomy/v1.0/${endpoint}/taxonomy-categories${filterString}`;
-	}, [cmsGroupId, objectEntry]);
+	}, [cmsGroupId, objectEntry, vocabularyId]);
+
+	const isVisibleVocabulary = useCallback(
+		(currentVocabularyId: number) => {
+			if (vocabularyId) {
+				return currentVocabularyId === vocabularyId;
+			}
+
+			return !systemVocabularyIds?.includes(currentVocabularyId);
+		},
+		[systemVocabularyIds, vocabularyId]
+	);
+
+	// Hide categories from the system vocabularies (Personas, Funnel Stage)
+	// in the generic dropdown, since they have their own dedicated panels.
+
+	const filterDropdownItem = useCallback(
+		(item: any) =>
+			!systemVocabularyIds?.includes(
+				Number(item?.parentTaxonomyVocabulary?.id)
+			),
+		[systemVocabularyIds]
+	);
 
 	const groupedTaxonomies: IGroupedTaxonomies = useMemo(
 		() =>
@@ -152,78 +203,120 @@ const AssetCategories = ({
 		[groupedTaxonomies, updateObjectEntry]
 	);
 
+	const selectedCategories = useMemo(
+		() =>
+			Object.entries(groupedTaxonomies.taxonomyVocabularies)
+				.filter(([currentVocabularyId]) =>
+					isVisibleVocabulary(Number(currentVocabularyId))
+				)
+				.flatMap(([, vocabularyCategories]) => vocabularyCategories),
+		[groupedTaxonomies.taxonomyVocabularies, isVisibleVocabulary]
+	);
+
 	return (
 		<ClayPanel
 			collapsable={collapsable}
 			defaultExpanded={true}
 			displayTitle={
 				<ClayPanel.Title className="panel-title text-secondary">
-					{Liferay.Language.get('categories')}
+					{title ?? Liferay.Language.get('categories')}
 				</ClayPanel.Title>
 			}
 			displayType="unstyled"
 			showCollapseIcon={collapsable}
 		>
 			<ClayPanel.Body>
-				<ItemSelector<any>
-					apiURL={apiURL}
-					disabled={!hasUpdatePermission}
-					estimateSize={49}
-					locator={{
-						id: 'id',
-						label: 'name',
-						value: 'externalReferenceCode',
-					}}
-					onChange={setValue}
-					onItemsChange={(newItems: any) => {
-						if (newItems[0]) {
-							addCategory(newItems[0]);
-
-							// The reason for this timeout is because of react's
-							// batch rendering. Clay internals set the value of
-							// the input, but we need to wait for the next 'tick' to set the value.
-
-							setTimeout(() => setValue(''));
-						}
-					}}
-					placeholder={Liferay.Language.get('add-category')}
-					refetchOnActive
-					sizing={inputSize}
-					value={value}
+				<div
+					className={
+						errorMessage ? 'form-group has-error' : undefined
+					}
 				>
-					{(item) => (
-						<ItemSelector.Item
-							key={item.name}
-							textValue={item.name}
-						>
-							<div>
-								<span className="font-weight-bold text-truncate">
-									{item?.name}
-								</span>
+					<ItemSelector<any>
+						apiURL={apiURL}
+						aria-describedby={errorMessage ? feedbackId : undefined}
+						disabled={!hasUpdatePermission}
+						estimateSize={49}
+						items={selectedCategories}
+						itemsFilter={
+							vocabularyId ? undefined : filterDropdownItem
+						}
+						locator={{
+							id: 'id',
+							label: 'name',
+							value: 'id',
+						}}
+						onChange={setValue}
+						onItemsChange={(newItems: any) => {
+							if (newItems[0]) {
+								addCategory(newItems[0]);
 
-								<span
-									className="text-1 text-secondary text-truncate text-uppercase"
-									title={item?.path}
-								>
-									{item?.path}
-								</span>
-							</div>
-						</ItemSelector.Item>
+								// The reason for this timeout is because of react's
+								// batch rendering. Clay internals set the value of
+								// the input, but we need to wait for the next 'tick' to set the value.
+
+								setTimeout(() => setValue(''));
+							}
+						}}
+						placeholder={
+							placeholder ?? Liferay.Language.get('add-category')
+						}
+						refetchOnActive
+						sizing={inputSize}
+						value={value}
+					>
+						{(item) => (
+							<ItemSelector.Item
+								key={item.id}
+								textValue={item.name}
+							>
+								<div>
+									<span className="font-weight-bold text-truncate">
+										{item?.name}
+									</span>
+
+									<span
+										className="text-1 text-secondary text-truncate text-uppercase"
+										title={item?.path}
+									>
+										{item?.path}
+									</span>
+								</div>
+							</ItemSelector.Item>
+						)}
+					</ItemSelector>
+
+					{errorMessage && (
+						<ClayForm.FeedbackGroup id={feedbackId} role="alert">
+							<ErrorFeedback message={errorMessage} />
+						</ClayForm.FeedbackGroup>
 					)}
-				</ItemSelector>
+				</div>
 
 				{groupedTaxonomies.taxonomyVocabularies &&
 					Object.entries(groupedTaxonomies?.taxonomyVocabularies).map(
-						([, vocabularyCategories], index) => {
+						(
+							[currentVocabularyId, vocabularyCategories],
+							index
+						) => {
+							if (
+								!isVisibleVocabulary(
+									Number(currentVocabularyId)
+								)
+							) {
+								return null;
+							}
+
 							const vocabularyName =
 								vocabularyCategories[0].parentTaxonomyVocabulary
 									.name;
 
 							return vocabularyCategories.length ? (
 								<div className="pt-3" key={index}>
-									<p className="font-weight-semi-bold vocabulary-name">
-										{vocabularyName}
-									</p>
+									{!vocabularyId && (
+										<p className="font-weight-semi-bold vocabulary-name">
+											{vocabularyName}
+										</p>
+									)}
 
 									{vocabularyCategories.map(
 										(category: ITaxonomyCategoryFacade) => (
@@ -250,6 +343,7 @@ const AssetCategories = ({
 														),
 												}}
 												displayType="secondary"
+												inverse
 												key={`${category.taxonomyVocabularyId}_${category.id}`}
 											>
 												{category.name}

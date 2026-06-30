@@ -20,29 +20,33 @@ import co.elastic.clients.elasticsearch._types.query_dsl.QueryVariant;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch._types.query_dsl.ZeroTermsQuery;
+import co.elastic.clients.elasticsearch.core.search.Highlight;
+import co.elastic.clients.elasticsearch.core.search.InnerHits;
 
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.search.BooleanClause;
 import com.liferay.portal.kernel.search.BooleanClauseOccur;
 import com.liferay.portal.kernel.search.BooleanQuery;
+import com.liferay.portal.kernel.search.DisMaxQuery;
+import com.liferay.portal.kernel.search.FuzzyQuery;
+import com.liferay.portal.kernel.search.MatchAllQuery;
+import com.liferay.portal.kernel.search.MatchQuery;
+import com.liferay.portal.kernel.search.MoreLikeThisQuery;
+import com.liferay.portal.kernel.search.MultiMatchQuery;
+import com.liferay.portal.kernel.search.NestedQuery;
+import com.liferay.portal.kernel.search.QueryConfig;
 import com.liferay.portal.kernel.search.QueryTerm;
+import com.liferay.portal.kernel.search.StringQuery;
 import com.liferay.portal.kernel.search.TermQuery;
 import com.liferay.portal.kernel.search.TermRangeQuery;
 import com.liferay.portal.kernel.search.WildcardQuery;
 import com.liferay.portal.kernel.search.filter.BooleanFilter;
-import com.liferay.portal.kernel.search.generic.DisMaxQuery;
-import com.liferay.portal.kernel.search.generic.FuzzyQuery;
-import com.liferay.portal.kernel.search.generic.MatchAllQuery;
-import com.liferay.portal.kernel.search.generic.MatchQuery;
-import com.liferay.portal.kernel.search.generic.MoreLikeThisQuery;
-import com.liferay.portal.kernel.search.generic.MultiMatchQuery;
-import com.liferay.portal.kernel.search.generic.NestedQuery;
-import com.liferay.portal.kernel.search.generic.StringQuery;
 import com.liferay.portal.kernel.search.query.QueryVisitor;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.search.elasticsearch8.internal.filter.ElasticsearchFilterVisitor;
+import com.liferay.portal.search.elasticsearch8.internal.highlight.HighlightTranslator;
 import com.liferay.portal.search.elasticsearch8.internal.util.QueryUtil;
 import com.liferay.portal.search.elasticsearch8.internal.util.SetterUtil;
 
@@ -266,7 +270,14 @@ public class ElasticsearchQueryVisitor implements QueryVisitor<QueryVariant> {
 		SetterUtil.setNotNullFloatAsDouble(
 			builder::cutoffFrequency, multiMatchQuery.getCutOffFrequency());
 
-		builder.fields(ListUtil.fromCollection(multiMatchQuery.getFields()));
+		List<String> fields = QueryUtil.fieldsBoostsToFieldsWithBoosts(
+			multiMatchQuery.getFieldsBoosts());
+
+		if (fields.isEmpty()) {
+			fields = ListUtil.fromCollection(multiMatchQuery.getFields());
+		}
+
+		builder.fields(fields);
 
 		SetterUtil.setNotBlankString(
 			builder::fuzziness, multiMatchQuery.getFuzziness());
@@ -326,6 +337,29 @@ public class ElasticsearchQueryVisitor implements QueryVisitor<QueryVariant> {
 		builder.query(new Query(query.accept(this)));
 
 		builder.scoreMode(ChildScoreMode.Sum);
+
+		if (nestedQuery.isInnerHitsEnabled()) {
+			QueryConfig queryConfig = nestedQuery.getQueryConfig();
+
+			Highlight highlight = _highlightTranslator.translate(
+				queryConfig.getHighlightFieldNames(),
+				queryConfig.getHighlightFragmentSize(),
+				queryConfig.isHighlightRequireFieldMatch(),
+				queryConfig.getHighlightSnippetSize());
+
+			if (highlight != null) {
+				InnerHits.Builder innerHitsBuilder = new InnerHits.Builder(
+				).highlight(
+					highlight
+				);
+
+				if (Validator.isNotNull(nestedQuery.getInnerHitsName())) {
+					innerHitsBuilder.name(nestedQuery.getInnerHitsName());
+				}
+
+				builder.innerHits(innerHitsBuilder.build());
+			}
+		}
 
 		return builder.build();
 	}
@@ -647,5 +681,8 @@ public class ElasticsearchQueryVisitor implements QueryVisitor<QueryVariant> {
 		throw new IllegalArgumentException(
 			"Invalid multi match query type " + type);
 	}
+
+	private final HighlightTranslator _highlightTranslator =
+		new HighlightTranslator();
 
 }

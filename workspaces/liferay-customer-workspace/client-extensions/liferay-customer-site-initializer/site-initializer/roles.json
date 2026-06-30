@@ -35,6 +35,11 @@
 		"type": 1
 	},
 	{
+		"externalReferenceCode": "ROLE_PAAS_USER",
+		"name": "PaaS User",
+		"type": 6
+	},
+	{
 		"externalReferenceCode": "ROLE_PARTNER",
 		"name": "Partner",
 		"type": 1

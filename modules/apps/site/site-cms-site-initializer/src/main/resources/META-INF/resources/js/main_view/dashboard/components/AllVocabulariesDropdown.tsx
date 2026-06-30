@@ -3,17 +3,20 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {buildQueryString} from '@liferay/analytics-reports-js-components-web';
-import React, {useContext, useState} from 'react';
+import {Option, Picker} from '@clayui/core';
+import React, {useContext, useEffect, useMemo, useState} from 'react';
 
-import ApiHelper from '../../../common/services/ApiHelper';
+import VocabularyService from '../../../common/services/VocabularyService';
 import {ViewDashboardContext} from '../ViewDashboardContext';
-import {FilterDropdown, Item} from './FilterDropdown';
+import {Item} from './FilterDropdown';
 import {
 	IAllFiltersDropdown,
 	filterBySpaces,
 	initialFilters,
 } from './InventoryAnalysisCard';
+import PickerTrigger from './PickerTrigger';
+
+type Vocabulary = {assetLibraries: {id: number}[]; id: string; name: string};
 
 const AllVocabulariesDropdown: React.FC<IAllFiltersDropdown> = ({
 	className,
@@ -25,85 +28,73 @@ const AllVocabulariesDropdown: React.FC<IAllFiltersDropdown> = ({
 		filters: {space},
 	} = useContext(ViewDashboardContext);
 
-	const [vocabularies, setVocabularies] = useState<Item[]>([
-		initialFilters.vocabulary,
-	]);
+	const [rawVocabularies, setRawVocabularies] = useState<Vocabulary[]>([]);
 
-	const [dropdownActive, setDropdownActive] = useState(false);
-	const [loading, setLoading] = useState(false);
+	useEffect(() => {
+		const fetchVocabularies = async () => {
+			const {data, error} =
+				await VocabularyService.getVocabularies(cmsGroupId);
 
-	const fetchVocabularies = async (search: string = '') => {
-		const queryParams = buildQueryString({
-			search,
-		});
+			if (error) {
+				console.error(error);
 
-		const endpoint = `/o/headless-admin-taxonomy/v1.0/sites/${cmsGroupId}/taxonomy-vocabularies${queryParams}`;
+				return;
+			}
 
-		const {data, error} = await ApiHelper.get<{
-			items: {assetLibraries: {id: number}[]; id: string; name: string}[];
-		}>(endpoint);
+			if (data) {
+				setRawVocabularies(data.items);
+			}
+		};
 
-		if (data) {
-			return data.items
-				.filter(({assetLibraries}) => {
-					if (space.value === 'all') {
-						return true;
-					}
+		fetchVocabularies();
+	}, [cmsGroupId]);
 
-					return filterBySpaces(assetLibraries, space.value);
-				})
+	const vocabularies: Item[] = useMemo(
+		() => [
+			initialFilters.vocabulary,
+			...rawVocabularies
+				.filter(
+					({assetLibraries}) =>
+						space.value === 'all' ||
+						filterBySpaces(assetLibraries, space.value)
+				)
 				.map(({id, name}) => ({
 					label: name,
 					value: String(id),
-				}));
-		}
-
-		if (error) {
-			console.error(error);
-		}
-
-		return [];
-	};
+				})),
+		],
+		[rawVocabularies, space.value]
+	);
 
 	return (
-		<FilterDropdown
-			active={dropdownActive}
-			className={className}
-			filterByValue="vocabularies"
-			icon="vocabulary"
+		<Picker
+			aria-label={Liferay.Language.get('filter-by-vocabulary')}
+			as={PickerTrigger}
+			borderless
+			filterKey="label"
 			items={vocabularies}
-			loading={loading}
-			onActiveChange={() => setDropdownActive((prevState) => !prevState)}
-			onSearch={async (value) => {
-				setLoading(true);
-
-				const vocabularies = await fetchVocabularies(value);
-
-				setVocabularies(
-					value
-						? vocabularies
-						: [initialFilters.vocabulary, ...vocabularies]
+			messages={{
+				noResultsFound: Liferay.Language.get('no-results-were-found'),
+				searchPlaceholder: Liferay.Language.get('search'),
+			}}
+			onSelectionChange={(key) => {
+				const selectedVocabulary = vocabularies.find(
+					({value}) => value === String(key)
 				);
 
-				setLoading(false);
+				if (selectedVocabulary) {
+					onSelectItem(selectedVocabulary);
+				}
 			}}
-			onSelectItem={(item) => {
-				onSelectItem(item);
-
-				setDropdownActive(false);
-			}}
-			onTrigger={async () => {
-				setLoading(true);
-
-				const vocabularies = await fetchVocabularies();
-
-				setVocabularies([initialFilters.vocabulary, ...vocabularies]);
-
-				setLoading(false);
-			}}
-			selectedItem={item}
-			title={Liferay.Language.get('filter-by-vocabulary')}
-		/>
+			searchable
+			selectedKey={item.value}
+			triggerClassName={className}
+			triggerIcon="vocabulary"
+		>
+			{(vocabulary: Item) => (
+				<Option key={vocabulary.value}>{vocabulary.label}</Option>
+			)}
+		</Picker>
 	);
 };
 

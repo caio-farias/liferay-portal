@@ -59,7 +59,7 @@ public class SharingEntryUpgradeProcessTest {
 		User toUser = UserTestUtil.addUser();
 
 		_sharingEntryLocalService.addSharingEntry(
-			RandomTestUtil.randomString(), TestPropsValues.getUserId(), 0,
+			RandomTestUtil.randomString(), TestPropsValues.getUserId(), 0, 0,
 			toUser.getUserId(),
 			_classNameLocalService.getClassNameId(Group.class.getName()),
 			_group.getGroupId(), _group.getGroupId(), true,
@@ -74,11 +74,6 @@ public class SharingEntryUpgradeProcessTest {
 		upgradeProcess.upgrade();
 	}
 
-	@Inject(
-		filter = "component.name=com.liferay.sharing.internal.upgrade.registry.SharingServiceUpgradeStepRegistrator"
-	)
-	private static UpgradeStepRegistrator _upgradeStepRegistrator;
-
 	@Inject
 	private ClassNameLocalService _classNameLocalService;
 
@@ -87,6 +82,11 @@ public class SharingEntryUpgradeProcessTest {
 
 	@Inject
 	private SharingEntryLocalService _sharingEntryLocalService;
+
+	@Inject(
+		filter = "component.name=com.liferay.sharing.internal.upgrade.registry.SharingServiceUpgradeStepRegistrator"
+	)
+	private UpgradeStepRegistrator _upgradeStepRegistrator;
 
 	@Inject
 	private UserGroupLocalService _userGroupLocalService;

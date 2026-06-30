@@ -69,7 +69,7 @@ public class FriendlyURLEntryModelImpl
 		{"friendlyURLEntryId", Types.BIGINT}, {"groupId", Types.BIGINT},
 		{"companyId", Types.BIGINT}, {"createDate", Types.TIMESTAMP},
 		{"modifiedDate", Types.TIMESTAMP}, {"classNameId", Types.BIGINT},
-		{"classPK", Types.BIGINT}
+		{"parentClassPK", Types.BIGINT}, {"classPK", Types.BIGINT}
 	};
 
 	public static final Map<String, Integer> TABLE_COLUMNS_MAP =
@@ -86,13 +86,16 @@ public class FriendlyURLEntryModelImpl
 		TABLE_COLUMNS_MAP.put("createDate", Types.TIMESTAMP);
 		TABLE_COLUMNS_MAP.put("modifiedDate", Types.TIMESTAMP);
 		TABLE_COLUMNS_MAP.put("classNameId", Types.BIGINT);
+		TABLE_COLUMNS_MAP.put("parentClassPK", Types.BIGINT);
 		TABLE_COLUMNS_MAP.put("classPK", Types.BIGINT);
 	}
 
 	public static final String TABLE_SQL_CREATE =
-		"create table FriendlyURLEntry (mvccVersion LONG default 0 not null,ctCollectionId LONG default 0 not null,uuid_ VARCHAR(75) null,defaultLanguageId VARCHAR(75) null,friendlyURLEntryId LONG not null,groupId LONG,companyId LONG,createDate DATE null,modifiedDate DATE null,classNameId LONG,classPK LONG,primary key (friendlyURLEntryId, ctCollectionId))";
+		"create table FriendlyURLEntry (mvccVersion LONG default 0 not null,ctCollectionId LONG default 0 not null,uuid_ VARCHAR(75) null,defaultLanguageId VARCHAR(75) null,friendlyURLEntryId LONG not null,groupId LONG,companyId LONG,createDate DATE null,modifiedDate DATE null,classNameId LONG,parentClassPK LONG,classPK LONG,primary key (friendlyURLEntryId, ctCollectionId))";
 
 	public static final String TABLE_SQL_DROP = "drop table FriendlyURLEntry";
+
+	public static final String ENTITY_ALIAS = "friendlyURLEntry";
 
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY friendlyURLEntry.friendlyURLEntryId ASC";
@@ -273,6 +276,8 @@ public class FriendlyURLEntryModelImpl
 			attributeGetterFunctions.put(
 				"classNameId", FriendlyURLEntry::getClassNameId);
 			attributeGetterFunctions.put(
+				"parentClassPK", FriendlyURLEntry::getParentClassPK);
+			attributeGetterFunctions.put(
 				"classPK", FriendlyURLEntry::getClassPK);
 
 			_attributeGetterFunctions = Collections.unmodifiableMap(
@@ -332,6 +337,10 @@ public class FriendlyURLEntryModelImpl
 				"classNameId",
 				(BiConsumer<FriendlyURLEntry, Long>)
 					FriendlyURLEntry::setClassNameId);
+			attributeSetterBiConsumers.put(
+				"parentClassPK",
+				(BiConsumer<FriendlyURLEntry, Long>)
+					FriendlyURLEntry::setParentClassPK);
 			attributeSetterBiConsumers.put(
 				"classPK",
 				(BiConsumer<FriendlyURLEntry, Long>)
@@ -644,6 +653,20 @@ public class FriendlyURLEntryModelImpl
 	}
 
 	@Override
+	public long getParentClassPK() {
+		return _parentClassPK;
+	}
+
+	@Override
+	public void setParentClassPK(long parentClassPK) {
+		if (_columnOriginalValues == Collections.EMPTY_MAP) {
+			_setColumnOriginalValues();
+		}
+
+		_parentClassPK = parentClassPK;
+	}
+
+	@Override
 	public long getClassPK() {
 		return _classPK;
 	}
@@ -739,6 +762,7 @@ public class FriendlyURLEntryModelImpl
 		friendlyURLEntryImpl.setCreateDate(getCreateDate());
 		friendlyURLEntryImpl.setModifiedDate(getModifiedDate());
 		friendlyURLEntryImpl.setClassNameId(getClassNameId());
+		friendlyURLEntryImpl.setParentClassPK(getParentClassPK());
 		friendlyURLEntryImpl.setClassPK(getClassPK());
 
 		friendlyURLEntryImpl.resetOriginalValues();
@@ -770,6 +794,8 @@ public class FriendlyURLEntryModelImpl
 			this.<Date>getColumnOriginalValue("modifiedDate"));
 		friendlyURLEntryImpl.setClassNameId(
 			this.<Long>getColumnOriginalValue("classNameId"));
+		friendlyURLEntryImpl.setParentClassPK(
+			this.<Long>getColumnOriginalValue("parentClassPK"));
 		friendlyURLEntryImpl.setClassPK(
 			this.<Long>getColumnOriginalValue("classPK"));
 
@@ -896,6 +922,8 @@ public class FriendlyURLEntryModelImpl
 
 		friendlyURLEntryCacheModel.classNameId = getClassNameId();
 
+		friendlyURLEntryCacheModel.parentClassPK = getParentClassPK();
+
 		friendlyURLEntryCacheModel.classPK = getClassPK();
 
 		return friendlyURLEntryCacheModel;
@@ -971,6 +999,7 @@ public class FriendlyURLEntryModelImpl
 	private Date _modifiedDate;
 	private boolean _setModifiedDate;
 	private long _classNameId;
+	private long _parentClassPK;
 	private long _classPK;
 
 	public <T> T getColumnValue(String columnName) {
@@ -1013,6 +1042,7 @@ public class FriendlyURLEntryModelImpl
 		_columnOriginalValues.put("createDate", _createDate);
 		_columnOriginalValues.put("modifiedDate", _modifiedDate);
 		_columnOriginalValues.put("classNameId", _classNameId);
+		_columnOriginalValues.put("parentClassPK", _parentClassPK);
 		_columnOriginalValues.put("classPK", _classPK);
 	}
 
@@ -1057,7 +1087,9 @@ public class FriendlyURLEntryModelImpl
 
 		columnBitmasks.put("classNameId", 512L);
 
-		columnBitmasks.put("classPK", 1024L);
+		columnBitmasks.put("parentClassPK", 1024L);
+
+		columnBitmasks.put("classPK", 2048L);
 
 		_columnBitmasks = Collections.unmodifiableMap(columnBitmasks);
 	}
@@ -1066,4 +1098,4 @@ public class FriendlyURLEntryModelImpl
 	private FriendlyURLEntry _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:506127677
+// LIFERAY-SERVICE-BUILDER-HASH:1386438359

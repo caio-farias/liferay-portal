@@ -1,5 +1,5 @@
 {
-	"@generated": "10d0277da250ae87043c3c021ece735de2d96fb3",
+	"@generated": "fb0d69510b73ff8b9862bf34920dd202f7174bd0",
 	"@readonly": "** AUTO-GENERATED: DO NOT EDIT **",
 	"compilerOptions": {
 		"allowSyntheticDefaultImports": true,
@@ -14,6 +14,9 @@
 			"@liferay/frontend-data-set-web": [
 				"../../../../../../../frontend-data-set/frontend-data-set-web/src/main/resources/META-INF/resources/index.ts"
 			],
+			"@liferay/frontend-data-set-web/api": [
+				"../../../../../../../frontend-data-set/frontend-data-set-web/src/main/resources/META-INF/resources/js/api/api.ts"
+			],
 			"@liferay/layout-js-components-web": [
 				"../../../../../../../layout/layout-js-components-web/src/main/resources/META-INF/resources/js/index.ts"
 			],
@@ -25,6 +28,9 @@
 			],
 			"frontend-js-web/legacy": [
 				"../../../../../../../frontend-js/frontend-js-web/src/main/resources/META-INF/resources/legacy/index.ts"
+			],
+			"staging-taglib": [
+				"../../../../../../../staging/staging-taglib/src/main/resources/META-INF/resources/js/index.js"
 			]
 		},
 		"rootDir": "../../../../../../../..",
@@ -54,6 +60,9 @@
 		},
 		{
 			"path": "../../../../../../../frontend-js/frontend-js-web/src/main/resources/META-INF/resources/tsconfig.json"
+		},
+		{
+			"path": "../../../../../../../staging/staging-taglib/src/main/resources/META-INF/resources/tsconfig.json"
 		}
 	]
 }

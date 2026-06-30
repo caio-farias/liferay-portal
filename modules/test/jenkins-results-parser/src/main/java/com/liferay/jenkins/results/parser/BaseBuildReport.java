@@ -102,7 +102,40 @@ public abstract class BaseBuildReport implements BuildReport {
 	}
 
 	@Override
-	public JenkinsMaster getJenkinsMaster() {
+	public List<FailureReport> getFailureReports() {
+		List<FailureReport> failureReports = new ArrayList<>();
+
+		if (!isFailing()) {
+			return failureReports;
+		}
+
+		JSONObject buildReportJSONObject = getBuildReportJSONObject();
+
+		if (buildReportJSONObject == null) {
+			return failureReports;
+		}
+
+		JSONArray failureReportsJSONArray = buildReportJSONObject.optJSONArray(
+			"failureReports");
+
+		if (failureReportsJSONArray == null) {
+			return failureReports;
+		}
+
+		for (int i = 0; i < failureReportsJSONArray.length(); i++) {
+			JSONObject failureReportJSONObject =
+				failureReportsJSONArray.getJSONObject(i);
+
+			failureReports.add(
+				FailureReportFactory.newFailureReport(
+					this, failureReportJSONObject.getString("message"), null));
+		}
+
+		return failureReports;
+	}
+
+	@Override
+	public synchronized JenkinsMaster getJenkinsMaster() {
 		if (_jenkinsMaster != null) {
 			return _jenkinsMaster;
 		}
@@ -166,20 +199,52 @@ public abstract class BaseBuildReport implements BuildReport {
 	}
 
 	@Override
-	public List<URL> getTestrayAttachmentURLs() {
+	public synchronized URL getTestrayAttachmentURLBySuffix(String suffix) {
+		if (_testrayAttachmentURLsBySuffix.containsKey(suffix)) {
+			return _testrayAttachmentURLsBySuffix.get(suffix);
+		}
+
+		URL matchedURL = null;
+
+		for (URL testrayAttachmentURL : getTestrayAttachmentURLs()) {
+			String testrayAttachmentURLString = String.valueOf(
+				testrayAttachmentURL);
+
+			if (testrayAttachmentURLString.endsWith(suffix)) {
+				matchedURL = testrayAttachmentURL;
+
+				break;
+			}
+		}
+
+		_testrayAttachmentURLsBySuffix.put(suffix, matchedURL);
+
+		return matchedURL;
+	}
+
+	@Override
+	public synchronized List<URL> getTestrayAttachmentURLs() {
+		if (_testrayAttachmentURLs != null) {
+			return _testrayAttachmentURLs;
+		}
+
 		List<URL> testrayAttachmentURLs = new ArrayList<>();
 
 		JSONObject buildReportJSONObject = getBuildReportJSONObject();
 
 		if (buildReportJSONObject == null) {
-			return testrayAttachmentURLs;
+			_testrayAttachmentURLs = testrayAttachmentURLs;
+
+			return _testrayAttachmentURLs;
 		}
 
 		JSONArray testrayAttachmentURLsJSONArray =
 			buildReportJSONObject.optJSONArray("testrayAttachmentURLs");
 
 		if (testrayAttachmentURLsJSONArray == null) {
-			return testrayAttachmentURLs;
+			_testrayAttachmentURLs = testrayAttachmentURLs;
+
+			return _testrayAttachmentURLs;
 		}
 
 		for (int i = 0; i < testrayAttachmentURLsJSONArray.length(); i++) {
@@ -192,7 +257,9 @@ public abstract class BaseBuildReport implements BuildReport {
 			}
 		}
 
-		return testrayAttachmentURLs;
+		_testrayAttachmentURLs = testrayAttachmentURLs;
+
+		return _testrayAttachmentURLs;
 	}
 
 	@Override
@@ -234,6 +301,12 @@ public abstract class BaseBuildReport implements BuildReport {
 		}
 	}
 
+	protected synchronized void clearTestrayAttachmentURLCaches() {
+		_testrayAttachmentURLs = null;
+
+		_testrayAttachmentURLsBySuffix.clear();
+	}
+
 	private static final Pattern _buildURLPattern = Pattern.compile(
 		"(?<jobURL>https?://(?<masterHostname>test-\\d+-\\d+(-aws)?)" +
 			"(\\.liferay\\.com)?/job/(?<jobName>[^/]+))" +
@@ -241,5 +314,8 @@ public abstract class BaseBuildReport implements BuildReport {
 
 	private final URL _buildURL;
 	private JenkinsMaster _jenkinsMaster;
+	private List<URL> _testrayAttachmentURLs;
+	private final Map<String, URL> _testrayAttachmentURLsBySuffix =
+		new HashMap<>();
 
 }

@@ -6,7 +6,7 @@
 package com.liferay.jenkins.results.parser.scancode;
 
 import com.google.api.gax.paging.Page;
-import com.google.auth.oauth2.ServiceAccountCredentials;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
@@ -14,6 +14,7 @@ import com.google.cloud.storage.Bucket;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 
+import com.liferay.jenkins.results.parser.Environment;
 import com.liferay.jenkins.results.parser.JenkinsResultsParserUtil;
 
 import java.io.File;
@@ -85,7 +86,7 @@ public class ScanCodeCloudBucket {
 			return _hasGoogleApplicationCredentials;
 		}
 
-		String googleApplicationCredentials = System.getenv(
+		String googleApplicationCredentials = Environment.get(
 			"GOOGLE_APPLICATION_CREDENTIALS");
 
 		if (JenkinsResultsParserUtil.isNullOrEmpty(
@@ -336,25 +337,46 @@ public class ScanCodeCloudBucket {
 		return storage.get(getName());
 	}
 
-	private Storage _getStorage() {
-		Storage storage = null;
+	private Storage _getBucketStorage(String credentialsPath) {
+		if (JenkinsResultsParserUtil.isNullOrEmpty(credentialsPath)) {
+			return null;
+		}
+
+		File credentialsFile = new File(credentialsPath);
+
+		if (!credentialsFile.exists()) {
+			return null;
+		}
 
 		try {
-			String credentials = JenkinsResultsParserUtil.getBuildProperty(
-				"scancode.credentials.file");
-
-			storage = StorageOptions.newBuilder(
+			Storage storage = StorageOptions.newBuilder(
 			).setCredentials(
-				ServiceAccountCredentials.fromStream(
-					new FileInputStream(credentials))
+				GoogleCredentials.fromStream(
+					new FileInputStream(credentialsFile))
 			).build(
 			).getService();
+
+			if (storage.get(getName()) != null) {
+				return storage;
+			}
+		}
+		catch (Exception exception) {
+		}
+
+		return null;
+	}
+
+	private Storage _getStorage() {
+		try {
+			return _getBucketStorage(
+				JenkinsResultsParserUtil.getBuildProperty(
+					"google.application.crendential.file[scancode]"));
 		}
 		catch (Exception exception) {
 			exception.printStackTrace();
 		}
 
-		return storage;
+		return null;
 	}
 
 	private static final Pattern _fileNamePattern = Pattern.compile(

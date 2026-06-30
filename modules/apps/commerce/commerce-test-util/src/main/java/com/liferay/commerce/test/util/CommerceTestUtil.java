@@ -9,6 +9,7 @@ import com.liferay.account.constants.AccountConstants;
 import com.liferay.account.model.AccountEntry;
 import com.liferay.commerce.account.test.util.CommerceAccountTestUtil;
 import com.liferay.commerce.constants.CommerceAddressConstants;
+import com.liferay.commerce.constants.CommerceConstants;
 import com.liferay.commerce.constants.CommerceShipmentConstants;
 import com.liferay.commerce.context.CommerceContext;
 import com.liferay.commerce.currency.model.CommerceCurrency;
@@ -30,6 +31,7 @@ import com.liferay.commerce.product.model.CPInstance;
 import com.liferay.commerce.product.model.CommerceCatalog;
 import com.liferay.commerce.product.model.CommerceChannel;
 import com.liferay.commerce.product.model.CommerceChannelRel;
+import com.liferay.commerce.product.service.CPDefinitionLocalServiceUtil;
 import com.liferay.commerce.product.service.CPInstanceLocalServiceUtil;
 import com.liferay.commerce.product.service.CommerceCatalogLocalServiceUtil;
 import com.liferay.commerce.product.service.CommerceChannelLocalServiceUtil;
@@ -47,7 +49,9 @@ import com.liferay.commerce.tax.engine.fixed.service.CommerceTaxFixedRateLocalSe
 import com.liferay.commerce.tax.model.CommerceTaxMethod;
 import com.liferay.commerce.tax.service.CommerceTaxMethodLocalServiceUtil;
 import com.liferay.commerce.test.util.context.TestCommerceContext;
+import com.liferay.petra.function.UnsafeRunnable;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.configuration.test.util.GroupConfigurationTemporarySwapper;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.Country;
 import com.liferay.portal.kernel.model.Region;
@@ -57,6 +61,7 @@ import com.liferay.portal.kernel.service.RegionLocalServiceUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
+import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 
 import java.math.BigDecimal;
@@ -258,6 +263,12 @@ public class CommerceTestUtil {
 			commerceShippingFixedOption.getName());
 
 		CPDefinition cpDefinition = cpInstance.getCPDefinition();
+
+		cpDefinition.setCPTaxCategoryId(
+			CommerceTaxTestUtil.addTaxCategoryId(groupId));
+
+		cpDefinition = CPDefinitionLocalServiceUtil.updateCPDefinition(
+			cpDefinition);
 
 		addCommerceTaxFixedRate(
 			userId, commerceOrder.getGroupId(),
@@ -619,6 +630,31 @@ public class CommerceTestUtil {
 		return CommerceOrderLocalServiceUtil.updateCommerceOrder(commerceOrder);
 	}
 
+	public static void runWithGuestCheckoutDisabledOnB2BChannel(
+			long groupId, UnsafeRunnable<Exception> unsafeRunnable)
+		throws Exception {
+
+		try (GroupConfigurationTemporarySwapper
+				guestCheckoutGroupConfigurationTemporarySwapper =
+					new GroupConfigurationTemporarySwapper(
+						groupId, CommerceConstants.SERVICE_NAME_COMMERCE_ORDER,
+						HashMapDictionaryBuilder.<String, Object>put(
+							"guestCheckoutEnabled", false
+						).build());
+			GroupConfigurationTemporarySwapper
+				siteTypeGroupConfigurationTemporarySwapper =
+					new GroupConfigurationTemporarySwapper(
+						groupId,
+						CommerceConstants.SERVICE_NAME_COMMERCE_ACCOUNT,
+						HashMapDictionaryBuilder.<String, Object>put(
+							"commerceSiteType",
+							CommerceChannelConstants.SITE_TYPE_B2B
+						).build())) {
+
+			unsafeRunnable.run();
+		}
+	}
+
 	public static CPDefinitionInventory updateBackOrderCPDefinitionInventory(
 			CPDefinition cpDefinition)
 		throws PortalException {
@@ -647,8 +683,9 @@ public class CommerceTestUtil {
 
 		if (country == null) {
 			country = CountryLocalServiceUtil.addCountry(
-				"ZZ", "ZZZ", true, true, null, RandomTestUtil.randomString(),
-				"000", RandomTestUtil.randomDouble(), true, false, false,
+				null, "ZZ", "ZZZ", true, true, null,
+				RandomTestUtil.randomString(), "000",
+				RandomTestUtil.randomDouble(), true, false, false,
 				serviceContext);
 		}
 
@@ -667,7 +704,7 @@ public class CommerceTestUtil {
 		}
 
 		return RegionLocalServiceUtil.addRegion(
-			country.getCountryId(), true, RandomTestUtil.randomString(),
+			null, country.getCountryId(), true, RandomTestUtil.randomString(),
 			RandomTestUtil.randomDouble(), RandomTestUtil.randomString(),
 			serviceContext);
 	}

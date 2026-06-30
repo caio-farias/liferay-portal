@@ -6,22 +6,34 @@ import {cleanup, render, screen} from '@testing-library/react';
 import {createMemoryHistory} from 'history';
 import {mockChannelContext} from 'test/mock-channel-context';
 import {Provider} from 'react-redux';
-import {Router} from 'react-router-dom';
+import {Router, useHistory} from 'react-router-dom';
+import {useRequest} from 'shared/hooks/useRequest';
 import {waitForLoadingToBeRemoved} from 'test/helpers';
 
 jest.unmock('react-dom');
 
-jest.mock('shared/hooks/useFrontendDataSet', () => ({
-	useFrontendDataSet: () => {
-		const FakeDataSet = ({id}: {id: string}) => (
-			<div data-testid='fds-component' id={id} />
-		);
+type FakeFilter = {
+	id: string;
+	preloadedData?: {
+		exclude: boolean;
+		selectedItems: Array<{label?: string; value: string}>;
+	};
+};
 
-		return FakeDataSet;
+let lastFilters: FakeFilter[] | undefined;
+
+jest.mock('@liferay/frontend-data-set-web', () => ({
+	...jest.requireActual('@liferay/frontend-data-set-web'),
+	FrontendDataSet: ({filters, id}: {filters: FakeFilter[]; id: string}) => {
+		lastFilters = filters;
+
+		return <div data-testid='fds-component' id={id} />;
 	}
 }));
 
-jest.mock('shared/hooks/useRequest');
+jest.mock('shared/hooks/useRequest', () => ({
+	useRequest: jest.fn()
+}));
 
 jest.mock('shared/util/breadcrumbs', () => ({
 	getHome: jest.fn(({label}: {label?: string} = {}) => ({
@@ -39,7 +51,8 @@ jest.mock('react-router-dom', () => ({
 	})
 }));
 
-// Default push spy shared across tests, reset in beforeEach.
+const mockedUseHistory = useHistory as jest.Mock;
+const mockedUseRequest = useRequest as jest.Mock;
 
 const mockHistoryPush = jest.fn();
 
@@ -53,7 +66,35 @@ const buildHistory = (path = '/workspace/23/123/accounts') => {
 
 const store = mockStore();
 
-// Helper: wrap List in the minimum context providers it needs.
+// `useRequest` is consumed by both `List` (fetchChannels, expects an object
+// with `total`) and `TotalAccounts` (account metrics, expects an array of
+// `IAccountMetric`). Differentiate by `variables.channelIds`, which is only
+// present in the fetchChannels call.
+
+const accountMetricsMock = [
+	{
+		metricType: 'totalCount',
+		trend: {percentage: 0, trendClassification: 'NEUTRAL'},
+		value: 0
+	},
+	{
+		metricType: 'newCount',
+		trend: {percentage: 0, trendClassification: 'NEUTRAL'},
+		value: 0
+	},
+	{
+		metricType: 'activeCount',
+		trend: {percentage: 0, trendClassification: 'NEUTRAL'},
+		value: 0
+	}
+];
+
+const useRequestImpl =
+	({total = 1}: {total?: number} = {}) =>
+	({variables}: {variables: {[key: string]: any}}) =>
+		variables?.channelIds !== undefined
+			? {data: {total}}
+			: {data: accountMetricsMock};
 
 const renderList = (
 	{queryString = ''}: {queryString?: string} = {},
@@ -69,21 +110,13 @@ const renderList = (
 		</Provider>
 	);
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const {useHistory} = require('react-router-dom');
-
 describe('List', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		lastFilters = undefined;
 
-		useHistory.mockReturnValue({push: mockHistoryPush});
-
-		const useRequest = require('shared/hooks/useRequest');
-		useRequest.useRequest = jest.fn(() => ({
-			data: {
-				total: 1
-			}
-		}));
+		mockedUseHistory.mockReturnValue({push: mockHistoryPush});
+		mockedUseRequest.mockImplementation(useRequestImpl());
 	});
 
 	afterEach(cleanup);
@@ -102,13 +135,7 @@ describe('List', () => {
 		});
 
 		it('should render the empty state when there are no data sources connected', () => {
-			const useRequest = require('shared/hooks/useRequest');
-
-			useRequest.useRequest.mockReturnValue({
-				data: {
-					total: 0
-				}
-			});
+			mockedUseRequest.mockImplementation(useRequestImpl({total: 0}));
 
 			renderList();
 		});
@@ -123,6 +150,17 @@ describe('List', () => {
 			renderList();
 
 			expect(screen.getByTestId('fds-component')).toHaveAttribute('id');
+		});
+
+		it('should preload the rangeKey filter with Last 30 Days by default', () => {
+			renderList();
+
+			const rangeKeyFilter = lastFilters?.find(f => f.id === 'rangeKey');
+
+			expect(rangeKeyFilter?.preloadedData).toEqual({
+				exclude: false,
+				selectedItems: [{label: 'Last 30 days', value: '30'}]
+			});
 		});
 
 		it('should match the snapshot', async () => {

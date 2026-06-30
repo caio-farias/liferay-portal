@@ -10,14 +10,24 @@ import NotificationAlertList, {
 import React from 'react';
 import TextTruncate from 'shared/components/TextTruncate';
 import Toolbar from './Toolbar';
+import {DEVELOPER_MODE} from 'shared/util/constants';
 import {IBreadcrumbArgs} from 'shared/util/breadcrumbs';
 import {matchPath, useLocation, useParams} from 'react-router-dom';
 import {PageActions} from 'shared/components/base-page/Header';
 import {Routes, toRoute} from 'shared/util/router';
 import {useCurrentUser} from 'shared/hooks/useCurrentUser';
+import {User} from 'shared/util/records';
 import {useStore} from 'react-redux';
 
-function getSidebarSections({currentUser, groupId, recommendationsEnabled}) {
+function getSidebarSections({
+	currentUser,
+	groupId,
+	recommendationsEnabled
+}: {
+	currentUser: User;
+	groupId: string;
+	recommendationsEnabled: boolean;
+}) {
 	return [
 		{
 			items: [
@@ -57,7 +67,12 @@ function getSidebarSections({currentUser, groupId, recommendationsEnabled}) {
 						groupId
 					})
 				}
-			].filter(Boolean),
+			].filter(Boolean) as Array<{
+				icon: string;
+				label: string;
+				route: string;
+				url: string;
+			}>,
 			label: Liferay.Language.get('workspace-data')
 		},
 		{
@@ -89,8 +104,19 @@ function getSidebarSections({currentUser, groupId, recommendationsEnabled}) {
 					label: Liferay.Language.get('workspace'),
 					route: Routes.SETTINGS_WORKSPACE,
 					url: toRoute(Routes.SETTINGS_WORKSPACE, {groupId})
+				},
+				DEVELOPER_MODE && {
+					icon: 'flag-full',
+					label: 'Feature Flags',
+					route: Routes.SETTINGS_FEATURE_FLAGS,
+					url: toRoute(Routes.SETTINGS_FEATURE_FLAGS, {groupId})
 				}
-			],
+			].filter(Boolean) as Array<{
+				icon: string;
+				label: string;
+				route: string;
+				url: string;
+			}>,
 			label: Liferay.Language.get('workspace-settings')
 		}
 	];
@@ -98,6 +124,7 @@ function getSidebarSections({currentUser, groupId, recommendationsEnabled}) {
 
 interface ISettingsBasePageProps {
 	breadcrumbItems?: Array<IBreadcrumbArgs>;
+	children?: React.ReactNode;
 	className?: string;
 	documentTitle?: string;
 	pageActions?: Array<any>;
@@ -118,7 +145,7 @@ const SettingsBasePage: React.FC<ISettingsBasePageProps> = ({
 	pageTitle,
 	subTitle
 }) => {
-	const {groupId} = useParams();
+	const {groupId = ''} = useParams<{groupId: string}>();
 	const location = useLocation();
 	const currentUser = useCurrentUser();
 	const notificationResponse = useNotificationsAPI(groupId);

@@ -645,9 +645,11 @@ public class ObjectField implements Cloneable, Serializable {
 		AGGREGATION("Aggregation"), ASSIGNEE("Assignee"),
 		ATTACHMENT("Attachment"), AUTO_INCREMENT("AutoIncrement"),
 		BOOLEAN("Boolean"), DATE("Date"), DATE_TIME("DateTime"),
-		DECIMAL("Decimal"), ENCRYPTED("Encrypted"), FORMULA("Formula"),
-		INTEGER("Integer"), LONG_INTEGER("LongInteger"), LONG_TEXT("LongText"),
-		MULTISELECT_PICKLIST("MultiselectPicklist"), PICKLIST("Picklist"),
+		DECIMAL("Decimal"), EMAIL_ADDRESS("EmailAddress"),
+		ENCRYPTED("Encrypted"), FORMULA("Formula"), INTEGER("Integer"),
+		LONG_INTEGER("LongInteger"), LONG_TEXT("LongText"),
+		MULTISELECT_PICKLIST("MultiselectPicklist"),
+		PHONE_NUMBER("PhoneNumber"), PICKLIST("Picklist"),
 		PRECISION_DECIMAL("PrecisionDecimal"), RELATIONSHIP("Relationship"),
 		RICH_TEXT("RichText"), TEXT("Text");
 
@@ -817,4 +819,4 @@ public class ObjectField implements Cloneable, Serializable {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:155818984
+// LIFERAY-REST-BUILDER-HASH:528363235

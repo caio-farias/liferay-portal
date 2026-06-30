@@ -123,6 +123,10 @@ public class DDMStructureModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table DDMStructure";
 
+	public static final String ENTITY_ALIAS = "ddmStructure";
+
+	public static final String FILTER_PK_COLUMN_NAME = "structureId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY ddmStructure.structureId ASC";
 
@@ -1415,6 +1419,17 @@ public class DDMStructureModelImpl
 	}
 
 	@Override
+	public void copyCacheFields(DDMStructure source) {
+		DDMStructureModelImpl sourceModelImpl = (DDMStructureModelImpl)source;
+
+		setClassName(sourceModelImpl.getClassName());
+
+		setDDMForm(sourceModelImpl.getDDMForm());
+
+		setDDMFormFieldsMap(sourceModelImpl.getDDMFormFieldsMap());
+	}
+
+	@Override
 	public boolean equals(Object object) {
 		if (this == object) {
 			return true;
@@ -1932,4 +1947,4 @@ public class DDMStructureModelImpl
 	private DDMStructure _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:392379642
+// LIFERAY-SERVICE-BUILDER-HASH:1773620455

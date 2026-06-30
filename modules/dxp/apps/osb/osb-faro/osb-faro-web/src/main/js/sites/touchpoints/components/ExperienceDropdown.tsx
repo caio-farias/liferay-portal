@@ -29,10 +29,10 @@ const ExperienceDropdown: React.FC<IExperienceDropdownProps> = ({onChange}) => {
 	const {data} = useRequest({
 		dataSourceFn: fetchPageExperience,
 		variables: {
-			canonicalUrl: touchpoint,
-			channelId,
-			groupId,
-			pageTitle: title
+			canonicalUrl: touchpoint!,
+			channelId: channelId!,
+			groupId: groupId!,
+			pageTitle: title!
 		}
 	});
 

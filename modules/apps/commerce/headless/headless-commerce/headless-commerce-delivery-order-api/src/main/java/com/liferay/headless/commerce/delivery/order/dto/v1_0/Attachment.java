@@ -18,10 +18,16 @@ import com.liferay.portal.vulcan.util.ObjectMapperUtil;
 
 import jakarta.annotation.Generated;
 
+import jakarta.validation.Valid;
+
 import jakarta.xml.bind.annotation.XmlRootElement;
 
 import java.io.Serializable;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+
+import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -33,7 +39,13 @@ import java.util.function.Supplier;
  * @generated
  */
 @Generated("")
-@GraphQLName("Attachment")
+@GraphQLName(
+	description = "Buyer-visible file attached to a placed order (for example, an invoice PDF, a delivery note, or a customer-uploaded supporting document). Returned by the order attachment list endpoint and created via the upload-by-base64 endpoint.",
+	value = "Attachment"
+)
+@io.swagger.v3.oas.annotations.media.Schema(
+	description = "Buyer-visible file attached to a placed order (for example, an invoice PDF, a delivery note, or a customer-uploaded supporting document). Returned by the order attachment list endpoint and created via the upload-by-base64 endpoint."
+)
 @JsonFilter("Liferay.Vulcan")
 @XmlRootElement(name = "Attachment")
 public class Attachment implements Serializable {
@@ -46,7 +58,149 @@ public class Attachment implements Serializable {
 		return ObjectMapperUtil.unsafeReadValue(Attachment.class, json);
 	}
 
-	@io.swagger.v3.oas.annotations.media.Schema(example = "AB-34098-789-N")
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "Map of HATEOAS actions available to the current user, keyed by action name. Each value carries the href template and HTTP method, computed dynamically from user permissions. Read-only."
+	)
+	@Valid
+	public Map<String, Map<String, String>> getActions() {
+		if (_actionsSupplier != null) {
+			actions = _actionsSupplier.get();
+
+			_actionsSupplier = null;
+		}
+
+		return actions;
+	}
+
+	public void setActions(Map<String, Map<String, String>> actions) {
+		this.actions = actions;
+
+		_actionsSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setActions(
+		UnsafeSupplier<Map<String, Map<String, String>>, Exception>
+			actionsUnsafeSupplier) {
+
+		_actionsSupplier = () -> {
+			try {
+				return actionsUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "Map of HATEOAS actions available to the current user, keyed by action name. Each value carries the href template and HTTP method, computed dynamically from user permissions. Read-only."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected Map<String, Map<String, String>> actions;
+
+	@JsonIgnore
+	private Supplier<Map<String, Map<String, String>>> _actionsSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "Last modification timestamp in ISO 8601 (UTC). Read-only; set by the service when the attachment metadata or underlying file is updated.",
+		example = "2017-07-21"
+	)
+	public Date getDateModified() {
+		if (_dateModifiedSupplier != null) {
+			dateModified = _dateModifiedSupplier.get();
+
+			_dateModifiedSupplier = null;
+		}
+
+		return dateModified;
+	}
+
+	public void setDateModified(Date dateModified) {
+		this.dateModified = dateModified;
+
+		_dateModifiedSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setDateModified(
+		UnsafeSupplier<Date, Exception> dateModifiedUnsafeSupplier) {
+
+		_dateModifiedSupplier = () -> {
+			try {
+				return dateModifiedUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "Last modification timestamp in ISO 8601 (UTC). Read-only; set by the service when the attachment metadata or underlying file is updated."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected Date dateModified;
+
+	@JsonIgnore
+	private Supplier<Date> _dateModifiedSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "File extension of the attached document, derived from the underlying document-library file entry (for example, pdf, jpg). Read-only.",
+		example = "pdf"
+	)
+	public String getExtension() {
+		if (_extensionSupplier != null) {
+			extension = _extensionSupplier.get();
+
+			_extensionSupplier = null;
+		}
+
+		return extension;
+	}
+
+	public void setExtension(String extension) {
+		this.extension = extension;
+
+		_extensionSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setExtension(
+		UnsafeSupplier<String, Exception> extensionUnsafeSupplier) {
+
+		_extensionSupplier = () -> {
+			try {
+				return extensionUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "File extension of the attached document, derived from the underlying document-library file entry (for example, pdf, jpg). Read-only."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected String extension;
+
+	@JsonIgnore
+	private Supplier<String> _extensionSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "External reference code copied from the underlying document-library file entry or the order attachment record. Idempotency key for downstream lookups; read-only on this surface.",
+		example = "AB-34098-789-N"
+	)
 	public String getExternalReferenceCode() {
 		if (_externalReferenceCodeSupplier != null) {
 			externalReferenceCode = _externalReferenceCodeSupplier.get();
@@ -80,14 +234,19 @@ public class Attachment implements Serializable {
 		};
 	}
 
-	@GraphQLField
+	@GraphQLField(
+		description = "External reference code copied from the underlying document-library file entry or the order attachment record. Idempotency key for downstream lookups; read-only on this surface."
+	)
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 	protected String externalReferenceCode;
 
 	@JsonIgnore
 	private Supplier<String> _externalReferenceCodeSupplier;
 
-	@io.swagger.v3.oas.annotations.media.Schema
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "Identifier of the attachment. Read-only; assigned by the server.",
+		example = "30130"
+	)
 	public Long getId() {
 		if (_idSupplier != null) {
 			id = _idSupplier.get();
@@ -119,14 +278,111 @@ public class Attachment implements Serializable {
 		};
 	}
 
-	@GraphQLField
+	@GraphQLField(
+		description = "Identifier of the attachment. Read-only; assigned by the server."
+	)
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 	protected Long id;
 
 	@JsonIgnore
 	private Supplier<Long> _idSupplier;
 
-	@io.swagger.v3.oas.annotations.media.Schema
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "Sort weight used to order attachments within the order's attachment list; higher values are returned first. Read-only on this surface.",
+		example = "1.2"
+	)
+	public Double getPriority() {
+		if (_prioritySupplier != null) {
+			priority = _prioritySupplier.get();
+
+			_prioritySupplier = null;
+		}
+
+		return priority;
+	}
+
+	public void setPriority(Double priority) {
+		this.priority = priority;
+
+		_prioritySupplier = null;
+	}
+
+	@JsonIgnore
+	public void setPriority(
+		UnsafeSupplier<Double, Exception> priorityUnsafeSupplier) {
+
+		_prioritySupplier = () -> {
+			try {
+				return priorityUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "Sort weight used to order attachments within the order's attachment list; higher values are returned first. Read-only on this surface."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected Double priority;
+
+	@JsonIgnore
+	private Supplier<Double> _prioritySupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "When true the attachment is restricted to admin or supplier eyes only and is not exposed to the storefront buyer. Read-only.",
+		example = "false"
+	)
+	public Boolean getRestricted() {
+		if (_restrictedSupplier != null) {
+			restricted = _restrictedSupplier.get();
+
+			_restrictedSupplier = null;
+		}
+
+		return restricted;
+	}
+
+	public void setRestricted(Boolean restricted) {
+		this.restricted = restricted;
+
+		_restrictedSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setRestricted(
+		UnsafeSupplier<Boolean, Exception> restrictedUnsafeSupplier) {
+
+		_restrictedSupplier = () -> {
+			try {
+				return restrictedUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "When true the attachment is restricted to admin or supplier eyes only and is not exposed to the storefront buyer. Read-only."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected Boolean restricted;
+
+	@JsonIgnore
+	private Supplier<Boolean> _restrictedSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "Display title of the attachment. Falls back to the underlying file name when none is supplied. Read-only.",
+		example = "Invoice 30130"
+	)
 	public String getTitle() {
 		if (_titleSupplier != null) {
 			title = _titleSupplier.get();
@@ -160,15 +416,20 @@ public class Attachment implements Serializable {
 		};
 	}
 
-	@GraphQLField
+	@GraphQLField(
+		description = "Display title of the attachment. Falls back to the underlying file name when none is supplied. Read-only."
+	)
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 	protected String title;
 
 	@JsonIgnore
 	private Supplier<String> _titleSupplier;
 
-	@io.swagger.v3.oas.annotations.media.Schema
-	public Integer getType() {
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "Free-form type code (for example, invoice, delivery-note) drawn from the configured commerce order attachment list type definition. Read-only.",
+		example = "invoice"
+	)
+	public String getType() {
 		if (_typeSupplier != null) {
 			type = _typeSupplier.get();
 
@@ -178,14 +439,14 @@ public class Attachment implements Serializable {
 		return type;
 	}
 
-	public void setType(Integer type) {
+	public void setType(String type) {
 		this.type = type;
 
 		_typeSupplier = null;
 	}
 
 	@JsonIgnore
-	public void setType(UnsafeSupplier<Integer, Exception> typeUnsafeSupplier) {
+	public void setType(UnsafeSupplier<String, Exception> typeUnsafeSupplier) {
 		_typeSupplier = () -> {
 			try {
 				return typeUnsafeSupplier.get();
@@ -199,14 +460,65 @@ public class Attachment implements Serializable {
 		};
 	}
 
-	@GraphQLField
+	@GraphQLField(
+		description = "Free-form type code (for example, invoice, delivery-note) drawn from the configured commerce order attachment list type definition. Read-only."
+	)
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
-	protected Integer type;
+	protected String type;
 
 	@JsonIgnore
-	private Supplier<Integer> _typeSupplier;
+	private Supplier<String> _typeSupplier;
 
-	@io.swagger.v3.oas.annotations.media.Schema
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "Human-readable label resolved from the type code in the request locale. Read-only.",
+		example = "Invoice"
+	)
+	public String getTypeLabel() {
+		if (_typeLabelSupplier != null) {
+			typeLabel = _typeLabelSupplier.get();
+
+			_typeLabelSupplier = null;
+		}
+
+		return typeLabel;
+	}
+
+	public void setTypeLabel(String typeLabel) {
+		this.typeLabel = typeLabel;
+
+		_typeLabelSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setTypeLabel(
+		UnsafeSupplier<String, Exception> typeLabelUnsafeSupplier) {
+
+		_typeLabelSupplier = () -> {
+			try {
+				return typeLabelUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "Human-readable label resolved from the type code in the request locale. Read-only."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected String typeLabel;
+
+	@JsonIgnore
+	private Supplier<String> _typeLabelSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "Portal download URL for the attachment binary. Resolved server-side from the underlying document-library file; suitable for direct browser download by the buyer. Read-only.",
+		example = "https://example.com/documents/30130/AB-34098-789-N"
+	)
 	public String getUrl() {
 		if (_urlSupplier != null) {
 			url = _urlSupplier.get();
@@ -238,7 +550,9 @@ public class Attachment implements Serializable {
 		};
 	}
 
-	@GraphQLField
+	@GraphQLField(
+		description = "Portal download URL for the attachment binary. Resolved server-side from the underlying document-library file; suitable for direct browser download by the buyer. Read-only."
+	)
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 	protected String url;
 
@@ -272,6 +586,53 @@ public class Attachment implements Serializable {
 
 		sb.append("{");
 
+		DateFormat liferayToJSONDateFormat = new SimpleDateFormat(
+			"yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+		Map<String, Map<String, String>> actions = getActions();
+
+		if (actions != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"actions\": ");
+
+			sb.append(_toJSON(actions));
+		}
+
+		Date dateModified = getDateModified();
+
+		if (dateModified != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"dateModified\": ");
+
+			sb.append("\"");
+
+			sb.append(liferayToJSONDateFormat.format(dateModified));
+
+			sb.append("\"");
+		}
+
+		String extension = getExtension();
+
+		if (extension != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"extension\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(extension));
+
+			sb.append("\"");
+		}
+
 		String externalReferenceCode = getExternalReferenceCode();
 
 		if (externalReferenceCode != null) {
@@ -300,6 +661,30 @@ public class Attachment implements Serializable {
 			sb.append(id);
 		}
 
+		Double priority = getPriority();
+
+		if (priority != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"priority\": ");
+
+			sb.append(priority);
+		}
+
+		Boolean restricted = getRestricted();
+
+		if (restricted != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"restricted\": ");
+
+			sb.append(restricted);
+		}
+
 		String title = getTitle();
 
 		if (title != null) {
@@ -316,7 +701,7 @@ public class Attachment implements Serializable {
 			sb.append("\"");
 		}
 
-		Integer type = getType();
+		String type = getType();
 
 		if (type != null) {
 			if (sb.length() > 1) {
@@ -325,7 +710,27 @@ public class Attachment implements Serializable {
 
 			sb.append("\"type\": ");
 
-			sb.append(type);
+			sb.append("\"");
+
+			sb.append(_escape(type));
+
+			sb.append("\"");
+		}
+
+		String typeLabel = getTypeLabel();
+
+		if (typeLabel != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"typeLabel\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(typeLabel));
+
+			sb.append("\"");
 		}
 
 		String url = getUrl();
@@ -445,4 +850,4 @@ public class Attachment implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:1425855278
+// LIFERAY-REST-BUILDER-HASH:1660265015

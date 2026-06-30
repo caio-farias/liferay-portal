@@ -7,7 +7,6 @@ import {expect, mergeTests} from '@playwright/test';
 
 import {commercePagesTest} from '../../../../fixtures/commercePagesTest';
 import {dataApiHelpersTest} from '../../../../fixtures/dataApiHelpersTest';
-import {featureFlagsTest} from '../../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../../fixtures/loginTest';
 import getRandomString from '../../../../utils/getRandomString';
 import {
@@ -19,9 +18,6 @@ import {classicCommerceSetUp} from '../../utils/commerce';
 export const test = mergeTests(
 	commercePagesTest,
 	dataApiHelpersTest,
-	featureFlagsTest({
-		'LPD-20379': {enabled: true},
-	}),
 	loginTest()
 );
 
@@ -484,7 +480,7 @@ test(
 			)
 		).items[0];
 
-		const productSku = (
+		const productSku = await (
 			await apiHelpers.headlessCommerceDeliveryCatalog.getChannelProductSkusPage(
 				channel.id,
 				product.productId,
@@ -623,7 +619,9 @@ test(
 				)
 			).toBeVisible();
 
-			await page.goto(`/web/${site.name}/p/` + product.name['en_US']);
+			await page.goto(`/web/${site.name}/p/` + product.name['en_US'], {
+				waitUntil: 'networkidle',
+			});
 
 			await expect(
 				await productDetailsPage.priceField(
@@ -650,8 +648,7 @@ test(
 			await commerceThemeClassicCatalogPage.ordersTab.click();
 
 			await (
-				await commerceThemeClassicOrdersPage.tableRowLink({
-					colIndex: 1,
+				await commerceThemeClassicOrdersPage.tableRowButton({
 					rowValue: cart.id,
 				})
 			).click();

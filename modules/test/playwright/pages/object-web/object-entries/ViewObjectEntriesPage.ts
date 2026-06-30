@@ -300,7 +300,7 @@ export class ViewObjectEntriesPage {
 	}
 
 	async selectDropdownItemWithSearch(optionName: string) {
-		await this.page.getByPlaceholder('Search').click();
+		await this.page.getByRole('textbox', {name: 'Search'}).click();
 		await this.page.getByRole('menuitem', {name: optionName}).click();
 	}
 
@@ -480,20 +480,20 @@ export class ViewObjectEntriesPage {
 					break;
 				}
 				case 'RichText': {
+					const entry = objectEntry[objectField.name]
+						.toString()
+						.substring(0, 35);
+
 					await this.fillObjectEntry({
 						objectFieldBusinessType: objectField.businessType,
 						objectFieldLabel: objectField.label['en_US'],
 						objectFieldName: objectField.name,
-						objectFieldValue: objectEntry[objectField.name]
-							.toString()
-							.substring(0, 35),
+						objectFieldValue: entry,
 					});
 
 					objectEntries.push({
 						businessType: objectField.businessType,
-						entry: objectEntry[objectField.name]
-							.toString()
-							.substring(0, 34),
+						entry,
 						name: objectField.name,
 					});
 

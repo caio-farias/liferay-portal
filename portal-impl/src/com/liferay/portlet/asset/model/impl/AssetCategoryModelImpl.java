@@ -113,6 +113,10 @@ public class AssetCategoryModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table AssetCategory";
 
+	public static final String ENTITY_ALIAS = "assetCategory";
+
+	public static final String FILTER_PK_COLUMN_NAME = "categoryId";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY assetCategory.name ASC";
 
@@ -1611,4 +1615,4 @@ public class AssetCategoryModelImpl
 	private AssetCategory _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-252323915
+// LIFERAY-SERVICE-BUILDER-HASH:1836741370

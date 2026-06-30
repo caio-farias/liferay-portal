@@ -14,18 +14,17 @@ import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.search.BooleanClauseOccur;
+import com.liferay.portal.kernel.search.BooleanQuery;
 import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.DocumentImpl;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Hits;
 import com.liferay.portal.kernel.search.filter.BooleanFilter;
 import com.liferay.portal.kernel.search.filter.TermFilter;
-import com.liferay.portal.kernel.search.generic.BooleanQueryImpl;
 import com.liferay.portal.kernel.util.DateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.search.engine.adapter.SearchEngineAdapter;
 import com.liferay.portal.search.engine.adapter.document.IndexDocumentRequest;
-import com.liferay.portal.search.engine.adapter.document.IndexDocumentResponse;
 import com.liferay.portal.search.engine.adapter.search.SearchSearchRequest;
 import com.liferay.portal.search.engine.adapter.search.SearchSearchResponse;
 
@@ -51,20 +50,8 @@ public abstract class BaseCommerceMLRecommendationServiceImpl
 
 		Document document = toDocument(model);
 
-		IndexDocumentRequest indexDocumentRequest = new IndexDocumentRequest(
-			indexName, document);
-
-		IndexDocumentResponse indexDocumentResponse =
-			searchEngineAdapter.execute(indexDocumentRequest);
-
-		if ((indexDocumentResponse.getStatus() < 200) ||
-			(indexDocumentResponse.getStatus() >= 300)) {
-
-			throw new PortalException(
-				String.format(
-					"Index request return status: %d",
-					indexDocumentResponse.getStatus()));
-		}
+		searchEngineAdapter.execute(
+			new IndexDocumentRequest(indexName, document));
 
 		return model;
 	}
@@ -147,7 +134,7 @@ public abstract class BaseCommerceMLRecommendationServiceImpl
 			{
 				setIndexNames(new String[] {indexName});
 				setQuery(
-					new BooleanQueryImpl() {
+					new BooleanQuery() {
 						{
 							setPreBooleanFilter(booleanFilter);
 						}

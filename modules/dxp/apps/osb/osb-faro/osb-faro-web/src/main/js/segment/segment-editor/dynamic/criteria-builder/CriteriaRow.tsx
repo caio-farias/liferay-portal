@@ -3,6 +3,7 @@ import autobind from 'autobind-decorator';
 import BehaviorInput from '../inputs/BehaviorInput';
 import BooleanInput from '../inputs/BooleanInput';
 import ClayIcon from '@clayui/icon';
+import ClaySticker from '@clayui/sticker';
 import CustomBooleanInput from '../inputs/CustomBooleanInput';
 import CustomDateInput from '../inputs/CustomDateInput';
 import CustomDateTimeInput from '../inputs/CustomDateTimeInput';
@@ -23,11 +24,20 @@ import React from 'react';
 import RowActions from 'shared/components/RowActions';
 import SessionInput from '../inputs/SessionInput';
 import StringInput from '../inputs/StringInput';
+import TagInput from '../inputs/TagInput';
+import VocabularyInput from '../inputs/VocabularyInput';
 import {
 	AddProperty,
 	withReferencedObjectsConsumer
 } from '../context/referencedObjects';
 import {compose} from 'redux';
+import {
+	Conjunctions,
+	isKnown,
+	isUnknown,
+	PropertyTypes,
+	RelationalOperators
+} from '../utils/constants';
 import {connect, ConnectedProps} from 'react-redux';
 import {
 	ConnectDragPreview,
@@ -48,12 +58,6 @@ import {
 import {Criterion, CriterionGroup, OnMove, Operator} from '../utils/types';
 import {DragTypes} from '../utils/drag-types';
 import {get} from 'lodash';
-import {
-	isKnown,
-	isUnknown,
-	PropertyTypes,
-	RelationalOperators
-} from '../utils/constants';
 import {Map} from 'immutable';
 import {Option, Picker} from '@clayui/core';
 import {Property} from 'shared/util/records';
@@ -70,17 +74,21 @@ const acceptedDragTypes = [DragTypes.CriteriaRow, DragTypes.Property];
 const canDrop = (
 	{
 		criteriaGroupId: destGroupId,
+		disabled,
 		index: destIndex
 	}: {
 		criteriaGroupId: string;
+		disabled?: boolean;
 		index: number;
 	},
 	monitor: DropTargetMonitor
 ): boolean => {
-	const {
-		criteriaGroupId: startGroupId,
-		index: startIndex
-	} = monitor.getItem();
+	if (disabled) {
+		return false;
+	}
+
+	const {criteriaGroupId: startGroupId, index: startIndex} =
+		monitor.getItem();
 
 	return destGroupId !== startGroupId || destIndex !== startIndex;
 };
@@ -97,7 +105,8 @@ const drop = (
 		criterion,
 		index: destIndex,
 		onChange,
-		onMove
+		onMove,
+		sequential
 	}: {
 		addProperty: AddProperty;
 		criteriaGroupId: string;
@@ -105,6 +114,7 @@ const drop = (
 		index: number;
 		onChange: (newGroup: CriterionGroup) => void;
 		onMove: OnMove;
+		sequential?: boolean;
 	},
 	monitor: DropTargetMonitor
 ): void => {
@@ -145,7 +155,10 @@ const drop = (
 
 	const itemType = monitor.getItemType();
 
-	const newGroup = createNewGroup([criterion, newCriterion]);
+	const newGroup = createNewGroup(
+		[criterion, newCriterion],
+		sequential ? Conjunctions.Or : Conjunctions.And
+	);
 
 	if (itemType === DragTypes.Property) {
 		onChange(newGroup);
@@ -167,7 +180,15 @@ const drop = (
  * @param {Object} props Component's current props
  * @returns {Object} The props to be passed to the drop target.
  */
-function beginDrag({criteriaGroupId, criterion, index}) {
+function beginDrag({
+	criteriaGroupId,
+	criterion,
+	index
+}: {
+	criteriaGroupId: string;
+	criterion: Criterion;
+	index: number;
+}) {
 	return {criteriaGroupId, criterion, index};
 }
 
@@ -192,6 +213,7 @@ interface ICriteriaRowProps extends PropsFromRedux {
 	connectDropTarget: ConnectDropTarget;
 	criteriaGroupId: string;
 	criterion: Criterion;
+	disabled?: boolean;
 	dragging?: boolean;
 	groupId: string;
 	id?: string;
@@ -203,11 +225,13 @@ interface ICriteriaRowProps extends PropsFromRedux {
 	onMove: OnMove;
 	referencedProperties: Map<string, Map<string, Property>>;
 	segmentType: SegmentTypes;
+	sequential?: boolean;
+	stepNumber?: number;
 	timeZoneId: string;
 }
 
 interface ICriteriaRowState {
-	selectedProperty: Property;
+	selectedProperty: Property | undefined;
 	supportedOperators: Operator[];
 }
 
@@ -219,19 +243,39 @@ class CriteriaRow extends React.Component<
 		criterion: {}
 	};
 
-	constructor(props) {
+	constructor(props: ICriteriaRowProps) {
 		super(props);
 
 		const selectedProperty = this.getSelectedProperty();
 
 		const supportedOperators = selectedProperty
-			? getSupportedOperatorsFromType(selectedProperty.type)
+			? getSupportedOperatorsFromType(String(selectedProperty.type))
 			: [];
 
 		this.state = {
 			selectedProperty,
 			supportedOperators
 		};
+	}
+
+	componentDidUpdate(prevProps: ICriteriaRowProps) {
+		const {criterion, referencedProperties} = this.props;
+
+		if (prevProps.referencedProperties !== referencedProperties) {
+			const selectedProperty = findPropertyByCriterion(
+				criterion,
+				referencedProperties
+			);
+
+			if (selectedProperty) {
+				this.setState({
+					selectedProperty,
+					supportedOperators: getSupportedOperatorsFromType(
+						String(selectedProperty.type)
+					)
+				});
+			}
+		}
 	}
 
 	getSelectedOperator() {
@@ -242,10 +286,8 @@ class CriteriaRow extends React.Component<
 			state: {supportedOperators}
 		} = this;
 
-		let operatorKey:
-			| Criterion['operatorName']
-			| 'is-known'
-			| 'is-unknown' = operatorName;
+		let operatorKey: Criterion['operatorName'] | 'is-known' | 'is-unknown' =
+			operatorName;
 
 		const valueNull = value === null;
 
@@ -276,7 +318,7 @@ class CriteriaRow extends React.Component<
 		return findPropertyByCriterion(criterion, referencedProperties);
 	}
 
-	getValue(value, key) {
+	getValue(value: any, key: string) {
 		if (isOfKnownType(key)) {
 			return null;
 		} else if (value === null) {
@@ -287,7 +329,7 @@ class CriteriaRow extends React.Component<
 	}
 
 	@autobind
-	handleDelete(event) {
+	handleDelete(event: React.MouseEvent) {
 		event.preventDefault();
 
 		const {index, onDelete} = this.props;
@@ -296,7 +338,7 @@ class CriteriaRow extends React.Component<
 	}
 
 	@autobind
-	handleDuplicate(event) {
+	handleDuplicate(event: React.MouseEvent) {
 		event.preventDefault();
 
 		const {criterion, index, onAdd} = this.props;
@@ -305,7 +347,7 @@ class CriteriaRow extends React.Component<
 	}
 
 	@autobind
-	handleOperatorChange(value) {
+	handleOperatorChange(value: string) {
 		const {
 			props: {criterion, onChange},
 			state: {supportedOperators}
@@ -322,10 +364,10 @@ class CriteriaRow extends React.Component<
 		onChange({
 			...criterion,
 			operatorName: supportedOperators.find(({key}) => key === value)
-				.name,
+				?.name,
 			value: newVal,
 			...params
-		} as Criterion);
+		} as unknown as Criterion);
 	}
 
 	/**
@@ -337,7 +379,7 @@ class CriteriaRow extends React.Component<
 	 * properties to update.
 	 */
 	@autobind
-	handleTypedInputChange(value) {
+	handleTypedInputChange(value: any) {
 		const {criterion, onChange} = this.props;
 
 		if (Array.isArray(value)) {
@@ -375,7 +417,11 @@ class CriteriaRow extends React.Component<
 							label,
 							value: key
 						}))}
-						onSelectionChange={this.handleOperatorChange}
+						onSelectionChange={
+							this.handleOperatorChange as (
+								value: React.Key
+							) => void
+						}
 						selectedKey={selectedOperatorKey}
 					>
 						{({label, value}) => (
@@ -393,11 +439,12 @@ class CriteriaRow extends React.Component<
 			state: {selectedProperty}
 		} = this;
 
-		const {label, options, type} = selectedProperty;
+		const {label, options, type} = selectedProperty ?? ({} as Property);
 
 		const inputComponentsMap = {
 			[PropertyTypes.Behavior]: BehaviorInput,
 			[PropertyTypes.Boolean]: BooleanInput,
+			[PropertyTypes.Vocabulary]: VocabularyInput,
 			[PropertyTypes.AccountDate]: AccountInput,
 			[PropertyTypes.AccountNumber]: AccountInput,
 			[PropertyTypes.AccountText]: AccountInput,
@@ -418,12 +465,14 @@ class CriteriaRow extends React.Component<
 			[PropertyTypes.SessionGeolocation]: GeolocationInput,
 			[PropertyTypes.SessionNumber]: SessionInput,
 			[PropertyTypes.SessionText]: SessionInput,
-			[PropertyTypes.Text]: StringInput
+			[PropertyTypes.Text]: StringInput,
+			[PropertyTypes.Tag]: TagInput
 		};
 
 		const InputComponent: React.ElementType =
-			inputComponentsMap[type || criterion.type] ||
-			inputComponentsMap[PropertyTypes.Text];
+			inputComponentsMap[
+				(type || criterion.type) as keyof typeof inputComponentsMap
+			] || inputComponentsMap[PropertyTypes.Text];
 
 		return (
 			<InputComponent
@@ -452,7 +501,8 @@ class CriteriaRow extends React.Component<
 				connectDragSource,
 				connectDropTarget,
 				dragging,
-				hover
+				hover,
+				stepNumber
 			},
 			state: {selectedProperty}
 		} = this;
@@ -478,6 +528,17 @@ class CriteriaRow extends React.Component<
 							<div className='drag-icon'>
 								<ClayIcon className='icon-root' symbol='drag' />
 							</div>
+						)}
+
+						{stepNumber !== undefined && (
+							<ClaySticker
+								className='mr-4'
+								displayType='secondary'
+								shape='circle'
+								size='sm'
+							>
+								{stepNumber}
+							</ClaySticker>
 						)}
 
 						{selectedProperty ? (

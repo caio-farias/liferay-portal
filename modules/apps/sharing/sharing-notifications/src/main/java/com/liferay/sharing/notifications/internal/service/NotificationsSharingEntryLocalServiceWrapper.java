@@ -32,6 +32,7 @@ import com.liferay.portal.kernel.util.ResourceBundleUtil;
 import com.liferay.sharing.constants.SharingPortletKeys;
 import com.liferay.sharing.interpreter.SharingEntryInterpreter;
 import com.liferay.sharing.interpreter.SharingEntryInterpreterProvider;
+import com.liferay.sharing.mail.SharingCollaborationMailSender;
 import com.liferay.sharing.model.SharingEntry;
 import com.liferay.sharing.notifications.internal.util.SharingNotificationSubcriptionSender;
 import com.liferay.sharing.security.permission.SharingEntryAction;
@@ -59,17 +60,17 @@ public class NotificationsSharingEntryLocalServiceWrapper
 
 	@Override
 	public SharingEntry addSharingEntry(
-			String externalReferenceCode, long fromUserId, long userGroupId,
-			long toUserId, long classNameId, long classPK, long groupId,
-			boolean shareable,
+			String externalReferenceCode, long fromUserId, long toTicketId,
+			long userGroupId, long toUserId, long classNameId, long classPK,
+			long groupId, boolean shareable,
 			Collection<SharingEntryAction> sharingEntryActions,
 			Date expirationDate, ServiceContext serviceContext)
 		throws PortalException {
 
 		SharingEntry sharingEntry = super.addSharingEntry(
-			externalReferenceCode, fromUserId, userGroupId, toUserId,
-			classNameId, classPK, groupId, shareable, sharingEntryActions,
-			expirationDate, serviceContext);
+			externalReferenceCode, fromUserId, toTicketId, userGroupId,
+			toUserId, classNameId, classPK, groupId, shareable,
+			sharingEntryActions, expirationDate, serviceContext);
 
 		_sendNotificationEvent(
 			sharingEntry,
@@ -299,8 +300,21 @@ public class NotificationsSharingEntryLocalServiceWrapper
 	}
 
 	private void _sendNotificationEvent(
-		SharingEntry sharingEntry, int notificationType,
-		ServiceContext serviceContext) {
+			SharingEntry sharingEntry, int notificationType,
+			ServiceContext serviceContext)
+		throws PortalException {
+
+		if (sharingEntry.getToTicketId() > 0) {
+			try {
+				_sharingCollaborationMailSender.sendEmail(
+					serviceContext, sharingEntry);
+			}
+			catch (Exception exception) {
+				throw new PortalException(exception);
+			}
+
+			return;
+		}
 
 		try {
 			if (sharingEntry.getToUserId() > 0) {
@@ -311,12 +325,14 @@ public class NotificationsSharingEntryLocalServiceWrapper
 				return;
 			}
 
-			List<User> userGroupUsers = _userLocalService.getUserGroupUsers(
-				sharingEntry.getToUserGroupId());
+			if (sharingEntry.getToUserGroupId() > 0) {
+				List<User> userGroupUsers = _userLocalService.getUserGroupUsers(
+					sharingEntry.getToUserGroupId());
 
-			for (User user : userGroupUsers) {
-				_sendNotificationEvent(
-					sharingEntry, notificationType, serviceContext, user);
+				for (User user : userGroupUsers) {
+					_sendNotificationEvent(
+						sharingEntry, notificationType, serviceContext, user);
+				}
 			}
 		}
 		catch (Exception exception) {
@@ -380,6 +396,9 @@ public class NotificationsSharingEntryLocalServiceWrapper
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		NotificationsSharingEntryLocalServiceWrapper.class);
+
+	@Reference
+	private SharingCollaborationMailSender _sharingCollaborationMailSender;
 
 	@Reference
 	private SharingEntryInterpreterProvider _sharingEntryInterpreterProvider;

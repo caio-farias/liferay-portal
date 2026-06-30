@@ -36,6 +36,20 @@ public class KaleoTimerUtil {
 	 */
 
 	/**
+	 * @see com.liferay.portal.kernel.service.persistence.BasePersistence#cacheResult(List)
+	 */
+	public static void cacheResult(List<KaleoTimer> kaleoTimers) {
+		getPersistence().cacheResult(kaleoTimers);
+	}
+
+	/**
+	 * @see com.liferay.portal.kernel.service.persistence.BasePersistence#cacheResult(com.liferay.portal.kernel.model.BaseModel)
+	 */
+	public static void cacheResult(KaleoTimer kaleoTimer) {
+		getPersistence().cacheResult(kaleoTimer);
+	}
+
+	/**
 	 * @see com.liferay.portal.kernel.service.persistence.BasePersistence#clearCache()
 	 */
 	public static void clearCache() {
@@ -111,65 +125,10 @@ public class KaleoTimerUtil {
 	}
 
 	/**
-	 * Returns all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63;.
-	 *
-	 * @param kaleoClassName the kaleo class name
-	 * @param kaleoClassPK the kaleo class pk
-	 * @return the matching kaleo timers
-	 */
-	public static List<KaleoTimer> findByKCN_KCPK(
-		String kaleoClassName, long kaleoClassPK) {
-
-		return getPersistence().findByKCN_KCPK(kaleoClassName, kaleoClassPK);
-	}
-
-	/**
-	 * Returns a range of all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>KaleoTimerModelImpl</code>.
-	 * </p>
-	 *
-	 * @param kaleoClassName the kaleo class name
-	 * @param kaleoClassPK the kaleo class pk
-	 * @param start the lower bound of the range of kaleo timers
-	 * @param end the upper bound of the range of kaleo timers (not inclusive)
-	 * @return the range of matching kaleo timers
-	 */
-	public static List<KaleoTimer> findByKCN_KCPK(
-		String kaleoClassName, long kaleoClassPK, int start, int end) {
-
-		return getPersistence().findByKCN_KCPK(
-			kaleoClassName, kaleoClassPK, start, end);
-	}
-
-	/**
 	 * Returns an ordered range of all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>KaleoTimerModelImpl</code>.
-	 * </p>
-	 *
-	 * @param kaleoClassName the kaleo class name
-	 * @param kaleoClassPK the kaleo class pk
-	 * @param start the lower bound of the range of kaleo timers
-	 * @param end the upper bound of the range of kaleo timers (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching kaleo timers
-	 */
-	public static List<KaleoTimer> findByKCN_KCPK(
-		String kaleoClassName, long kaleoClassPK, int start, int end,
-		OrderByComparator<KaleoTimer> orderByComparator) {
-
-		return getPersistence().findByKCN_KCPK(
-			kaleoClassName, kaleoClassPK, start, end, orderByComparator);
-	}
-
-	/**
-	 * Returns an ordered range of all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>KaleoTimerModelImpl</code>.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portal.workflow.kaleo.model.impl.KaleoTimerModelImpl</code>.
 	 * </p>
 	 *
 	 * @param kaleoClassName the kaleo class name
@@ -251,71 +210,97 @@ public class KaleoTimerUtil {
 	}
 
 	/**
-	 * Returns all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63; and blocking = &#63;.
-	 *
-	 * @param kaleoClassName the kaleo class name
-	 * @param kaleoClassPK the kaleo class pk
-	 * @param blocking the blocking
-	 * @return the matching kaleo timers
-	 */
-	public static List<KaleoTimer> findByKCN_KCPK_Blocking(
-		String kaleoClassName, long kaleoClassPK, boolean blocking) {
-
-		return getPersistence().findByKCN_KCPK_Blocking(
-			kaleoClassName, kaleoClassPK, blocking);
-	}
-
-	/**
-	 * Returns a range of all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63; and blocking = &#63;.
+	 * Returns an ordered range of all the kaleo timers where kaleoClassName = &#63; and kaleoDefinitionVersionId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>KaleoTimerModelImpl</code>.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portal.workflow.kaleo.model.impl.KaleoTimerModelImpl</code>.
 	 * </p>
 	 *
 	 * @param kaleoClassName the kaleo class name
-	 * @param kaleoClassPK the kaleo class pk
-	 * @param blocking the blocking
-	 * @param start the lower bound of the range of kaleo timers
-	 * @param end the upper bound of the range of kaleo timers (not inclusive)
-	 * @return the range of matching kaleo timers
-	 */
-	public static List<KaleoTimer> findByKCN_KCPK_Blocking(
-		String kaleoClassName, long kaleoClassPK, boolean blocking, int start,
-		int end) {
-
-		return getPersistence().findByKCN_KCPK_Blocking(
-			kaleoClassName, kaleoClassPK, blocking, start, end);
-	}
-
-	/**
-	 * Returns an ordered range of all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63; and blocking = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>KaleoTimerModelImpl</code>.
-	 * </p>
-	 *
-	 * @param kaleoClassName the kaleo class name
-	 * @param kaleoClassPK the kaleo class pk
-	 * @param blocking the blocking
+	 * @param kaleoDefinitionVersionId the kaleo definition version ID
 	 * @param start the lower bound of the range of kaleo timers
 	 * @param end the upper bound of the range of kaleo timers (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching kaleo timers
 	 */
-	public static List<KaleoTimer> findByKCN_KCPK_Blocking(
-		String kaleoClassName, long kaleoClassPK, boolean blocking, int start,
-		int end, OrderByComparator<KaleoTimer> orderByComparator) {
+	public static List<KaleoTimer> findByKCN_KDVI(
+		String kaleoClassName, long kaleoDefinitionVersionId, int start,
+		int end, OrderByComparator<KaleoTimer> orderByComparator,
+		boolean useFinderCache) {
 
-		return getPersistence().findByKCN_KCPK_Blocking(
-			kaleoClassName, kaleoClassPK, blocking, start, end,
-			orderByComparator);
+		return getPersistence().findByKCN_KDVI(
+			kaleoClassName, kaleoDefinitionVersionId, start, end,
+			orderByComparator, useFinderCache);
+	}
+
+	/**
+	 * Returns the first kaleo timer in the ordered set where kaleoClassName = &#63; and kaleoDefinitionVersionId = &#63;.
+	 *
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoDefinitionVersionId the kaleo definition version ID
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the first matching kaleo timer
+	 * @throws NoSuchTimerException if a matching kaleo timer could not be found
+	 */
+	public static KaleoTimer findByKCN_KDVI_First(
+			String kaleoClassName, long kaleoDefinitionVersionId,
+			OrderByComparator<KaleoTimer> orderByComparator)
+		throws com.liferay.portal.workflow.kaleo.exception.
+			NoSuchTimerException {
+
+		return getPersistence().findByKCN_KDVI_First(
+			kaleoClassName, kaleoDefinitionVersionId, orderByComparator);
+	}
+
+	/**
+	 * Returns the first kaleo timer in the ordered set where kaleoClassName = &#63; and kaleoDefinitionVersionId = &#63;.
+	 *
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoDefinitionVersionId the kaleo definition version ID
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the first matching kaleo timer, or <code>null</code> if a matching kaleo timer could not be found
+	 */
+	public static KaleoTimer fetchByKCN_KDVI_First(
+		String kaleoClassName, long kaleoDefinitionVersionId,
+		OrderByComparator<KaleoTimer> orderByComparator) {
+
+		return getPersistence().fetchByKCN_KDVI_First(
+			kaleoClassName, kaleoDefinitionVersionId, orderByComparator);
+	}
+
+	/**
+	 * Removes all the kaleo timers where kaleoClassName = &#63; and kaleoDefinitionVersionId = &#63; from the database.
+	 *
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoDefinitionVersionId the kaleo definition version ID
+	 */
+	public static void removeByKCN_KDVI(
+		String kaleoClassName, long kaleoDefinitionVersionId) {
+
+		getPersistence().removeByKCN_KDVI(
+			kaleoClassName, kaleoDefinitionVersionId);
+	}
+
+	/**
+	 * Returns the number of kaleo timers where kaleoClassName = &#63; and kaleoDefinitionVersionId = &#63;.
+	 *
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoDefinitionVersionId the kaleo definition version ID
+	 * @return the number of matching kaleo timers
+	 */
+	public static int countByKCN_KDVI(
+		String kaleoClassName, long kaleoDefinitionVersionId) {
+
+		return getPersistence().countByKCN_KDVI(
+			kaleoClassName, kaleoDefinitionVersionId);
 	}
 
 	/**
 	 * Returns an ordered range of all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63; and blocking = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>KaleoTimerModelImpl</code>.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portal.workflow.kaleo.model.impl.KaleoTimerModelImpl</code>.
 	 * </p>
 	 *
 	 * @param kaleoClassName the kaleo class name
@@ -404,24 +389,6 @@ public class KaleoTimerUtil {
 	}
 
 	/**
-	 * Caches the kaleo timer in the entity cache if it is enabled.
-	 *
-	 * @param kaleoTimer the kaleo timer
-	 */
-	public static void cacheResult(KaleoTimer kaleoTimer) {
-		getPersistence().cacheResult(kaleoTimer);
-	}
-
-	/**
-	 * Caches the kaleo timers in the entity cache if it is enabled.
-	 *
-	 * @param kaleoTimers the kaleo timers
-	 */
-	public static void cacheResult(List<KaleoTimer> kaleoTimers) {
-		getPersistence().cacheResult(kaleoTimers);
-	}
-
-	/**
 	 * Creates a new kaleo timer with the primary key. Does not add the kaleo timer to the database.
 	 *
 	 * @param kaleoTimerId the primary key for the new kaleo timer
@@ -474,82 +441,177 @@ public class KaleoTimerUtil {
 	}
 
 	/**
-	 * Returns all the kaleo timers.
+	 * Returns all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63;.
 	 *
-	 * @return the kaleo timers
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoClassPK the kaleo class pk
+	 * @return the matching kaleo timers
 	 */
-	public static List<KaleoTimer> findAll() {
-		return getPersistence().findAll();
+	public static List<KaleoTimer> findByKCN_KCPK(
+		String kaleoClassName, long kaleoClassPK) {
+
+		return getPersistence().findByKCN_KCPK(kaleoClassName, kaleoClassPK);
 	}
 
 	/**
-	 * Returns a range of all the kaleo timers.
+	 * Returns a range of all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>KaleoTimerModelImpl</code>.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portal.workflow.kaleo.model.impl.KaleoTimerModelImpl</code>.
 	 * </p>
 	 *
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoClassPK the kaleo class pk
 	 * @param start the lower bound of the range of kaleo timers
 	 * @param end the upper bound of the range of kaleo timers (not inclusive)
-	 * @return the range of kaleo timers
+	 * @return the range of matching kaleo timers
 	 */
-	public static List<KaleoTimer> findAll(int start, int end) {
-		return getPersistence().findAll(start, end);
+	public static List<KaleoTimer> findByKCN_KCPK(
+		String kaleoClassName, long kaleoClassPK, int start, int end) {
+
+		return getPersistence().findByKCN_KCPK(
+			kaleoClassName, kaleoClassPK, start, end);
 	}
 
 	/**
-	 * Returns an ordered range of all the kaleo timers.
+	 * Returns an ordered range of all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>KaleoTimerModelImpl</code>.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portal.workflow.kaleo.model.impl.KaleoTimerModelImpl</code>.
 	 * </p>
 	 *
-	 * @param start the lower bound of the range of kaleo timers
-	 * @param end the upper bound of the range of kaleo timers (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of kaleo timers
-	 */
-	public static List<KaleoTimer> findAll(
-		int start, int end, OrderByComparator<KaleoTimer> orderByComparator) {
-
-		return getPersistence().findAll(start, end, orderByComparator);
-	}
-
-	/**
-	 * Returns an ordered range of all the kaleo timers.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>KaleoTimerModelImpl</code>.
-	 * </p>
-	 *
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoClassPK the kaleo class pk
 	 * @param start the lower bound of the range of kaleo timers
 	 * @param end the upper bound of the range of kaleo timers (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of kaleo timers
+	 * @return the ordered range of matching kaleo timers
 	 */
-	public static List<KaleoTimer> findAll(
-		int start, int end, OrderByComparator<KaleoTimer> orderByComparator,
-		boolean useFinderCache) {
+	public static List<KaleoTimer> findByKCN_KCPK(
+		String kaleoClassName, long kaleoClassPK, int start, int end,
+		OrderByComparator<KaleoTimer> orderByComparator) {
 
-		return getPersistence().findAll(
-			start, end, orderByComparator, useFinderCache);
+		return getPersistence().findByKCN_KCPK(
+			kaleoClassName, kaleoClassPK, start, end, orderByComparator);
 	}
 
 	/**
-	 * Removes all the kaleo timers from the database.
-	 */
-	public static void removeAll() {
-		getPersistence().removeAll();
-	}
-
-	/**
-	 * Returns the number of kaleo timers.
+	 * Returns all the kaleo timers where kaleoClassName = &#63; and kaleoDefinitionVersionId = &#63;.
 	 *
-	 * @return the number of kaleo timers
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoDefinitionVersionId the kaleo definition version ID
+	 * @return the matching kaleo timers
 	 */
-	public static int countAll() {
-		return getPersistence().countAll();
+	public static List<KaleoTimer> findByKCN_KDVI(
+		String kaleoClassName, long kaleoDefinitionVersionId) {
+
+		return getPersistence().findByKCN_KDVI(
+			kaleoClassName, kaleoDefinitionVersionId);
+	}
+
+	/**
+	 * Returns a range of all the kaleo timers where kaleoClassName = &#63; and kaleoDefinitionVersionId = &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portal.workflow.kaleo.model.impl.KaleoTimerModelImpl</code>.
+	 * </p>
+	 *
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoDefinitionVersionId the kaleo definition version ID
+	 * @param start the lower bound of the range of kaleo timers
+	 * @param end the upper bound of the range of kaleo timers (not inclusive)
+	 * @return the range of matching kaleo timers
+	 */
+	public static List<KaleoTimer> findByKCN_KDVI(
+		String kaleoClassName, long kaleoDefinitionVersionId, int start,
+		int end) {
+
+		return getPersistence().findByKCN_KDVI(
+			kaleoClassName, kaleoDefinitionVersionId, start, end);
+	}
+
+	/**
+	 * Returns an ordered range of all the kaleo timers where kaleoClassName = &#63; and kaleoDefinitionVersionId = &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portal.workflow.kaleo.model.impl.KaleoTimerModelImpl</code>.
+	 * </p>
+	 *
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoDefinitionVersionId the kaleo definition version ID
+	 * @param start the lower bound of the range of kaleo timers
+	 * @param end the upper bound of the range of kaleo timers (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @return the ordered range of matching kaleo timers
+	 */
+	public static List<KaleoTimer> findByKCN_KDVI(
+		String kaleoClassName, long kaleoDefinitionVersionId, int start,
+		int end, OrderByComparator<KaleoTimer> orderByComparator) {
+
+		return getPersistence().findByKCN_KDVI(
+			kaleoClassName, kaleoDefinitionVersionId, start, end,
+			orderByComparator);
+	}
+
+	/**
+	 * Returns all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63; and blocking = &#63;.
+	 *
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoClassPK the kaleo class pk
+	 * @param blocking the blocking
+	 * @return the matching kaleo timers
+	 */
+	public static List<KaleoTimer> findByKCN_KCPK_Blocking(
+		String kaleoClassName, long kaleoClassPK, boolean blocking) {
+
+		return getPersistence().findByKCN_KCPK_Blocking(
+			kaleoClassName, kaleoClassPK, blocking);
+	}
+
+	/**
+	 * Returns a range of all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63; and blocking = &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portal.workflow.kaleo.model.impl.KaleoTimerModelImpl</code>.
+	 * </p>
+	 *
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoClassPK the kaleo class pk
+	 * @param blocking the blocking
+	 * @param start the lower bound of the range of kaleo timers
+	 * @param end the upper bound of the range of kaleo timers (not inclusive)
+	 * @return the range of matching kaleo timers
+	 */
+	public static List<KaleoTimer> findByKCN_KCPK_Blocking(
+		String kaleoClassName, long kaleoClassPK, boolean blocking, int start,
+		int end) {
+
+		return getPersistence().findByKCN_KCPK_Blocking(
+			kaleoClassName, kaleoClassPK, blocking, start, end);
+	}
+
+	/**
+	 * Returns an ordered range of all the kaleo timers where kaleoClassName = &#63; and kaleoClassPK = &#63; and blocking = &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>com.liferay.portal.workflow.kaleo.model.impl.KaleoTimerModelImpl</code>.
+	 * </p>
+	 *
+	 * @param kaleoClassName the kaleo class name
+	 * @param kaleoClassPK the kaleo class pk
+	 * @param blocking the blocking
+	 * @param start the lower bound of the range of kaleo timers
+	 * @param end the upper bound of the range of kaleo timers (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @return the ordered range of matching kaleo timers
+	 */
+	public static List<KaleoTimer> findByKCN_KCPK_Blocking(
+		String kaleoClassName, long kaleoClassPK, boolean blocking, int start,
+		int end, OrderByComparator<KaleoTimer> orderByComparator) {
+
+		return getPersistence().findByKCN_KCPK_Blocking(
+			kaleoClassName, kaleoClassPK, blocking, start, end,
+			orderByComparator);
 	}
 
 	public static KaleoTimerPersistence getPersistence() {
@@ -563,4 +625,4 @@ public class KaleoTimerUtil {
 	private static volatile KaleoTimerPersistence _persistence;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-328191228
+// LIFERAY-SERVICE-BUILDER-HASH:1788588676

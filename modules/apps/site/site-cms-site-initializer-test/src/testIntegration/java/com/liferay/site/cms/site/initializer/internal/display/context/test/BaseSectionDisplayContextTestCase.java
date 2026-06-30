@@ -73,6 +73,7 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.SetUtil;
@@ -113,19 +114,26 @@ import org.springframework.mock.web.MockHttpServletRequest;
 public abstract class BaseSectionDisplayContextTestCase
 	extends BaseDisplayContextTestCase {
 
-	public HashMap<String, Object> getAdditionalProps() throws Exception {
+	public Map<String, Object> getAdditionalProps() throws Exception {
 		return ReflectionTestUtil.invoke(
 			getSectionDisplayContext(mockHttpServletRequest),
 			"getAdditionalProps", new Class<?>[0]);
 	}
 
-	public HashMap<String, Object> getBaseAdditionalProps() throws Exception {
+	public Map<String, Object> getBaseAdditionalProps() throws Exception {
 		ThemeDisplay themeDisplay =
 			(ThemeDisplay)mockHttpServletRequest.getAttribute(
 				WebKeys.THEME_DISPLAY);
 
 		return HashMapBuilder.<String, Object>put(
-			"additionalAPIURLParameters", getAdditionalAPIURLParameters()
+			"additionalAPIURLParameters",
+			() -> {
+				if (isFolderSearchEnabled()) {
+					return getAdditionalAPIURLParameters();
+				}
+
+				return null;
+			}
 		).put(
 			"assetLibraries", _getDepotEntriesJSONArray()
 		).put(
@@ -247,7 +255,7 @@ public abstract class BaseSectionDisplayContextTestCase
 			StringBundler.concat(
 				themeDisplay.getPortalURL(), themeDisplay.getPathMain(),
 				GroupConstants.CMS_FRIENDLY_URL,
-				"/edit_content_item?&p_l_mode=read&p_p_state=",
+				"/edit_content_item?p_l_mode=read&p_p_state=",
 				LiferayWindowState.POP_UP, "&redirect=",
 				themeDisplay.getURLCurrent(), "&objectEntryId={embedded.id}")
 		).put(
@@ -279,7 +287,9 @@ public abstract class BaseSectionDisplayContextTestCase
 			"parentObjectEntryFolderExternalReferenceCode",
 			getRootObjectEntryFolderExternalReferenceCode()
 		).put(
-			"redirect", "http://localhost:8080/currentURL"
+			"redirect",
+			"http://localhost:" + PortalUtil.getPortalServerPort(false) +
+				"/currentURL"
 		).build();
 	}
 
@@ -297,6 +307,17 @@ public abstract class BaseSectionDisplayContextTestCase
 		_objectEntryFolder = null;
 
 		setUser(adminUser);
+	}
+
+	@Test
+	public void testGetAdditionalAPIURLParameters() throws Exception {
+		String additionalAPIURLParameters = ReflectionTestUtil.invoke(
+			getSectionDisplayContext(getMockHttpServletRequest()),
+			"getAdditionalAPIURLParameters", new Class<?>[0]);
+
+		Assert.assertTrue(
+			additionalAPIURLParameters,
+			additionalAPIURLParameters.contains("sort=dateModified:desc"));
 	}
 
 	@Test
@@ -362,7 +383,7 @@ public abstract class BaseSectionDisplayContextTestCase
 			filterString.contains(
 				"groupIds/any(g:g in (" + depotEntry1.getGroupId() + "))"));
 
-		User cmsAdministratorUser = UserTestUtil.addUser(
+		User cmsAdministratorUser = UserTestUtil.addCompanyUser(
 			companyLocalService.getCompany(TestPropsValues.getCompanyId()),
 			RoleConstants.CMS_ADMINISTRATOR);
 
@@ -703,8 +724,17 @@ public abstract class BaseSectionDisplayContextTestCase
 			appendStatus(appendGroupIds(getFilterString())),
 			"&nestedFields=embedded,embeddedTaxonomyCategory,",
 			"file.metadata,file.previewURL,file.thumbnailURL,",
-			"numberOfObjectEntries,numberOfObjectEntryFolders,",
-			"systemProperties.objectDefinitionBrief");
+			"modifiedBy,numberOfObjectEntries,numberOfObjectEntryFolders,",
+			"systemProperties.collaboratorBrief,",
+			"systemProperties.objectDefinitionBrief&sort=dateModified:desc");
+	}
+
+	protected List<FDSActionDropdownItem> getBulkActionDropdownItems()
+		throws Exception {
+
+		return ReflectionTestUtil.invoke(
+			getSectionDisplayContext(getMockHttpServletRequest()),
+			"getBulkActionDropdownItems", new Class<?>[0]);
 	}
 
 	protected String getCMSSectionFilterString(Object displayContext) {
@@ -775,15 +805,18 @@ public abstract class BaseSectionDisplayContextTestCase
 		ObjectDefinition objectDefinition,
 		String objectEntryFolderExternalReferenceCode) {
 
-		StringBundler sb = new StringBundler(7);
+		StringBundler sb = new StringBundler(10);
 
-		sb.append("http://localhost:8080");
+		sb.append("http://localhost:");
+		sb.append(PortalUtil.getPortalServerPort(false));
 		sb.append(portal.getPathMain());
 		sb.append("/cms/add_structured_content_item?objectDefinitionId=");
 		sb.append(objectDefinition.getObjectDefinitionId());
 		sb.append("&objectEntryFolderExternalReferenceCode=");
 		sb.append(objectEntryFolderExternalReferenceCode);
-		sb.append("&plid=0&redirect=http://localhost:8080/currentURL");
+		sb.append("&plid=0&redirect=http://localhost:");
+		sb.append(PortalUtil.getPortalServerPort(false));
+		sb.append("/currentURL");
 
 		return sb.toString();
 	}
@@ -818,6 +851,10 @@ public abstract class BaseSectionDisplayContextTestCase
 	protected abstract Object getSectionDisplayContext(
 			HttpServletRequest httpServletRequest)
 		throws Exception;
+
+	protected boolean isFolderSearchEnabled() {
+		return false;
+	}
 
 	protected void setUser(User user) {
 		PermissionThreadLocal.setPermissionChecker(
@@ -908,7 +945,7 @@ public abstract class BaseSectionDisplayContextTestCase
 
 		for (DropdownItem dropdownItem : dropdownItems) {
 			if (Objects.equals(dropdownItem.get("label"), expectedLabel)) {
-				dropdownItemData = (HashMap<String, Object>)dropdownItem.get(
+				dropdownItemData = (Map<String, Object>)dropdownItem.get(
 					"data");
 
 				break;
@@ -943,7 +980,7 @@ public abstract class BaseSectionDisplayContextTestCase
 
 		for (DropdownItem dropdownItem : dropdownItems) {
 			if (Objects.equals(dropdownItem.get("label"), unexpectedLabel)) {
-				dropdownItemData = (HashMap<String, Object>)dropdownItem.get(
+				dropdownItemData = (Map<String, Object>)dropdownItem.get(
 					"data");
 
 				break;
@@ -969,7 +1006,7 @@ public abstract class BaseSectionDisplayContextTestCase
 			JSONCompareMode.STRICT);
 	}
 
-	private HashMap<String, Object> _getBreadcrumbProps(
+	private Map<String, Object> _getBreadcrumbProps(
 			HttpServletRequest httpServletRequest)
 		throws Exception {
 
@@ -1074,7 +1111,8 @@ public abstract class BaseSectionDisplayContextTestCase
 					new int[] {
 						RoleConstants.TYPE_REGULAR, RoleConstants.TYPE_DEPOT
 					},
-					0, 0, QueryUtil.ALL_POS, QueryUtil.ALL_POS),
+					DepotRolesConstants.SUBTYPE_SPACE, 0, 0, QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS),
 				role -> HashMapBuilder.put(
 					"key", role.getName()
 				).put(
@@ -1211,8 +1249,7 @@ public abstract class BaseSectionDisplayContextTestCase
 	}
 
 	private String _getRedirect(DropdownItem dropdownItem) {
-		Map<String, Object> map = (HashMap<String, Object>)dropdownItem.get(
-			"data");
+		Map<String, Object> map = (Map<String, Object>)dropdownItem.get("data");
 
 		if (map == null) {
 			return null;

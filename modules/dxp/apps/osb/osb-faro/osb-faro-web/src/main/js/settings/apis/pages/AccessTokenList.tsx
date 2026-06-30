@@ -20,7 +20,7 @@ import {close, modalTypes, open} from 'shared/actions/modals';
 import {compose} from 'redux';
 import {connect, ConnectedProps} from 'react-redux';
 import {CUSTOM_DATE_FORMAT} from 'shared/util/date';
-import {ENABLE_LAST_ACCESS_DATE, ExpirationPeriod} from 'shared/util/constants';
+import {ExpirationPeriod} from 'shared/util/constants';
 import {formatDateToTimeZone, getDateNow} from 'shared/util/date';
 import {RootState} from 'shared/store';
 import {sub} from 'shared/util/lang';
@@ -35,10 +35,16 @@ import type {Column} from 'shared/components/table/Row';
 export const isExpired = (expirationDate: string) =>
 	moment.utc(expirationDate).isSameOrBefore(getDateNow());
 
-const getTimestamp = (date: Date) =>
+const getTimestamp = (date: string | Date) =>
 	Math.floor(new Date(date).getTime() / 1000);
 
-const isIndefinite = ({createDate, expirationDate}) =>
+const isIndefinite = ({
+	createDate,
+	expirationDate
+}: {
+	createDate: string;
+	expirationDate: string;
+}) =>
 	getTimestamp(expirationDate) - getTimestamp(createDate) ===
 	Number(ExpirationPeriod.Indefinite);
 
@@ -77,7 +83,7 @@ const TokenList: React.FC<
 		});
 	};
 
-	const handleSuccess = message => {
+	const handleSuccess = (message: string) => {
 		setLoading(false);
 
 		addAlert({
@@ -142,17 +148,6 @@ const TokenList: React.FC<
 									label: Liferay.Language.get('token'),
 									sortable: false
 								},
-								ENABLE_LAST_ACCESS_DATE && {
-									accessor: 'lastAccessDate',
-									dataFormatter: (val: string) =>
-										formatDateToTimeZone(
-											val,
-											CUSTOM_DATE_FORMAT,
-											timeZoneId
-										),
-									label: Liferay.Language.get('last-seen'),
-									sortable: false
-								},
 								{
 									accessor: 'createDate',
 									dataFormatter: (val: string) =>
@@ -166,7 +161,11 @@ const TokenList: React.FC<
 								},
 								{
 									accessor: 'expirationDate',
-									cellRenderer: ({data}) => {
+									cellRenderer: ({
+										data
+									}: {
+										data: AccessToken;
+									}) => {
 										if (isIndefinite(data)) {
 											return (
 												<td>
@@ -280,7 +279,13 @@ const ListWithData = compose<any>(
 	withQuery(
 		API.apiTokens.search,
 		({groupId}: {groupId: string}) => ({groupId}),
-		({data, ...otherParams}) => ({
+		({
+			data,
+			...otherParams
+		}: {
+			data: AccessToken[];
+			[key: string]: any;
+		}) => ({
 			tokens: data,
 			...otherParams
 		})
@@ -306,7 +311,7 @@ export const AccessTokenList: React.FC<IAccessTokenListProps> = ({groupId}) => (
 					key='API_OVERVIEW_DOCUMENTATION'
 					target='_blank'
 				>
-					{Liferay.Language.get('documentation-fragment')}
+					{Liferay.Language.get('documentation').toLowerCase()}
 				</ClayLink>
 			],
 			false

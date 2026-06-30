@@ -12,9 +12,10 @@ import com.liferay.exportimport.report.model.ExportImportReportEntry;
 import com.liferay.exportimport.report.service.ExportImportReportEntryLocalService;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.Company;
-import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.util.CompanyTestUtil;
+import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.test.rule.Inject;
@@ -23,6 +24,7 @@ import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import java.util.List;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -39,6 +41,11 @@ public class ExportImportReportEntryLocalServiceTest {
 	public static final LiferayIntegrationTestRule liferayIntegrationTestRule =
 		new LiferayIntegrationTestRule();
 
+	@BeforeClass
+	public static void setUpClass() throws Exception {
+		_company = CompanyTestUtil.addCompany();
+	}
+
 	@Test
 	@TestInfo("LPD-77587")
 	public void testAddEmptyExportImportReportEntry() throws Exception {
@@ -54,10 +61,11 @@ public class ExportImportReportEntryLocalServiceTest {
 		String modelNameLanguageKey = RandomTestUtil.randomString();
 
 		ExportImportReportEntry exportImportReportEntry =
-			_exportImportReportEntryLocalService.
-				addEmptyExportImportReportEntry(
-					groupId, companyId, classExternalReferenceCode, classNameId,
-					exportImportConfigurationId, modelNameLanguageKey);
+			_exportImportReportEntryLocalService.addExportImportReportEntry(
+				groupId, companyId, classExternalReferenceCode, classNameId, 0,
+				exportImportConfigurationId,
+				ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
+				modelNameLanguageKey);
 
 		Assert.assertEquals(groupId, exportImportReportEntry.getGroupId());
 		Assert.assertEquals(companyId, exportImportReportEntry.getCompanyId());
@@ -110,11 +118,11 @@ public class ExportImportReportEntryLocalServiceTest {
 		String modelNameLanguageKey = RandomTestUtil.randomString();
 
 		ExportImportReportEntry exportImportReportEntry =
-			_exportImportReportEntryLocalService.
-				addErrorExportImportReportEntry(
-					groupId, companyId, classExternalReferenceCode, classNameId,
-					classPK, exportImportConfigurationId, errorMessage,
-					errorStacktrace, modelNameLanguageKey);
+			_exportImportReportEntryLocalService.addExportImportReportEntry(
+				groupId, companyId, classExternalReferenceCode, classNameId,
+				classPK, exportImportConfigurationId,
+				ExportImportReportEntryConstants.TYPE_ERROR, errorMessage,
+				errorStacktrace, modelNameLanguageKey);
 
 		Assert.assertEquals(groupId, exportImportReportEntry.getGroupId());
 		Assert.assertEquals(companyId, exportImportReportEntry.getCompanyId());
@@ -151,6 +159,41 @@ public class ExportImportReportEntryLocalServiceTest {
 	}
 
 	@Test
+	@TestInfo("LPD-65084")
+	public void testAddMissingReferenceExportImportReportEntry()
+		throws Exception {
+
+		Group group = GroupTestUtil.addGroup();
+
+		String classExternalReferenceCode = RandomTestUtil.randomString();
+		long classNameId = RandomTestUtil.randomLong();
+		long exportImportConfigurationId = RandomTestUtil.randomLong();
+		String modelNameLanguageKey = RandomTestUtil.randomString();
+
+		ExportImportReportEntry exportImportReportEntry =
+			_exportImportReportEntryLocalService.addExportImportReportEntry(
+				group.getGroupId(), TestPropsValues.getCompanyId(),
+				classExternalReferenceCode, classNameId, 0,
+				exportImportConfigurationId,
+				ExportImportReportEntryConstants.TYPE_MISSING_REFERENCE, null,
+				null, modelNameLanguageKey);
+
+		Assert.assertEquals(
+			group.getGroupId(), exportImportReportEntry.getGroupId());
+		Assert.assertEquals(
+			StringBundler.concat(
+				"Missing Reference: Entity ", modelNameLanguageKey,
+				" with external reference code ", classExternalReferenceCode,
+				" in scope ", group.getGroupId(),
+				" was not found. Please ensure the referenced entity is ",
+				"imported."),
+			exportImportReportEntry.getErrorMessage());
+		Assert.assertEquals(
+			ExportImportReportEntryConstants.TYPE_MISSING_REFERENCE,
+			exportImportReportEntry.getType());
+	}
+
+	@Test
 	public void testGetExportImportReportEntries() throws Exception {
 		long exportImportConfigurationId = RandomTestUtil.randomLong();
 
@@ -160,25 +203,31 @@ public class ExportImportReportEntryLocalServiceTest {
 
 		Assert.assertTrue(exportImportReportEntries.isEmpty());
 
-		_exportImportReportEntryLocalService.addEmptyExportImportReportEntry(
+		_exportImportReportEntryLocalService.addExportImportReportEntry(
 			RandomTestUtil.randomLong(), TestPropsValues.getCompanyId(),
-			RandomTestUtil.randomString(), RandomTestUtil.randomLong(),
-			exportImportConfigurationId, RandomTestUtil.randomString());
-		_exportImportReportEntryLocalService.addEmptyExportImportReportEntry(
+			RandomTestUtil.randomString(), RandomTestUtil.randomLong(), 0,
+			exportImportConfigurationId,
+			ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
+			RandomTestUtil.randomString());
+		_exportImportReportEntryLocalService.addExportImportReportEntry(
 			RandomTestUtil.randomLong(), TestPropsValues.getCompanyId(),
-			RandomTestUtil.randomString(), RandomTestUtil.randomLong(),
-			RandomTestUtil.randomLong(), RandomTestUtil.randomString());
+			RandomTestUtil.randomString(), RandomTestUtil.randomLong(), 0,
+			RandomTestUtil.randomLong(),
+			ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
+			RandomTestUtil.randomString());
 
-		Company company = CompanyTestUtil.addCompany();
-
-		_exportImportReportEntryLocalService.addEmptyExportImportReportEntry(
-			RandomTestUtil.randomLong(), company.getCompanyId(),
-			RandomTestUtil.randomString(), RandomTestUtil.randomLong(),
-			exportImportConfigurationId, RandomTestUtil.randomString());
-		_exportImportReportEntryLocalService.addEmptyExportImportReportEntry(
-			RandomTestUtil.randomLong(), company.getCompanyId(),
-			RandomTestUtil.randomString(), RandomTestUtil.randomLong(),
-			RandomTestUtil.randomLong(), RandomTestUtil.randomString());
+		_exportImportReportEntryLocalService.addExportImportReportEntry(
+			RandomTestUtil.randomLong(), _company.getCompanyId(),
+			RandomTestUtil.randomString(), RandomTestUtil.randomLong(), 0,
+			exportImportConfigurationId,
+			ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
+			RandomTestUtil.randomString());
+		_exportImportReportEntryLocalService.addExportImportReportEntry(
+			RandomTestUtil.randomLong(), _company.getCompanyId(),
+			RandomTestUtil.randomString(), RandomTestUtil.randomLong(), 0,
+			RandomTestUtil.randomLong(),
+			ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
+			RandomTestUtil.randomString());
 
 		exportImportReportEntries =
 			_exportImportReportEntryLocalService.getExportImportReportEntries(
@@ -187,8 +236,53 @@ public class ExportImportReportEntryLocalServiceTest {
 		Assert.assertEquals(
 			exportImportReportEntries.toString(), 1,
 			exportImportReportEntries.size());
+	}
 
-		_companyLocalService.deleteCompany(company);
+	@Test
+	public void testGetExportImportReportEntriesCount() throws Exception {
+		long exportImportConfigurationId = RandomTestUtil.randomLong();
+
+		Assert.assertEquals(
+			0,
+			_exportImportReportEntryLocalService.
+				getExportImportReportEntriesCount(
+					TestPropsValues.getCompanyId(),
+					exportImportConfigurationId));
+
+		_exportImportReportEntryLocalService.addExportImportReportEntry(
+			RandomTestUtil.randomLong(), TestPropsValues.getCompanyId(),
+			RandomTestUtil.randomString(), RandomTestUtil.randomLong(), 0,
+			exportImportConfigurationId,
+			ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
+			RandomTestUtil.randomString());
+
+		_exportImportReportEntryLocalService.addExportImportReportEntry(
+			RandomTestUtil.randomLong(), TestPropsValues.getCompanyId(),
+			RandomTestUtil.randomString(), RandomTestUtil.randomLong(), 0,
+			RandomTestUtil.randomLong(),
+			ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
+			RandomTestUtil.randomString());
+
+		_exportImportReportEntryLocalService.addExportImportReportEntry(
+			RandomTestUtil.randomLong(), _company.getCompanyId(),
+			RandomTestUtil.randomString(), RandomTestUtil.randomLong(), 0,
+			exportImportConfigurationId,
+			ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
+			RandomTestUtil.randomString());
+
+		_exportImportReportEntryLocalService.addExportImportReportEntry(
+			RandomTestUtil.randomLong(), _company.getCompanyId(),
+			RandomTestUtil.randomString(), RandomTestUtil.randomLong(), 0,
+			RandomTestUtil.randomLong(),
+			ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
+			RandomTestUtil.randomString());
+
+		Assert.assertEquals(
+			1,
+			_exportImportReportEntryLocalService.
+				getExportImportReportEntriesCount(
+					TestPropsValues.getCompanyId(),
+					exportImportConfigurationId));
 	}
 
 	@Test
@@ -206,9 +300,11 @@ public class ExportImportReportEntryLocalServiceTest {
 
 		ExportImportReportEntry exportImportReportEntry =
 			_exportImportReportEntryLocalService.
-				getOrAddEmptyExportImportReportEntry(
+				getOrAddExportImportReportEntry(
 					groupId, companyId, classExternalReferenceCode, classNameId,
-					exportImportConfigurationId, modelNameLanguageKey);
+					0, exportImportConfigurationId,
+					ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
+					modelNameLanguageKey);
 
 		Assert.assertEquals(groupId, exportImportReportEntry.getGroupId());
 		Assert.assertEquals(companyId, exportImportReportEntry.getCompanyId());
@@ -245,9 +341,11 @@ public class ExportImportReportEntryLocalServiceTest {
 
 		ExportImportReportEntry getExportImportReportEntry =
 			_exportImportReportEntryLocalService.
-				getOrAddEmptyExportImportReportEntry(
+				getOrAddExportImportReportEntry(
 					groupId, companyId, classExternalReferenceCode, classNameId,
-					exportImportConfigurationId, modelNameLanguageKey);
+					0, exportImportConfigurationId,
+					ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
+					modelNameLanguageKey);
 
 		Assert.assertEquals(
 			exportImportReportEntry.getExportImportReportEntryId(),
@@ -277,9 +375,10 @@ public class ExportImportReportEntryLocalServiceTest {
 
 		ExportImportReportEntry exportImportReportEntry =
 			_exportImportReportEntryLocalService.
-				getOrAddErrorExportImportReportEntry(
+				getOrAddExportImportReportEntry(
 					groupId, companyId, classExternalReferenceCode, classNameId,
-					classPK, exportImportConfigurationId, errorMessage,
+					classPK, exportImportConfigurationId,
+					ExportImportReportEntryConstants.TYPE_ERROR, errorMessage,
 					errorStackTrace, modelNameLanguageKey);
 
 		Assert.assertEquals(groupId, exportImportReportEntry.getGroupId());
@@ -317,14 +416,66 @@ public class ExportImportReportEntryLocalServiceTest {
 
 		ExportImportReportEntry getExportImportReportEntry =
 			_exportImportReportEntryLocalService.
-				getOrAddErrorExportImportReportEntry(
+				getOrAddExportImportReportEntry(
 					groupId, companyId, classExternalReferenceCode, classNameId,
-					classPK, exportImportConfigurationId, errorMessage,
+					classPK, exportImportConfigurationId,
+					ExportImportReportEntryConstants.TYPE_ERROR, errorMessage,
 					errorStackTrace, modelNameLanguageKey);
 
 		Assert.assertEquals(
 			exportImportReportEntry.getExportImportReportEntryId(),
 			getExportImportReportEntry.getExportImportReportEntryId());
+
+		Assert.assertEquals(
+			count + 1,
+			_exportImportReportEntryLocalService.
+				getExportImportReportEntriesCount());
+	}
+
+	@Test
+	@TestInfo("LPD-65084")
+	public void testGetOrAddMissingReferenceExportImportReportEntry()
+		throws Exception {
+
+		int count =
+			_exportImportReportEntryLocalService.
+				getExportImportReportEntriesCount();
+
+		long groupId = RandomTestUtil.randomLong();
+		long companyId = TestPropsValues.getCompanyId();
+		String classExternalReferenceCode = RandomTestUtil.randomString();
+		long classNameId = RandomTestUtil.randomLong();
+		long exportImportConfigurationId = RandomTestUtil.randomLong();
+		String modelNameLanguageKey = RandomTestUtil.randomString();
+
+		ExportImportReportEntry exportImportReportEntry =
+			_exportImportReportEntryLocalService.
+				getOrAddExportImportReportEntry(
+					groupId, companyId, classExternalReferenceCode, classNameId,
+					0, exportImportConfigurationId,
+					ExportImportReportEntryConstants.TYPE_MISSING_REFERENCE,
+					null, null, modelNameLanguageKey);
+
+		Assert.assertEquals(
+			ExportImportReportEntryConstants.TYPE_MISSING_REFERENCE,
+			exportImportReportEntry.getType());
+
+		Assert.assertEquals(
+			count + 1,
+			_exportImportReportEntryLocalService.
+				getExportImportReportEntriesCount());
+
+		ExportImportReportEntry duplicateExportImportReportEntry =
+			_exportImportReportEntryLocalService.
+				getOrAddExportImportReportEntry(
+					groupId, companyId, classExternalReferenceCode, classNameId,
+					0, exportImportConfigurationId,
+					ExportImportReportEntryConstants.TYPE_MISSING_REFERENCE,
+					null, null, modelNameLanguageKey);
+
+		Assert.assertEquals(
+			exportImportReportEntry.getExportImportReportEntryId(),
+			duplicateExportImportReportEntry.getExportImportReportEntryId());
 
 		Assert.assertEquals(
 			count + 1,
@@ -344,50 +495,57 @@ public class ExportImportReportEntryLocalServiceTest {
 
 		ExportImportReportEntry exportImportReportEntry1 =
 			_exportImportReportEntryLocalService.
-				getOrAddEmptyExportImportReportEntry(
+				getOrAddExportImportReportEntry(
 					groupId, companyId, classExternalReferenceCode, classNameId,
-					exportImportConfigurationId1,
+					0, exportImportConfigurationId1,
+					ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
 					RandomTestUtil.randomString());
 		ExportImportReportEntry exportImportReportEntry2 =
 			_exportImportReportEntryLocalService.
-				getOrAddEmptyExportImportReportEntry(
+				getOrAddExportImportReportEntry(
 					groupId, companyId, classExternalReferenceCode, classNameId,
-					exportImportConfigurationId2,
+					0, exportImportConfigurationId2,
+					ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
 					RandomTestUtil.randomString());
 		ExportImportReportEntry exportImportReportEntry3 =
 			_updateStatusResolved(
 				_exportImportReportEntryLocalService.
-					getOrAddEmptyExportImportReportEntry(
+					getOrAddExportImportReportEntry(
 						groupId, companyId, classExternalReferenceCode,
-						classNameId, exportImportConfigurationId3,
+						classNameId, 0, exportImportConfigurationId3,
+						ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
 						RandomTestUtil.randomString()));
 
 		ExportImportReportEntry randomExportImportReportEntry1 =
 			_exportImportReportEntryLocalService.
-				getOrAddEmptyExportImportReportEntry(
+				getOrAddExportImportReportEntry(
 					groupId, companyId, RandomTestUtil.randomString(),
-					classNameId, RandomTestUtil.randomLong(),
+					classNameId, 0, RandomTestUtil.randomLong(),
+					ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
 					RandomTestUtil.randomString());
 		ExportImportReportEntry randomExportImportReportEntry2 =
 			_exportImportReportEntryLocalService.
-				getOrAddEmptyExportImportReportEntry(
+				getOrAddExportImportReportEntry(
 					groupId, companyId, classExternalReferenceCode,
-					RandomTestUtil.randomLong(), RandomTestUtil.randomLong(),
+					RandomTestUtil.randomLong(), 0, RandomTestUtil.randomLong(),
+					ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
 					RandomTestUtil.randomString());
 		ExportImportReportEntry randomExportImportReportEntry3 =
 			_updateStatusResolved(
 				_exportImportReportEntryLocalService.
-					getOrAddEmptyExportImportReportEntry(
+					getOrAddExportImportReportEntry(
 						groupId, companyId, RandomTestUtil.randomString(),
-						classNameId, RandomTestUtil.randomLong(),
+						classNameId, 0, RandomTestUtil.randomLong(),
+						ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
 						RandomTestUtil.randomString()));
 		ExportImportReportEntry randomExportImportReportEntry4 =
 			_updateStatusResolved(
 				_exportImportReportEntryLocalService.
-					getOrAddEmptyExportImportReportEntry(
+					getOrAddExportImportReportEntry(
 						groupId, companyId, classExternalReferenceCode,
+						RandomTestUtil.randomLong(), 0,
 						RandomTestUtil.randomLong(),
-						RandomTestUtil.randomLong(),
+						ExportImportReportEntryConstants.TYPE_EMPTY, null, null,
 						RandomTestUtil.randomString()));
 
 		Long originalExportImportConfigurationId =
@@ -464,8 +622,7 @@ public class ExportImportReportEntryLocalServiceTest {
 			updateExportImportReportEntry(exportImportReportEntry);
 	}
 
-	@Inject
-	private CompanyLocalService _companyLocalService;
+	private static Company _company;
 
 	@Inject
 	private ExportImportReportEntryLocalService

@@ -93,6 +93,8 @@ public class BuildFactory {
 						 jobVariant.startsWith("modules-semantic-versioning") ||
 						 jobVariant.startsWith("playwright-js") ||
 						 jobVariant.startsWith("rest-builder") ||
+						 jobVariant.startsWith(
+							 "rest-builder-and-service-builder") ||
 						 jobVariant.startsWith("semantic-versioning") ||
 						 jobVariant.startsWith("service-builder")) {
 
@@ -176,19 +178,6 @@ public class BuildFactory {
 			jobName.startsWith("test-portal-acceptance-pullrequest")) {
 
 			return new PullRequestPortalTopLevelBuild(
-				buildURL, (TopLevelBuild)parentBuild);
-		}
-
-		if (jobName.startsWith("test-portal-aws(")) {
-			return new PortalAWSTopLevelBuild(
-				buildURL, (TopLevelBuild)parentBuild);
-		}
-
-		if (jobName.startsWith("test-portal-environment(") ||
-			jobName.startsWith("test-portal-environment-release(") ||
-			jobName.startsWith("test-portal-fixpack-environment(")) {
-
-			return new PortalEnvironmentBuild(
 				buildURL, (TopLevelBuild)parentBuild);
 		}
 

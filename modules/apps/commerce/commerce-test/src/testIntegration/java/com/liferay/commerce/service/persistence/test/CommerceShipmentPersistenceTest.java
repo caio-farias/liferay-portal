@@ -19,14 +19,18 @@ import com.liferay.portal.kernel.dao.orm.ProjectionFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.Session;
+import com.liferay.portal.kernel.security.permission.InlineSQLHelperUtil;
+import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.util.IntegerWrapper;
 import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.OrderByComparatorFactoryUtil;
 import com.liferay.portal.kernel.util.Time;
+import com.liferay.portal.security.permission.SimplePermissionChecker;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PersistenceTestRule;
 import com.liferay.portal.test.rule.TransactionalTestRule;
@@ -112,11 +116,7 @@ public class CommerceShipmentPersistenceTest {
 
 	@Test
 	public void testUpdateExisting() throws Exception {
-		long pk = RandomTestUtil.nextLong();
-
-		CommerceShipment newCommerceShipment = _persistence.create(pk);
-
-		newCommerceShipment.setMvccVersion(RandomTestUtil.nextLong());
+		CommerceShipment newCommerceShipment = addCommerceShipment();
 
 		newCommerceShipment.setUuid(RandomTestUtil.randomString());
 
@@ -157,7 +157,9 @@ public class CommerceShipmentPersistenceTest {
 
 		newCommerceShipment.setStatus(RandomTestUtil.nextInt());
 
-		_commerceShipments.add(_persistence.update(newCommerceShipment));
+		newCommerceShipment = _persistence.update(newCommerceShipment);
+
+		_commerceShipments.add(newCommerceShipment);
 
 		CommerceShipment existingCommerceShipment =
 			_persistence.findByPrimaryKey(newCommerceShipment.getPrimaryKey());
@@ -344,6 +346,30 @@ public class CommerceShipmentPersistenceTest {
 	public void testFindAll() throws Exception {
 		_persistence.findAll(
 			QueryUtil.ALL_POS, QueryUtil.ALL_POS, getOrderByComparator());
+	}
+
+	@Test
+	public void testFilterFindByGroupId() throws Exception {
+		PermissionThreadLocal.setPermissionChecker(
+			new SimplePermissionChecker() {
+				{
+					init(TestPropsValues.getUser());
+				}
+
+				@Override
+				public boolean isCompanyAdmin(long companyId) {
+					return false;
+				}
+
+			});
+
+		Assert.assertTrue(InlineSQLHelperUtil.isEnabled(0));
+
+		_persistence.filterFindByGroupId(
+			0, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+
+		_persistence.filterFindByGroupId(
+			0, QueryUtil.ALL_POS, QueryUtil.ALL_POS, getOrderByComparator());
 	}
 
 	protected OrderByComparator<CommerceShipment> getOrderByComparator() {
@@ -654,8 +680,6 @@ public class CommerceShipmentPersistenceTest {
 
 		CommerceShipment commerceShipment = _persistence.create(pk);
 
-		commerceShipment.setMvccVersion(RandomTestUtil.nextLong());
-
 		commerceShipment.setUuid(RandomTestUtil.randomString());
 
 		commerceShipment.setExternalReferenceCode(
@@ -704,4 +728,4 @@ public class CommerceShipmentPersistenceTest {
 	private ClassLoader _dynamicQueryClassLoader;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1542869274
+// LIFERAY-SERVICE-BUILDER-HASH:-1258339584

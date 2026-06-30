@@ -9,10 +9,11 @@ import com.liferay.oauth2.provider.rest.internal.endpoint.dynamic.registration.m
 import com.liferay.oauth2.provider.rest.internal.endpoint.dynamic.registration.model.LiferayClientRegistrationResponse;
 import com.liferay.oauth2.provider.rest.internal.endpoint.util.OAuth2ErrorUtil;
 import com.liferay.oauth2.provider.util.OAuth2SecureRandomGenerator;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.remote.cors.annotation.CORS;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -80,7 +81,6 @@ public class LiferayDynamicRegistrationService
 	}
 
 	@Consumes(MediaType.APPLICATION_JSON)
-	@CORS(allowMethods = "POST")
 	@POST
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response register(
@@ -247,7 +247,8 @@ public class LiferayDynamicRegistrationService
 
 		if (ListUtil.isNotEmpty(client.getRegisteredScopes())) {
 			liferayClientRegistrationResponse.setScope(
-				client.getRegisteredScopes());
+				StringUtil.merge(
+					client.getRegisteredScopes(), StringPool.SPACE));
 		}
 
 		if (properties.get("software_id") != null) {

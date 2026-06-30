@@ -301,7 +301,7 @@ test.describe("Category tests that don't focus on creation", () => {
 
 			await checkAccessibility({
 				page: editCategoryPage.page,
-				selectors: ['.categorization-section'],
+				selectors: ['.cms-section'],
 				selectorsToExclude: ['.control-menu-container'],
 			});
 
@@ -428,7 +428,8 @@ test.describe("Category tests that don't focus on creation", () => {
 
 			await clickAndExpectToBeVisible({
 				target: page.getByText(
-					'Please enter a unique name. This one is already in use.'
+					'Please enter a unique name. This one is already in use.',
+					{exact: true}
 				),
 				trigger: editCategoryPage.saveButton,
 			});
@@ -478,7 +479,7 @@ test.describe('Move category tests', () => {
 
 			await checkAccessibility({
 				page,
-				selectors: ['.category-selector-modal'],
+				selectors: ['.modal-content'],
 			});
 
 			await page.getByRole('button', {name: 'move'}).click();
@@ -597,6 +598,61 @@ test.describe('Subcategory tests', () => {
 			await categoriesPage.assertBreadcrumbItemText(2, categoryName);
 
 			await expect(categoriesPage.getItem(subcategoryName)).toBeVisible();
+		}
+	);
+});
+
+test.describe('Search category tests', () => {
+	let categoryName1: string;
+	let categoryName2: string;
+	let prefix: string;
+
+	test.beforeEach('Create Categories via API', async ({apiHelpers}) => {
+		prefix = `category_name_${getRandomString().replace(/-/g, '')}`;
+		categoryName1 = `${prefix}_one`;
+		categoryName2 = `${prefix}_two`;
+
+		await apiHelpers.headlessAdminTaxonomy.postTaxonomyVocabularyTaxonomyCategory(
+			{name: categoryName1, vocabularyId}
+		);
+		await apiHelpers.headlessAdminTaxonomy.postTaxonomyVocabularyTaxonomyCategory(
+			{name: categoryName2, vocabularyId}
+		);
+	});
+
+	test(
+		"Search a Vocabulary's Categories by name and prefix",
+		{tag: '@LPD-89731'},
+		async ({categoriesPage}) => {
+			await categoriesPage.goto(vocabularyId, vocabularyName);
+
+			await categoriesPage.search(categoryName1);
+
+			await expect(categoriesPage.getItem(categoryName1)).toBeVisible();
+			await expect(categoriesPage.getItem(categoryName2)).toBeHidden();
+
+			await categoriesPage.search(prefix);
+
+			await expect(categoriesPage.getItem(categoryName1)).toBeVisible();
+			await expect(categoriesPage.getItem(categoryName2)).toBeVisible();
+		}
+	);
+
+	test(
+		"Clear search restores all of a Vocabulary's Categories",
+		{tag: '@LPD-89731'},
+		async ({categoriesPage}) => {
+			await categoriesPage.goto(vocabularyId, vocabularyName);
+
+			await categoriesPage.search(categoryName1);
+
+			await expect(categoriesPage.getItem(categoryName1)).toBeVisible();
+			await expect(categoriesPage.getItem(categoryName2)).toBeHidden();
+
+			await categoriesPage.clearSearch();
+
+			await expect(categoriesPage.getItem(categoryName1)).toBeVisible();
+			await expect(categoriesPage.getItem(categoryName2)).toBeVisible();
 		}
 	);
 });

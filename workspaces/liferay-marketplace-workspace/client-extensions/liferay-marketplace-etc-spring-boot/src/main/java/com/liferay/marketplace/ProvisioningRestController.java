@@ -8,9 +8,11 @@ package com.liferay.marketplace;
 import com.liferay.client.extension.util.spring.boot3.BaseRestController;
 import com.liferay.headless.commerce.admin.order.client.dto.v1_0.Order;
 import com.liferay.marketplace.constants.MarketplaceConstants;
+import com.liferay.marketplace.service.AnalyticsService;
 import com.liferay.marketplace.service.KoroneikiService;
 import com.liferay.marketplace.service.MarketplaceService;
 import com.liferay.marketplace.service.ProvisioningService;
+import com.liferay.marketplace.util.MarketplaceUtil;
 import com.liferay.osb.koroneiki.phloem.rest.client.dto.v1_0.ProductPurchase;
 import com.liferay.osb.provisioning.marketplace.rest.client.dto.v1_0.AppLicenseKey;
 import com.liferay.osb.provisioning.marketplace.rest.client.http.HttpInvoker;
@@ -21,6 +23,7 @@ import com.liferay.osb.provisioning.rest.client.dto.v1_0.LicenseKey;
 import com.liferay.osb.provisioning.rest.client.resource.v1_0.LicenseKeyResource;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -177,54 +180,57 @@ public class ProvisioningRestController extends BaseRestController {
 	}
 
 	@PostMapping("cmp-beta-license-key")
-	public AppLicenseKey postCMPBetaLicenseKey(
+	public void postCMPBetaLicenseKey(
 			@AuthenticationPrincipal Jwt jwt, @RequestBody String json)
 		throws Exception {
 
 		AppLicenseKey appLicenseKey = AppLicenseKey.toDTO(json);
 
-		if (Objects.equals(appLicenseKey.getHostName(), null) &&
-			Objects.equals(appLicenseKey.getIpAddresses(), null) &&
-			Objects.equals(appLicenseKey.getMacAddresses(), null)) {
-
-			throw new ResponseStatusException(
-				HttpStatus.BAD_REQUEST,
-				"At least one of the following fields is required: host " +
-					"name, IP addresses, or MAC addresses");
-		}
-
 		Order order = _marketplaceService.getOrder(
 			GetterUtil.getLong(appLicenseKey.getOrderId()));
 
-		ProductPurchase[] productPurchases =
-			_koroneikiService.postAccountProductPurchases(
-				jwt, "3 Months Limited Beta", order);
-
-		ProductPurchase productPurchase = productPurchases[0];
-
-		if (productPurchase == null) {
-			return null;
-		}
-
-		Map<String, String> productSpecificationsMap =
-			_marketplaceService.getProductSpecificationsMap(
-				_marketplaceService.getOrderProductId(order));
-
-		if (Validator.isNotNull(
-				productSpecificationsMap.get("app-entry-uuid"))) {
-
-			appLicenseKey.setProductId(
-				productSpecificationsMap.get("app-entry-uuid"));
-		}
-
-		appLicenseKey = _provisioningService.postAppLicenseKey(
-			appLicenseKey, jwt, productPurchase);
+		_postAppLicenseKey(appLicenseKey, jwt, order);
 
 		_marketplaceService.completeOrder(
 			order.getId(),
 			MarketplaceConstants.ORDER_PAYMENT_STATUS_NOT_REQUIRED);
+	}
 
-		return appLicenseKey;
+	@PostMapping("dsr-beta-license-key")
+	public void postDSRBetaLicenseKey(
+			@AuthenticationPrincipal Jwt jwt, @RequestBody String json)
+		throws Exception {
+
+		AppLicenseKey appLicenseKey = AppLicenseKey.toDTO(
+			new JSONObject(
+				json
+			).getJSONObject(
+				"licenseEntry"
+			).toString());
+
+		Order order = _marketplaceService.getOrder(
+			GetterUtil.getLong(appLicenseKey.getOrderId()));
+
+		_postAppLicenseKey(appLicenseKey, jwt, order);
+
+		JSONObject jsonObject = new JSONObject(json);
+
+		JSONObject analyticsProjectJSONObject =
+			_analyticsService.provisionAnalyticsProject(
+				jsonObject.getJSONObject("analyticsForm"), null,
+				order.getAccountExternalReferenceCode());
+
+		_marketplaceService.completeOrder(
+			HashMapBuilder.put(
+				"order-metadata",
+				MarketplaceUtil.getOrderMetadataJSONObject(
+					order
+				).put(
+					"analyticsProject", analyticsProjectJSONObject
+				).toString()
+			).build(),
+			order.getId(),
+			MarketplaceConstants.ORDER_PAYMENT_STATUS_NOT_REQUIRED);
 	}
 
 	@PostMapping("license-key-type-free")
@@ -331,6 +337,48 @@ public class ProvisioningRestController extends BaseRestController {
 
 		return new ResponseEntity<>(content, httpHeaders, HttpStatus.OK);
 	}
+
+	private void _postAppLicenseKey(
+			AppLicenseKey appLicenseKey, Jwt jwt, Order order)
+		throws Exception {
+
+		if (Objects.equals(appLicenseKey.getHostName(), null) &&
+			Objects.equals(appLicenseKey.getIpAddresses(), null) &&
+			Objects.equals(appLicenseKey.getMacAddresses(), null)) {
+
+			throw new ResponseStatusException(
+				HttpStatus.BAD_REQUEST,
+				"At least one of the following fields is required: host " +
+					"name, IP addresses, or MAC addresses");
+		}
+
+		ProductPurchase[] productPurchases =
+			_koroneikiService.postAccountProductPurchases(
+				jwt, "3 Months Limited Beta", order);
+
+		ProductPurchase productPurchase = productPurchases[0];
+
+		if (productPurchase == null) {
+			return;
+		}
+
+		Map<String, String> productSpecificationsMap =
+			_marketplaceService.getProductSpecificationsMap(
+				_marketplaceService.getOrderProductId(order));
+
+		if (Validator.isNotNull(
+				productSpecificationsMap.get("app-entry-uuid"))) {
+
+			appLicenseKey.setProductId(
+				productSpecificationsMap.get("app-entry-uuid"));
+		}
+
+		_provisioningService.postAppLicenseKey(
+			appLicenseKey, jwt, productPurchase);
+	}
+
+	@Autowired
+	private AnalyticsService _analyticsService;
 
 	@Autowired
 	private KoroneikiService _koroneikiService;

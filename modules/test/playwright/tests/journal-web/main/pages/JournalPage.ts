@@ -47,10 +47,8 @@ export class JournalPage {
 			'.article-content-title .input-group-item input'
 		);
 		this.articleContentTextBox = this.page
-			.getByLabel('Content')
-			.getByRole('textbox')
-			.frameLocator('iframe')
-			.locator('.html-editor');
+			.getByTestId('content')
+			.getByRole('textbox', {name: 'Rich Text Editor'});
 	}
 
 	async goto(siteUrl?: Site['friendlyUrlPath']) {
@@ -201,10 +199,23 @@ export class JournalPage {
 	}
 
 	async changeView(viewName: string) {
+		const selectViewButton = this.page.getByLabel(
+			'Select View, Currently Selected: '
+		);
+
+		await expect(selectViewButton).toBeVisible();
+
+		const currentViewLabel =
+			await selectViewButton.getAttribute('aria-label');
+
+		if (currentViewLabel?.endsWith(`: ${viewName}`)) {
+			return;
+		}
+
 		await clickAndExpectToBeVisible({
 			autoClick: true,
 			target: this.page.getByRole('menuitem', {name: viewName}),
-			trigger: this.page.getByLabel('Select View, Currently Selected: '),
+			trigger: selectViewButton,
 		});
 	}
 

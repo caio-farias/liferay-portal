@@ -20,8 +20,11 @@ import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.portletfilerepository.PortletFileRepository;
 import com.liferay.portal.kernel.portletfilerepository.PortletFileRepositoryUtil;
 import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.search.Indexable;
+import com.liferay.portal.kernel.search.IndexableType;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UniqueUtil;
@@ -34,6 +37,7 @@ import com.liferay.style.book.exception.StyleBookEntryThemeIdException;
 import com.liferay.style.book.model.StyleBookEntry;
 import com.liferay.style.book.service.base.StyleBookEntryLocalServiceBaseImpl;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -51,6 +55,7 @@ import org.osgi.service.component.annotations.Reference;
 public class StyleBookEntryLocalServiceImpl
 	extends StyleBookEntryLocalServiceBaseImpl {
 
+	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public StyleBookEntry addStyleBookEntry(
 			String externalReferenceCode, long userId, long groupId,
@@ -121,6 +126,7 @@ public class StyleBookEntryLocalServiceImpl
 		return publishDraft(styleBookEntry);
 	}
 
+	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public StyleBookEntry copyStyleBookEntry(
 			long userId, long groupId, long sourceStyleBookEntryId,
@@ -167,7 +173,8 @@ public class StyleBookEntryLocalServiceImpl
 		}
 
 		return updatePreviewFileEntryId(
-			targetStyleBookEntry.getStyleBookEntryId(), previewFileEntryId);
+			targetStyleBookEntry.getStyleBookEntryId(), previewFileEntryId,
+			serviceContext);
 	}
 
 	@Override
@@ -186,6 +193,7 @@ public class StyleBookEntryLocalServiceImpl
 		return deleteStyleBookEntry(getStyleBookEntry(styleBookEntryId));
 	}
 
+	@Indexable(type = IndexableType.DELETE)
 	@Override
 	public StyleBookEntry deleteStyleBookEntry(
 			String externalReferenceCode, long groupId)
@@ -265,6 +273,27 @@ public class StyleBookEntryLocalServiceImpl
 	}
 
 	@Override
+	public String generateStyleBookEntryName(long groupId, String name) {
+		StyleBookEntry styleBookEntry =
+			styleBookEntryPersistence.fetchByG_N_First(groupId, name, null);
+
+		if (styleBookEntry == null) {
+			return name;
+		}
+
+		for (int count = 1;; count++) {
+			String newName = StringUtil.appendParentheticalSuffix(name, count);
+
+			styleBookEntry = styleBookEntryPersistence.fetchByG_N_First(
+				groupId, newName, null);
+
+			if (styleBookEntry == null) {
+				return newName;
+			}
+		}
+	}
+
+	@Override
 	public ExportActionableDynamicQuery getExportActionableDynamicQuery(
 		PortletDataContext portletDataContext) {
 
@@ -304,6 +333,31 @@ public class StyleBookEntryLocalServiceImpl
 	}
 
 	@Override
+	public List<StyleBookEntry> getStyleBookEntries(
+		long[] groupIds, int start, int end,
+		OrderByComparator<StyleBookEntry> orderByComparator) {
+
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return Collections.emptyList();
+		}
+
+		return styleBookEntryPersistence.findByGroupId_Head(
+			groupIds, true, start, end, orderByComparator);
+	}
+
+	@Override
+	public List<StyleBookEntry> getStyleBookEntries(
+		long[] groupIds, String themeId) {
+
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return Collections.emptyList();
+		}
+
+		return styleBookEntryPersistence.findByG_T_Head(
+			groupIds, themeId, true);
+	}
+
+	@Override
 	public List<StyleBookEntry> getStyleBookEntriesByUuidAndCompanyId(
 		String uuid, long companyId) {
 
@@ -322,6 +376,7 @@ public class StyleBookEntryLocalServiceImpl
 			true);
 	}
 
+	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public StyleBookEntry updateDefaultStyleBookEntry(
 			long styleBookEntryId, boolean defaultStyleBookEntry)
@@ -371,6 +426,7 @@ public class StyleBookEntryLocalServiceImpl
 		return styleBookEntryPersistence.update(styleBookEntry);
 	}
 
+	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public StyleBookEntry updateFrontendTokensValues(
 			long styleBookEntryId, String frontendTokensValues)
@@ -394,6 +450,7 @@ public class StyleBookEntryLocalServiceImpl
 		return styleBookEntryPersistence.update(styleBookEntry);
 	}
 
+	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public StyleBookEntry updateName(long styleBookEntryId, String name)
 		throws PortalException {
@@ -418,15 +475,15 @@ public class StyleBookEntryLocalServiceImpl
 		return styleBookEntryPersistence.update(styleBookEntry);
 	}
 
+	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public StyleBookEntry updatePreviewFileEntryId(
-			long styleBookEntryId, long previewFileEntryId)
+			long styleBookEntryId, long previewFileEntryId,
+			ServiceContext serviceContext)
 		throws PortalException {
 
 		StyleBookEntry styleBookEntry =
 			styleBookEntryPersistence.findByPrimaryKey(styleBookEntryId);
-
-		styleBookEntry.setModifiedDate(new Date());
 
 		long previousPreviewFileEntryId =
 			styleBookEntry.getPreviewFileEntryId();
@@ -442,7 +499,8 @@ public class StyleBookEntryLocalServiceImpl
 			updateDraft(draftStyleBookEntry);
 		}
 
-		styleBookEntry = styleBookEntryPersistence.update(styleBookEntry);
+		styleBookEntry = styleBookEntryPersistence.update(
+			styleBookEntry, serviceContext);
 
 		if ((previewFileEntryId == 0) && (previousPreviewFileEntryId > 0)) {
 			_portletFileRepository.deletePortletFileEntry(
@@ -452,11 +510,12 @@ public class StyleBookEntryLocalServiceImpl
 		return styleBookEntry;
 	}
 
+	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public StyleBookEntry updateStyleBookEntry(
 			long userId, long styleBookEntryId, boolean defaultStylebookEntry,
 			String frontendTokensValues, String name, String styleBookEntryKey,
-			long previewFileEntryId)
+			long previewFileEntryId, ServiceContext serviceContext)
 		throws PortalException {
 
 		StyleBookEntry styleBookEntry =
@@ -481,7 +540,6 @@ public class StyleBookEntryLocalServiceImpl
 		}
 
 		styleBookEntry.setUserId(userId);
-		styleBookEntry.setModifiedDate(new Date());
 		styleBookEntry.setFrontendTokensValues(frontendTokensValues);
 		styleBookEntry.setName(name);
 		styleBookEntry.setPreviewFileEntryId(previewFileEntryId);
@@ -500,12 +558,14 @@ public class StyleBookEntryLocalServiceImpl
 			styleBookEntry.setDefaultStyleBookEntry(true);
 		}
 
-		return styleBookEntryPersistence.update(styleBookEntry);
+		return styleBookEntryPersistence.update(styleBookEntry, serviceContext);
 	}
 
+	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public StyleBookEntry updateStyleBookEntry(
-			long styleBookEntryId, String frontendTokensValues, String name)
+			long styleBookEntryId, String frontendTokensValues, String name,
+			ServiceContext serviceContext)
 		throws PortalException {
 
 		StyleBookEntry styleBookEntry =
@@ -513,7 +573,6 @@ public class StyleBookEntryLocalServiceImpl
 
 		_validate(styleBookEntry.getGroupId(), name, styleBookEntryId);
 
-		styleBookEntry.setModifiedDate(new Date());
 		styleBookEntry.setFrontendTokensValues(frontendTokensValues);
 		styleBookEntry.setName(name);
 
@@ -527,7 +586,7 @@ public class StyleBookEntryLocalServiceImpl
 			updateDraft(draftStyleBookEntry);
 		}
 
-		return styleBookEntryPersistence.update(styleBookEntry);
+		return styleBookEntryPersistence.update(styleBookEntry, serviceContext);
 	}
 
 	private long _copyStyleBookEntryPreviewFileEntry(

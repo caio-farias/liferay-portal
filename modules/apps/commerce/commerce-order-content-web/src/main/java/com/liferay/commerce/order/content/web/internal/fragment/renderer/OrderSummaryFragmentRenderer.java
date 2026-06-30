@@ -15,7 +15,6 @@ import com.liferay.fragment.renderer.FragmentRendererContext;
 import com.liferay.fragment.util.configuration.FragmentEntryConfigurationParser;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONException;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
@@ -78,11 +77,6 @@ public class OrderSummaryFragmentRenderer implements FragmentRenderer {
 	@Override
 	public String getLabel(Locale locale) {
 		return _language.get(locale, "order-summary");
-	}
-
-	@Override
-	public boolean isSelectable(HttpServletRequest httpServletRequest) {
-		return FeatureFlagManagerUtil.isEnabled("LPD-20379");
 	}
 
 	@Override
@@ -191,38 +185,38 @@ public class OrderSummaryFragmentRenderer implements FragmentRenderer {
 		}
 		else if (field.equals("shippingDiscountValueFormatted")) {
 			return _commercePriceFormatter.format(
-				commerceOrder.getCommerceCurrency(),
-				commerceOrder.getShippingDiscountAmount(), locale);
+				commerceOrder.getCommerceCurrency(), true, locale,
+				commerceOrder.getShippingDiscountAmount());
 		}
 		else if (field.equals("shippingValueFormatted")) {
 			return _commercePriceFormatter.format(
-				commerceOrder.getCommerceCurrency(),
-				commerceOrder.getShippingAmount(), locale);
+				commerceOrder.getCommerceCurrency(), true, locale,
+				commerceOrder.getShippingAmount());
 		}
 		else if (field.equals("subtotalDiscountValueFormatted")) {
 			return _commercePriceFormatter.format(
-				commerceOrder.getCommerceCurrency(),
-				commerceOrder.getSubtotalDiscountAmount(), locale);
+				commerceOrder.getCommerceCurrency(), true, locale,
+				commerceOrder.getSubtotalDiscountAmount());
 		}
 		else if (field.equals("subtotalFormatted")) {
 			return _commercePriceFormatter.format(
-				commerceOrder.getCommerceCurrency(),
-				commerceOrder.getSubtotal(), locale);
+				commerceOrder.getCommerceCurrency(), true, locale,
+				commerceOrder.getSubtotal());
 		}
 		else if (field.equals("taxValueFormatted")) {
 			return _commercePriceFormatter.format(
-				commerceOrder.getCommerceCurrency(),
-				commerceOrder.getTaxAmount(), locale);
+				commerceOrder.getCommerceCurrency(), true, locale,
+				commerceOrder.getTaxAmount());
 		}
 		else if (field.equals("totalDiscountValueFormatted")) {
 			return _commercePriceFormatter.format(
-				commerceOrder.getCommerceCurrency(),
-				commerceOrder.getTotalDiscountAmount(), locale);
+				commerceOrder.getCommerceCurrency(), true, locale,
+				commerceOrder.getTotalDiscountAmount());
 		}
 		else if (field.equals("totalFormatted")) {
 			return _commercePriceFormatter.format(
-				commerceOrder.getCommerceCurrency(), commerceOrder.getTotal(),
-				locale);
+				commerceOrder.getCommerceCurrency(), true, locale,
+				commerceOrder.getTotal());
 		}
 
 		return StringPool.BLANK;
