@@ -9,6 +9,9 @@ import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.PropsValues;
+import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 
 import java.lang.reflect.Method;
 
@@ -19,11 +22,38 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * @author Caio Farias
  */
 public class FIPSModeValidator {
+
+	public static boolean isNotAllowedPasswordAlgorithm(String algorithm) {
+		if (!PropsValues.FIPS_ENABLED) {
+			return false;
+		}
+
+		if (Validator.isNull(algorithm)) {
+			return true;
+		}
+
+		for (String allowedAlgorithm : _allowedAlgorithms) {
+			if (algorithm.startsWith(allowedAlgorithm)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	public static boolean isNotAllowedProtocol(String url) {
+		if (Validator.isNull(url)) {
+			return true;
+		}
+
+		return !StringUtil.startsWith(url, "ldaps://");
+	}
 
 	public static void validate() {
 		Provider[] providers = Security.getProviders();
@@ -151,6 +181,10 @@ public class FIPSModeValidator {
 				"The security providers ", Arrays.toString(notAllowedProviders),
 				" are not allowed in FIPS mode for ", provider.getName()));
 	}
+
+	private static final Set<String> _allowedAlgorithms = Set.of(
+		"PBKDF2WithHmacSHA256", "PBKDF2WithHmacSHA384", "PBKDF2WithHmacSHA512",
+		"SHA-256", "SHA-384", "SHA-512");
 
 	private static final Map<String, List<String>> _allowedProviderNames =
 		Map.of(
