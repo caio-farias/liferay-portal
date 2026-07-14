@@ -21,6 +21,7 @@ import com.liferay.portal.kernel.model.ListType;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.UserGroup;
 import com.liferay.portal.kernel.security.auth.PasswordModificationThreadLocal;
+import com.liferay.portal.kernel.security.fips.FIPSModeValidator;
 import com.liferay.portal.kernel.security.ldap.LDAPSettings;
 import com.liferay.portal.kernel.security.pwd.PasswordEncryptor;
 import com.liferay.portal.kernel.security.pwd.PasswordEncryptorUtil;
@@ -552,6 +553,13 @@ public class DefaultPortalToLDAPConverter implements PortalToLDAPConverter {
 				user.getCompanyId());
 
 		String algorithm = ldapAuthConfiguration.passwordEncryptionAlgorithm();
+
+		if (FIPSModeValidator.isNotAllowedPasswordAlgorithm(algorithm)) {
+			throw new SystemException(
+				StringBundler.concat(
+					"FIPS mode does not permit the LDAP password encryption ",
+					"algorithm \"", algorithm, "\" for export"));
+		}
 
 		if (Validator.isNotNull(algorithm) &&
 			!algorithm.equals(PasswordEncryptor.TYPE_NONE)) {
