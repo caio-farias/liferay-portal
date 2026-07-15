@@ -5,23 +5,36 @@
 
 import ClayButton, {ClayButtonWithIcon} from '@clayui/button';
 import {SidePanel} from '@clayui/core';
+import {ClayDropDownWithItems} from '@clayui/drop-down';
 import ClayEmptyState from '@clayui/empty-state';
 import {ClayInput} from '@clayui/form';
 import ClayIcon from '@clayui/icon';
 import ClayList from '@clayui/list';
-import {useLiferayState} from '@liferay/frontend-js-state-web/react';
+import {FrontendDataSetContext} from '@liferay/frontend-data-set-web';
 import {AssigneeAvatar} from '@liferay/object-dynamic-data-mapping-form-field-type';
-import React, {useMemo, useState} from 'react';
+import React, {useContext, useMemo, useState} from 'react';
 
+import getTaskItemsActions from '../../../../../utils/getTaskItemsActions';
 import {ITaskObjectEntry} from '../../../../../utils/types';
 import StateLabel from '../../../../StateLabel';
 import sortTasksByPriority from '../utils/sortTasksByPriority';
-import {unscheduledTasksAtom} from '../utils/unscheduledTasksAtom';
 
 import './UnscheduledTasksPanel.scss';
 
-export default function UnscheduledTasksPanel() {
-	const [tasks] = useLiferayState<ITaskObjectEntry[]>(unscheduledTasksAtom);
+interface UnscheduledTasksPanelProps {
+	containerRef: React.RefObject<HTMLElement>;
+	onOpenChange: (open: boolean) => void;
+	open: boolean;
+	tasks: ITaskObjectEntry[];
+}
+
+export default function UnscheduledTasksPanel({
+	containerRef,
+	onOpenChange,
+	open,
+	tasks,
+}: UnscheduledTasksPanelProps) {
+	const {itemsActions, loadData} = useContext(FrontendDataSetContext);
 
 	const [query, setQuery] = useState('');
 
@@ -36,9 +49,12 @@ export default function UnscheduledTasksPanel() {
 	}, [query, tasks]);
 
 	return (
-		<div
+		<SidePanel
 			className="lfr__cmp-unscheduled-tasks-panel"
+			containerRef={containerRef}
 			data-testid="calendarUnscheduledTasksPanel"
+			onOpenChange={onOpenChange}
+			open={open}
 		>
 			<SidePanel.Header>
 				<SidePanel.Title>
@@ -78,28 +94,55 @@ export default function UnscheduledTasksPanel() {
 
 				{filteredTasks.length ? (
 					<ClayList className="lfr__cmp-unscheduled-tasks-panel-list">
-						{filteredTasks.map((task) => (
-							<ClayList.Item flex key={task.id}>
-								<ClayList.ItemField>
-									<AssigneeAvatar
-										name={task.assignTo?.name}
-										portrait={task.assignTo?.portrait}
-									/>
-								</ClayList.ItemField>
+						{filteredTasks.map((task) => {
+							const taskItemsActions = getTaskItemsActions(
+								itemsActions ?? [],
+								loadData,
+								{actions: task.actions, embedded: task}
+							);
 
-								<ClayList.ItemField expand>
-									<ClayList.ItemTitle>
-										<span data-testid="calendarUnscheduledTaskTitle">
-											{task.title}
-										</span>
-									</ClayList.ItemTitle>
+							return (
+								<ClayList.Item flex key={task.id}>
+									<ClayList.ItemField>
+										<AssigneeAvatar
+											name={task.assignTo?.name}
+											portrait={task.assignTo?.portrait}
+										/>
+									</ClayList.ItemField>
 
-									<ClayList.ItemText>
-										<StateLabel state={task.state} />
-									</ClayList.ItemText>
-								</ClayList.ItemField>
-							</ClayList.Item>
-						))}
+									<ClayList.ItemField expand>
+										<ClayList.ItemTitle>
+											<span data-testid="calendarUnscheduledTaskTitle">
+												{task.title}
+											</span>
+										</ClayList.ItemTitle>
+
+										<ClayList.ItemText>
+											<StateLabel state={task.state} />
+										</ClayList.ItemText>
+									</ClayList.ItemField>
+
+									{!!taskItemsActions.length && (
+										<ClayList.ItemField>
+											<ClayDropDownWithItems
+												items={taskItemsActions}
+												trigger={
+													<ClayButtonWithIcon
+														aria-label={Liferay.Language.get(
+															'actions'
+														)}
+														borderless
+														className="component-action"
+														displayType="secondary"
+														symbol="ellipsis-v"
+													/>
+												}
+											/>
+										</ClayList.ItemField>
+									)}
+								</ClayList.Item>
+							);
+						})}
 					</ClayList>
 				) : (
 					<ClayEmptyState
@@ -121,6 +164,6 @@ export default function UnscheduledTasksPanel() {
 					</ClayEmptyState>
 				)}
 			</SidePanel.Body>
-		</div>
+		</SidePanel>
 	);
 }

@@ -286,7 +286,7 @@ test(
 
 test(
 	'Calendar view properly displays tasks',
-	{tag: ['@LPD-69885']},
+	{tag: ['@LPD-69885', '@LPD-96021']},
 	async ({apiHelpers, page, projectPage, projectsPage, tasksPage}) => {
 		const now = new Date();
 
@@ -411,6 +411,23 @@ test(
 			).toBeVisible();
 		});
 
+		await test.step('Clicking a task opens its view page', async () => {
+			await page
+				.locator(`[data-date="${dueDate}"]`)
+				.getByText(taskTitles[0], {exact: true})
+				.click();
+
+			await expect(page).toHaveURL(/\/e\/task\//);
+
+			await expect(
+				page.getByText(taskTitles[0], {exact: true})
+			).toBeVisible();
+
+			await page.goBack();
+
+			await expect(calendarView.title).toBeVisible();
+		});
+
 		await test.step('A More link reveals the tasks hidden in a dense day', async () => {
 			const dayCell = page.locator(`[data-date="${dueDate}"]`);
 
@@ -446,6 +463,22 @@ test(
 			).toBeVisible();
 		});
 
+		await test.step('Clicking a task in the more popover opens its view page', async () => {
+			await calendarView.moreLinkPopover
+				.getByText(taskTitles[1], {exact: true})
+				.click();
+
+			await expect(page).toHaveURL(/\/e\/task\//);
+
+			await expect(
+				page.getByText(taskTitles[1], {exact: true})
+			).toBeVisible();
+
+			await page.goBack();
+
+			await expect(calendarView.title).toBeVisible();
+		});
+
 		await test.step('The unscheduled tasks button shows the count', async () => {
 			await expect(calendarView.unscheduledTasksButton).toBeVisible();
 
@@ -467,6 +500,88 @@ test(
 					})
 				).toBeVisible();
 			}
+		});
+
+		await test.step('Switching to another view hides the panel', async () => {
+			await tasksPage.viewSelectorButton.click();
+
+			await tasksPage.dropdownTableViewButton.click();
+
+			await expect(calendarView.unscheduledTasksPanel).toBeHidden();
+		});
+	}
+);
+
+test(
+	"Calendar's task actions are displayed",
+	{tag: ['@LPD-69885', '@LPD-96185']},
+	async ({apiHelpers, page, projectPage, projectsPage, tasksPage}) => {
+		const scheduledTaskTitle = getRandomString();
+
+		const targetDate = new Date();
+
+		targetDate.setDate(15);
+
+		const dueDate = toDateString(targetDate);
+
+		const {calendarView} = tasksPage;
+
+		const dayCell = page.locator(`[data-date="${dueDate}"]`);
+
+		const kebab = dayCell.getByLabel('Actions');
+
+		const taskEvent = dayCell.getByText(scheduledTaskTitle);
+
+		await test.step('Create a task with a due date', async () => {
+			await apiHelpers.objectEntry.postObjectEntry(
+				{
+					dueDate: `${dueDate}T00:00:00Z`,
+					r_cmpProjectToCMPTasks_c_cmpProjectId: project.id,
+					title: scheduledTaskTitle,
+				},
+				cmpTask,
+				project.scopeKey
+			);
+		});
+
+		await test.step('View the project and open its calendar view', async () => {
+			await projectsPage.goto();
+
+			await projectsPage.getProject(project.title).click();
+
+			await projectPage.tasksTab.click();
+
+			await tasksPage.tableViewButton.click();
+
+			await calendarView.viewOption.click();
+
+			await expect(calendarView.title).toBeVisible();
+		});
+
+		await test.step('Open the kebab and run an action without navigating away', async () => {
+			await taskEvent.hover();
+
+			await kebab.click();
+
+			await expect(page).not.toHaveURL(/\/e\/task\//);
+
+			await page.getByRole('menuitem', {name: 'Watch Task'}).click();
+
+			await expect(page).not.toHaveURL(/\/e\/task\//);
+		});
+
+		await test.step('Check the unscheduled panel tasks display a kebab and clicking it shows the actions', async () => {
+			await clickAndExpectToBeVisible({
+				target: calendarView.unscheduledTasksPanel,
+				trigger: calendarView.unscheduledTasksButton,
+			});
+
+			await clickAndExpectToBeVisible({
+				target: page.getByRole('menuitem', {name: 'Delete'}),
+				trigger: calendarView.unscheduledTasksPanel
+					.getByLabel('Actions')
+					.first(),
+			});
 		});
 	}
 );

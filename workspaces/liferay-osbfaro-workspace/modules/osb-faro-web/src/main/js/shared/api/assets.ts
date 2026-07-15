@@ -37,8 +37,8 @@ export async function fetchAccountTopAssets({
 }: IFetchAccountTopAssets): Promise<{items: ITopAsset[]}> {
 	return sendRequest({
 		data: {
-			accountId,
 			channelId,
+			filter: `accountIds in ('${accountId}')`,
 			pageSize: 5,
 			selectedMetric,
 			sort: `${selectedMetric},desc`,
@@ -46,5 +46,30 @@ export async function fetchAccountTopAssets({
 		},
 		method: 'GET',
 		path: `contacts/${groupId}/asset-summary`,
+	});
+}
+
+interface ISearchAssetTypes {
+	channelId: string;
+	groupId: string;
+	page?: number;
+	pageSize?: number;
+	rangeKey?: number | null;
+}
+
+export async function searchTypes({
+	channelId,
+	groupId,
+	page = 1,
+	pageSize = 10,
+	rangeKey,
+}: ISearchAssetTypes): Promise<{
+	items: Array<{id: string; name: string}>;
+	totalCount: number;
+}> {
+	return sendRequest({
+		data: {channelId, page, pageSize, rangeKey},
+		method: 'GET',
+		path: `contacts/${groupId}/asset-summary-types`,
 	});
 }

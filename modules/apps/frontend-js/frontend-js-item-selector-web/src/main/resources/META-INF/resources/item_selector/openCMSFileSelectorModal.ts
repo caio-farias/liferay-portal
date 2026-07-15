@@ -59,8 +59,8 @@ function urlBuilder({
 	const scopePredicates = folderId
 		? [`(folderId eq ${folderId})`]
 		: [
-				"(cmsSection eq 'files')",
 				'(cmsRoot eq true)',
+				"(cmsSection eq 'files')",
 				'(rootDescendantNode eq false)',
 			];
 
@@ -223,7 +223,7 @@ function normalizeExtensions(allowedExtensions: string) {
 
 	const extensions = cleanExtensions.map((item) => `'${item}'`).join(',');
 
-	return `(extension in (${extensions}) or cmsKind eq 'folder')`;
+	return `(extension in (${extensions}) or objectDefinitionExternalReferenceCode eq 'L_OBJECT_ENTRY_FOLDER')`;
 }
 
 export default function openCMSFileSelectorModal({

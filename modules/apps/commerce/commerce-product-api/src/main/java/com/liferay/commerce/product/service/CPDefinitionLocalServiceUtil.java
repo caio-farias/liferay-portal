@@ -365,11 +365,24 @@ public class CPDefinitionLocalServiceUtil {
 			externalReferenceCode, companyId, excludeDraft);
 	}
 
+	public static CPDefinition fetchCPDefinitionByCProductExternalReferenceCode(
+		String externalReferenceCode, long companyId, int status) {
+
+		return getService().fetchCPDefinitionByCProductExternalReferenceCode(
+			externalReferenceCode, companyId, status);
+	}
+
 	public static CPDefinition fetchCPDefinitionByCProductId(
 		long cProductId, boolean excludeDraft) {
 
 		return getService().fetchCPDefinitionByCProductId(
 			cProductId, excludeDraft);
+	}
+
+	public static CPDefinition fetchCPDefinitionByCProductId(
+		long cProductId, int status) {
+
+		return getService().fetchCPDefinitionByCProductId(cProductId, status);
 	}
 
 	public static CPDefinition fetchCPDefinitionByFriendlyURL(
@@ -621,6 +634,12 @@ public class CPDefinitionLocalServiceUtil {
 
 		return getService().getCProductCPDefinitions(
 			cProductId, status, start, end, orderByComparator);
+	}
+
+	public static int getCProductCPDefinitionsCount(
+		long cProductId, int status) {
+
+		return getService().getCProductCPDefinitionsCount(cProductId, status);
 	}
 
 	public static com.liferay.commerce.product.model.CPAttachmentFileEntry
@@ -963,4 +982,4 @@ public class CPDefinitionLocalServiceUtil {
 			CPDefinitionLocalServiceUtil.class, CPDefinitionLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:95856568
+// LIFERAY-SERVICE-BUILDER-HASH:1263191931

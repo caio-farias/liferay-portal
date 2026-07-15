@@ -18,6 +18,7 @@ import com.liferay.portal.kernel.util.ClassUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
+import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -241,7 +242,9 @@ public class PasswordEncryptorUtil {
 		return null;
 	}
 
-	private static PasswordEncryptor _getPasswordEncryptor(String algorithm) {
+	private static PasswordEncryptor _getPasswordEncryptor(String algorithm)
+		throws PwdEncryptorException {
+
 		if (Validator.isNull(algorithm)) {
 			throw new IllegalArgumentException("Invalid algorithm");
 		}
@@ -262,6 +265,16 @@ public class PasswordEncryptorUtil {
 		}
 		else {
 			passwordEncryptor = _serviceTrackerMap.getService(algorithm);
+		}
+
+		if (PropsValues.FIPS_ENABLED &&
+			(algorithm.startsWith(PasswordEncryptor.TYPE_BCRYPT) ||
+			 algorithm.startsWith(PasswordEncryptor.TYPE_UFC_CRYPT))) {
+
+			throw new PwdEncryptorException.UnavailableAlgorithm(
+				StringBundler.concat(
+					"Algorithm \"", algorithm,
+					"\" is not available in FIPS mode"));
 		}
 
 		if (passwordEncryptor == null) {

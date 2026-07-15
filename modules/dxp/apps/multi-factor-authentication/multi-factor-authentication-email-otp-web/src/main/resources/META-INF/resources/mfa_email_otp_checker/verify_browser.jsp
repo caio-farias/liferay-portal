@@ -90,12 +90,6 @@ if ((mfaEmailOTPResendEmailTimeout > 0) && (mfaEmailOTPSetAtTime > 0)) {
 				maximumAllowedAttemptsError.remove();
 			}
 
-			if (!resendCountdown) {
-				sendEmailButton.removeAttribute('disabled');
-
-				sendEmailButton.removeClass('disabled');
-			}
-
 			submitEmailButton.text(originalSubmitButtonText);
 
 			submitEmailButton.removeAttribute('disabled');
@@ -113,19 +107,15 @@ if ((mfaEmailOTPResendEmailTimeout > 0) && (mfaEmailOTPSetAtTime > 0)) {
 		if (resendDuration < 1) {
 			sendEmailButton.text(originalSendButtonText);
 
-			if (!failedAttemptsRetryCountdown) {
-				sendEmailButton.removeAttribute('disabled');
+			sendEmailButton.removeAttribute('disabled');
 
-				sendEmailButton.removeClass('disabled');
-			}
+			sendEmailButton.removeClass('disabled');
 
 			clearInterval(resendCountdown);
 
 			resendCountdown = null;
 
-			messageContainer.html(
-				'<span class="alert alert-success"><liferay-ui:message key="your-otp-has-been-sent-by-email" /></span>'
-			);
+			messageContainer.html('');
 		}
 		else {
 			sendEmailButton.text(resendDuration);
@@ -145,7 +135,6 @@ if ((mfaEmailOTPResendEmailTimeout > 0) && (mfaEmailOTPSetAtTime > 0)) {
 	}
 
 	if (failedAttemptsRetryTimeout > 0) {
-		sendEmailButton.setAttribute('disabled', 'disabled');
 		submitEmailButton.setAttribute('disabled', 'disabled');
 
 		failedAttemptsRetryCountdown = <portlet:namespace />createCountdown(

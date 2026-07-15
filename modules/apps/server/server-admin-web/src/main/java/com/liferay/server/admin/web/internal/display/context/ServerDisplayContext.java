@@ -114,6 +114,12 @@ public class ServerDisplayContext {
 
 	public String getSessionMessagesKey() {
 		if (SessionMessages.contains(
+				_renderRequest, "databaseSchemaExported")) {
+
+			return "the-database-schema-was-exported-successfully";
+		}
+
+		if (SessionMessages.contains(
 				_renderRequest, "dlGenerateAudioPreviews")) {
 
 			return "audio-file-preview-and-thumbnail-regeneration-has-" +
@@ -142,9 +148,9 @@ public class ServerDisplayContext {
 	}
 
 	private static final String[] _TABS1_NAMES = {
-		"resources", "log-levels", "properties", "data-migration",
-		"external-services", "friendly-urls", "script", "shutdown",
-		"production-readiness"
+		"resources", "log-levels", "properties", "database-migration",
+		"document-migration", "external-services", "friendly-urls", "script",
+		"shutdown", "production-readiness"
 	};
 
 	private final FriendlyURLPublicMappingChecker

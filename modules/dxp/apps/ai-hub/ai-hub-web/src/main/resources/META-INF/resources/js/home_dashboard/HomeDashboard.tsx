@@ -6,7 +6,7 @@
 import React, {useEffect, useState} from 'react';
 
 import {getAgentDefinitions} from '../agent_definition_form/services/AgentDefinitionService';
-import {getChatbots} from '../chatbot_form/services/ChatbotService';
+import {getChatbotDefinitions} from '../chatbot_form/services/ChatbotService';
 import DashboardCard from './components/DashboardCard';
 import DashboardCardSkeleton from './components/DashboardCardSkeleton';
 
@@ -62,7 +62,7 @@ export default function HomeDashboard({
 	useEffect(() => {
 		let isMounted = true;
 
-		getAgentDefinitions()
+		getAgentDefinitions({pageSize: '4', sort: 'dateModified:desc'})
 			.then((data) => {
 				if (isMounted) {
 					setAgents(data?.items ?? []);
@@ -74,7 +74,7 @@ export default function HomeDashboard({
 				}
 			});
 
-		getChatbots()
+		getChatbotDefinitions({pageSize: '4', sort: 'dateModified:desc'})
 			.then((data) => {
 				if (isMounted) {
 					setChatbots(data?.items ?? []);
@@ -163,7 +163,7 @@ export default function HomeDashboard({
 						title={item.title}
 					/>
 				)}
-				take={3}
+				take={4}
 				title={Liferay.Language.get('latest-chatbots')}
 			/>
 		</div>

@@ -1,5 +1,5 @@
 import List from 'assets/pages/List';
-import mockStore from 'test/mock-store';
+import mockStore, {mockStoreDataLDP} from 'test/mock-store';
 import React from 'react';
 import {ChannelContext} from 'shared/context/channel';
 import {cleanup, fireEvent, render, screen} from '@testing-library/react';
@@ -16,8 +16,10 @@ jest.mock('@liferay/frontend-data-set-web', () => ({
 	FrontendDataSet: ({
 		emptyState,
 		filters,
+		groupedFilters,
 		id,
 		itemsActions,
+		sorts,
 	}: {
 		emptyState?: {
 			description?: React.ReactNode;
@@ -25,10 +27,14 @@ jest.mock('@liferay/frontend-data-set-web', () => ({
 			title?: string;
 		};
 		filters?: any[];
+		groupedFilters?: any[];
 		id: string;
 		itemsActions?: Array<{onClick?: (item: any) => void}>;
+		sorts?: any[];
 	}) => (
 		<div data-testid="fds-component" id={id}>
+			<div data-testid="fds-sorts">{JSON.stringify(sorts ?? null)}</div>
+
 			{emptyState && (
 				<div data-testid="fds-empty-state">
 					<div data-testid="fds-empty-state-title">
@@ -41,6 +47,10 @@ jest.mock('@liferay/frontend-data-set-web', () => ({
 				</div>
 			)}
 			<div data-testid="fds-filters">{JSON.stringify(filters)}</div>
+
+			<div data-testid="fds-grouped-filters">
+				{JSON.stringify(groupedFilters)}
+			</div>
 
 			<button
 				data-testid="trigger-info-panel"
@@ -228,16 +238,22 @@ const buildHistory = (path = '/workspace/23/123/assets') => {
 	return history;
 };
 
-const store = mockStore();
+// LDP is enabled by default so the account/segment filters, which are LDP-only,
+// stay present for the shared assertions and the snapshot.
+
+const store = mockStore(mockStoreDataLDP);
 
 // Helper: wrap List in the minimum context providers it needs.
 
 const renderList = (
-	{queryString = ''}: {queryString?: string} = {},
+	{
+		queryString = '',
+		store: storeOverride = store,
+	}: {queryString?: string; store?: typeof store} = {},
 	history = buildHistory(`/workspace/23/123/assets${queryString}`)
 ) =>
 	render(
-		<Provider store={store}>
+		<Provider store={storeOverride}>
 			<ChannelContext.Provider value={mockChannelContext() as any}>
 				<Router history={history}>
 					<List />
@@ -420,6 +436,138 @@ describe('List', () => {
 
 			expect(accountFilter.preloadedData).toEqual({
 				selectedItems: [{label: 'Acme Corp', value: 'acc-1'}],
+			});
+		});
+	});
+
+	describe('sort by metric (orderBy)', () => {
+		const SORTABLE_KEYS = [
+			'assetTitle',
+			'assetType',
+			'viewsMetric',
+			'impressionsMetric',
+			'downloadsMetric',
+		];
+
+		const getSorts = () =>
+			JSON.parse(screen.getByTestId('fds-sorts').textContent);
+
+		it('should not pass any sort when no orderBy is in the URL', () => {
+			renderList();
+
+			expect(getSorts()).toBeNull();
+		});
+
+		it('should ignore an unknown orderBy value', () => {
+			renderList({queryString: '?orderBy=bogusMetric'});
+
+			expect(getSorts()).toBeNull();
+		});
+
+		it('should offer every sortable column as a sort option', () => {
+			renderList({queryString: '?orderBy=viewsMetric'});
+
+			const sorts = getSorts();
+
+			expect(sorts.map((sort: {key: string}) => sort.key)).toEqual(
+				SORTABLE_KEYS
+			);
+
+			sorts.forEach((sort: {direction: string; label: string}) => {
+				expect(sort.direction).toBe('desc');
+				expect(sort.label).toBeTruthy();
+			});
+		});
+
+		['viewsMetric', 'impressionsMetric', 'downloadsMetric'].forEach(
+			(metric) => {
+				it(`should mark only the ${metric} column active when it is the orderBy`, () => {
+					renderList({queryString: `?orderBy=${metric}`});
+
+					const activeSorts = getSorts().filter(
+						(sort: {active: boolean}) => sort.active
+					);
+
+					expect(activeSorts).toEqual([
+						expect.objectContaining({
+							active: true,
+							direction: 'desc',
+							key: metric,
+						}),
+					]);
+				});
+			}
+		);
+	});
+
+	describe('filter by people (LDP gating)', () => {
+		const getFilterIds = () =>
+			JSON.parse(screen.getByTestId('fds-filters').textContent).map(
+				(filter: {id: string}) => filter.id
+			);
+
+		const getGroupedFilters = () =>
+			JSON.parse(screen.getByTestId('fds-grouped-filters').textContent);
+
+		describe('when LDP is enabled', () => {
+			it('should include the account and segment filters', () => {
+				renderList();
+
+				const ids = getFilterIds();
+
+				expect(ids).toContain('accountIds');
+				expect(ids).toContain('segmentIds');
+			});
+
+			it('should render the "Filter by People" grouped filter', () => {
+				renderList();
+
+				const labels = getGroupedFilters().map(
+					(group: {label: string}) => group.label
+				);
+
+				expect(labels).toContain('Filter by People');
+			});
+		});
+
+		describe('when LDP is not enabled', () => {
+			const nonLDPStore = mockStore();
+
+			it('should not include the account filter', () => {
+				renderList({store: nonLDPStore});
+
+				expect(getFilterIds()).not.toContain('accountIds');
+			});
+
+			it('should not include the segment filter', () => {
+				renderList({store: nonLDPStore});
+
+				expect(getFilterIds()).not.toContain('segmentIds');
+			});
+
+			it('should not render the "Filter by People" grouped filter', () => {
+				renderList({store: nonLDPStore});
+
+				const labels = getGroupedFilters().map(
+					(group: {label: string}) => group.label
+				);
+
+				expect(labels).not.toContain('Filter by People');
+			});
+
+			it('should keep the "Filter by" grouped filter with its filters', () => {
+				renderList({store: nonLDPStore});
+
+				const groupedFilters = getGroupedFilters();
+
+				expect(groupedFilters).toHaveLength(1);
+				expect(groupedFilters[0].label).toBe('Filter By');
+				expect(groupedFilters[0].filters).toEqual([
+					'assetType',
+					'tags/id',
+					'categories/id',
+					'mimeType',
+				]);
 			});
 		});
 	});

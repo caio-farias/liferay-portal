@@ -8,27 +8,24 @@ package com.liferay.mcp.server.rest.internal.servlet;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.liferay.mcp.server.rest.dto.v1_0.Tool;
-import com.liferay.mcp.server.rest.internal.configuration.MCPServerConfiguration;
 import com.liferay.mcp.server.rest.internal.constants.MCPServerConstants;
 import com.liferay.mcp.server.rest.internal.util.ToolSetUtil;
-import com.liferay.oauth2.provider.constants.OAuth2AuthorizationConstants;
-import com.liferay.oauth2.provider.model.OAuth2Authorization;
-import com.liferay.oauth2.provider.service.OAuth2AuthorizationLocalService;
+import com.liferay.object.constants.ObjectDefinitionConstants;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
+import com.liferay.object.rest.filter.factory.FilterFactory;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.petra.sql.dsl.expression.Predicate;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
+import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.module.configuration.ConfigurationException;
-import com.liferay.portal.kernel.servlet.HttpHeaders;
+import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.MapUtil;
@@ -59,7 +56,6 @@ import java.io.Serializable;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -124,18 +120,6 @@ public class MCPServerServlet extends HttpServlet {
 
 		long companyId = _portal.getCompanyId(httpServletRequest);
 
-		if (!_isEnabled(companyId)) {
-			httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
-
-			return;
-		}
-
-		if (!_authenticate(
-				companyId, httpServletRequest, httpServletResponse)) {
-
-			return;
-		}
-
 		ObjectEntry mcpServerProfileObjectEntry =
 			_getMCPServerProfileObjectEntry(companyId, httpServletRequest);
 
@@ -151,79 +135,6 @@ public class MCPServerServlet extends HttpServlet {
 		servlet.service(httpServletRequest, httpServletResponse);
 	}
 
-	private boolean _authenticate(
-			long companyId, HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse)
-		throws IOException {
-
-		String authorization = httpServletRequest.getHeader(
-			HttpHeaders.AUTHORIZATION);
-
-		if (Validator.isBlank(authorization)) {
-			_sendUnauthenticatedChallenge(
-				httpServletRequest, httpServletResponse);
-
-			return false;
-		}
-
-		authorization = authorization.trim();
-
-		if (!StringUtil.startsWith(authorization, "Bearer ")) {
-			_sendInvalidTokenChallenge(
-				"Authorization header is not a bearer token",
-				httpServletRequest, httpServletResponse);
-
-			return false;
-		}
-
-		String accessTokenContent = authorization.substring("Bearer ".length());
-
-		OAuth2Authorization oAuth2Authorization =
-			_oAuth2AuthorizationLocalService.
-				fetchOAuth2AuthorizationByAccessTokenContent(
-					accessTokenContent);
-
-		if ((oAuth2Authorization == null) ||
-			(oAuth2Authorization.getCompanyId() != companyId) ||
-			OAuth2AuthorizationConstants.ACCESS_TOKEN_CONTENT_EXPIRED_TOKEN.
-				equals(oAuth2Authorization.getAccessTokenContent())) {
-
-			_sendInvalidTokenChallenge(
-				"Access token is unknown or revoked", httpServletRequest,
-				httpServletResponse);
-
-			return false;
-		}
-
-		Date expirationDate =
-			oAuth2Authorization.getAccessTokenExpirationDate();
-
-		if ((expirationDate != null) &&
-			(expirationDate.getTime() < System.currentTimeMillis())) {
-
-			_sendInvalidTokenChallenge(
-				"Access token has expired", httpServletRequest,
-				httpServletResponse);
-
-			return false;
-		}
-
-		List<String> audiences = oAuth2Authorization.getAudiencesList();
-		String mcpResourceURI = StringBundler.concat(
-			_portal.getPortalURL(httpServletRequest), _portal.getPathContext(),
-			Portal.PATH_MODULE, MCPServerConstants.PATH_MCP);
-
-		if ((audiences == null) || !audiences.contains(mcpResourceURI)) {
-			_sendInvalidTokenChallenge(
-				"Access token is not bound to this MCP server",
-				httpServletRequest, httpServletResponse);
-
-			return false;
-		}
-
-		return true;
-	}
-
 	private Servlet _buildServlet(
 		HttpServletRequest httpServletRequest, long companyId,
 		ObjectEntry mcpServerProfileObjectEntry) {
@@ -232,6 +143,9 @@ public class MCPServerServlet extends HttpServlet {
 			mcpServerProfileObjectEntry.getValues();
 
 		String mcpServerProfileName = (String)values.get("name");
+
+		String mcpServerProfileExternalReferenceCode =
+			mcpServerProfileObjectEntry.getExternalReferenceCode();
 
 		HttpServletStatelessServerTransport
 			httpServletStatelessServerTransport =
@@ -268,8 +182,9 @@ public class MCPServerServlet extends HttpServlet {
 									httpServletRequest, toolName, toolSetName),
 								(mcpTransportContext, callToolRequest) -> _call(
 									mcpTransportContext,
-									callToolRequest.arguments(), toolName,
-									toolSetName));
+									callToolRequest.arguments(), companyId,
+									mcpServerProfileExternalReferenceCode,
+									toolName, toolSetName));
 					}
 					catch (Exception exception) {
 						_log.error(
@@ -335,6 +250,7 @@ public class MCPServerServlet extends HttpServlet {
 
 	private McpSchema.CallToolResult _call(
 		McpTransportContext mcpTransportContext, Object inputObject,
+		long companyId, String mcpServerProfileExternalReferenceCode,
 		String toolName, String toolSetName) {
 
 		HttpServletRequest httpServletRequest =
@@ -342,6 +258,8 @@ public class MCPServerServlet extends HttpServlet {
 
 		try {
 			Response response = ToolSetUtil.invokeTool(
+				_getDataMaskExternalReferenceCodes(
+					companyId, mcpServerProfileExternalReferenceCode),
 				httpServletRequest, inputObject, toolName, toolSetName);
 
 			int responseCode = response.getStatus();
@@ -388,12 +306,33 @@ public class MCPServerServlet extends HttpServlet {
 		}
 	}
 
-	private String _getChallenge(HttpServletRequest httpServletRequest) {
-		return StringBundler.concat(
-			"Bearer realm=\"mcp\", resource_metadata=\"",
-			_portal.getPortalURL(httpServletRequest), _portal.getPathContext(),
-			Portal.PATH_MODULE,
-			MCPServerConstants.PATH_WELL_KNOWN_PROTECTED_RESOURCE, "\"");
+	private List<String> _getDataMaskExternalReferenceCodes(
+			long companyId, String mcpServerProfileExternalReferenceCode)
+		throws PortalException {
+
+		ObjectDefinition objectDefinition =
+			_objectDefinitionLocalService.
+				fetchObjectDefinitionByExternalReferenceCode(
+					MCPServerConstants.
+						EXTERNAL_REFERENCE_CODE_MCP_SERVER_PROFILE_DATA_MASK,
+					companyId);
+
+		if (objectDefinition == null) {
+			return null;
+		}
+
+		return TransformUtil.transform(
+			_objectEntryLocalService.getValuesList(
+				0, companyId, objectDefinition.getUserId(),
+				objectDefinition.getObjectDefinitionId(),
+				_filterFactory.create(
+					"mcpServerProfileExternalReferenceCode eq '" +
+						mcpServerProfileExternalReferenceCode + "'",
+					objectDefinition),
+				null, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+				new Sort[] {new Sort("executionOrder", Sort.INT_TYPE, false)}),
+			values -> MapUtil.getString(
+				values, "dataMaskExternalReferenceCode"));
 	}
 
 	private String _getMCPServerProfileName(
@@ -532,57 +471,15 @@ public class MCPServerServlet extends HttpServlet {
 		}
 	}
 
-	private boolean _isEnabled(long companyId) {
-		if (!FeatureFlagManagerUtil.isEnabled(companyId, "LPD-63311")) {
-			return false;
-		}
-
-		try {
-			MCPServerConfiguration mcpServerConfiguration =
-				_configurationProvider.getCompanyConfiguration(
-					MCPServerConfiguration.class, companyId);
-
-			return mcpServerConfiguration.enabled();
-		}
-		catch (ConfigurationException configurationException) {
-			throw new RuntimeException(configurationException);
-		}
-	}
-
-	private void _sendInvalidTokenChallenge(
-			String description, HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse)
-		throws IOException {
-
-		httpServletResponse.setHeader(
-			HttpHeaders.WWW_AUTHENTICATE,
-			StringBundler.concat(
-				_getChallenge(httpServletRequest),
-				", error=\"invalid_token\", error_description=\"", description,
-				"\""));
-		httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-	}
-
-	private void _sendUnauthenticatedChallenge(
-			HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse)
-		throws IOException {
-
-		httpServletResponse.setHeader(
-			HttpHeaders.WWW_AUTHENTICATE, _getChallenge(httpServletRequest));
-		httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-	}
-
 	private static final Log _log = LogFactoryUtil.getLog(
 		MCPServerServlet.class);
 
 	private static final ObjectMapper _objectMapper = new ObjectMapper();
 
-	@Reference
-	private ConfigurationProvider _configurationProvider;
-
-	@Reference
-	private OAuth2AuthorizationLocalService _oAuth2AuthorizationLocalService;
+	@Reference(
+		target = "(filter.factory.key=" + ObjectDefinitionConstants.STORAGE_TYPE_DEFAULT + ")"
+	)
+	private FilterFactory<Predicate> _filterFactory;
 
 	@Reference
 	private ObjectDefinitionLocalService _objectDefinitionLocalService;

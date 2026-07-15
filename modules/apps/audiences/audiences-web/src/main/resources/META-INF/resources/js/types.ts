@@ -5,14 +5,27 @@
 
 export interface AudiencesCriteria {
 	icon: string;
+	inputType: 'boolean' | 'date' | 'select' | 'text';
 	key: string;
 	label: string;
-	operators: string[];
 	options: Array<{label: string; value: string}>;
-	type: string;
+	type: 'boolean' | 'number' | 'set' | 'string';
+}
+
+export interface AudiencesCriteriaRulesGroup {
+	conjunction?: string;
+	rules?: Array<{attribute: string; operator: string; value: string}>;
 }
 
 export interface AudiencesCriteriaType {
 	audiencesCriterias: AudiencesCriteria[];
+	key: string;
 	label: string;
+}
+
+export interface Rule {
+	attribute: string;
+	id: string;
+	operator: string;
+	value: string;
 }

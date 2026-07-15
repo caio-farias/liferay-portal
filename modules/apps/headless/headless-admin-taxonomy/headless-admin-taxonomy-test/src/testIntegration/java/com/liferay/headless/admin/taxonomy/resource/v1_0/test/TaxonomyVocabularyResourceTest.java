@@ -21,6 +21,7 @@ import com.liferay.dynamic.data.mapping.model.DDMStructure;
 import com.liferay.dynamic.data.mapping.test.util.DDMStructureTestUtil;
 import com.liferay.headless.admin.taxonomy.client.dto.v1_0.AssetLibrary;
 import com.liferay.headless.admin.taxonomy.client.dto.v1_0.AssetType;
+import com.liferay.headless.admin.taxonomy.client.dto.v1_0.Project;
 import com.liferay.headless.admin.taxonomy.client.dto.v1_0.TaxonomyVocabulary;
 import com.liferay.headless.admin.taxonomy.client.pagination.Page;
 import com.liferay.headless.admin.taxonomy.client.pagination.Pagination;
@@ -385,8 +386,8 @@ public class TaxonomyVocabularyResourceTest
 	@Override
 	protected String[] getIgnoredEntityFieldNames() {
 		return new String[] {
-			"assetLibraries", "dateCreated", "dateModified", "siteId",
-			"visibilityType"
+			"assetLibraries", "dateCreated", "dateModified", "projects",
+			"siteId", "visibilityType"
 		};
 	}
 
@@ -394,9 +395,8 @@ public class TaxonomyVocabularyResourceTest
 	protected TaxonomyVocabulary randomTaxonomyVocabulary() throws Exception {
 		return new TaxonomyVocabulary() {
 			{
-				assetLibraries =
-					testGroup.isCMS() ?
-						new AssetLibrary[] {_randomAssetLibrary()} : null;
+				assetLibraries = testGroup.isCMS() ?
+					new AssetLibrary[] {_randomSpaceAssetLibrary()} : null;
 				assetTypes = new AssetType[] {
 					new AssetType() {
 						{
@@ -413,6 +413,8 @@ public class TaxonomyVocabularyResourceTest
 				multiValued = RandomTestUtil.randomBoolean();
 				name = RandomTestUtil.randomString();
 				numberOfTaxonomyCategories = 0;
+				projects = testGroup.isCMS() ?
+					new Project[] {_randomProjectAssetLibrary()} : null;
 				siteId = testGroup.getGroupId();
 				visibilityType = VisibilityType.PUBLIC;
 			}
@@ -464,10 +466,26 @@ public class TaxonomyVocabularyResourceTest
 			GroupConstants.DEFAULT_PARENT_GROUP_ID, GroupConstants.CMS);
 	}
 
-	private AssetLibrary _randomAssetLibrary() throws Exception {
+	private Project _randomProjectAssetLibrary() throws Exception {
 		DepotEntry depotEntry = _depotEntryLocalService.addDepotEntry(
 			RandomTestUtil.randomLocaleStringMap(), null,
-			DepotConstants.TYPE_ASSET_LIBRARY,
+			DepotConstants.TYPE_PROJECT,
+			ServiceContextTestUtil.getServiceContext());
+
+		Group depotEntryGroup = depotEntry.getGroup();
+
+		return new Project() {
+			{
+				id = depotEntryGroup.getGroupId();
+				name = depotEntryGroup.getName(LocaleUtil.getDefault());
+			}
+		};
+	}
+
+	private AssetLibrary _randomSpaceAssetLibrary() throws Exception {
+		DepotEntry depotEntry = _depotEntryLocalService.addDepotEntry(
+			RandomTestUtil.randomLocaleStringMap(), null,
+			DepotConstants.TYPE_SPACE,
 			ServiceContextTestUtil.getServiceContext());
 
 		Group depotEntryGroup = depotEntry.getGroup();

@@ -9,8 +9,10 @@ import ClayIcon from '@clayui/icon';
 import ClayLayout from '@clayui/layout';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import FullCalendar from '@fullcalendar/react';
-import {FrontendDataSetContext} from '@liferay/frontend-data-set-web';
-import {useLiferayState} from '@liferay/frontend-js-state-web/react';
+import {
+	FrontendDataSetContext,
+	IItemsActions,
+} from '@liferay/frontend-data-set-web';
 import classNames from 'classnames';
 import {dateUtils, sub} from 'frontend-js-web';
 import React, {useContext, useEffect, useMemo, useRef, useState} from 'react';
@@ -22,7 +24,7 @@ import CreateTaskModal from '../../../modal/CreateTaskModal';
 import {UPDATE_TASKS_QUICK_FILTER_VISIBILITY} from '../../../task/TasksQuickFilters';
 import CalendarMoreLinkPopover from './components/CalendarMoreLinkPopover';
 import CalendarTaskCard from './components/CalendarTaskCard';
-import {unscheduledTasksAtom} from './utils/unscheduledTasksAtom';
+import UnscheduledTasksPanel from './components/UnscheduledTasksPanel';
 
 import './CalendarView.scss';
 
@@ -30,7 +32,9 @@ import type {FirstDayOfWeekLocale} from 'frontend-js-web';
 
 interface CalendarViewProps {
 	items: ITask[];
+	itemsActions: IItemsActions[];
 	projectId?: string;
+	projectObjectDefinitionId: number;
 }
 
 interface MoreLinkPopover {
@@ -39,22 +43,26 @@ interface MoreLinkPopover {
 	tasks: ITaskObjectEntry[];
 }
 
-export default function CalendarView({items, projectId}: CalendarViewProps) {
-	const {loadData, onInfoPanelToggleButtonClick} = useContext(
-		FrontendDataSetContext
-	);
+export default function CalendarView({
+	items,
+	itemsActions,
+	projectId,
+	projectObjectDefinitionId,
+}: CalendarViewProps) {
+	const {loadData} = useContext(FrontendDataSetContext);
 
 	const calendarRef = useRef<FullCalendar>(null);
 	const calendarViewRef = useRef<HTMLDivElement>(null);
 
 	const [datePickerExpanded, setDatePickerExpanded] = useState(false);
 	const [datePickerValue, setDatePickerValue] = useState('');
+	const [fdsContainerElement, setFDSContainerElement] =
+		useState<HTMLElement | null>(null);
 	const [moreLinkPopover, setMoreLinkPopover] =
 		useState<MoreLinkPopover | null>(null);
 	const [title, setTitle] = useState('');
-
-	const [, setUnscheduledTasks] =
-		useLiferayState<ITaskObjectEntry[]>(unscheduledTasksAtom);
+	const [unscheduledTasksPanelOpen, setUnscheduledTasksPanelOpen] =
+		useState(false);
 
 	const events = useMemo(
 		() =>
@@ -84,12 +92,43 @@ export default function CalendarView({items, projectId}: CalendarViewProps) {
 		[items]
 	);
 
-	// Share the unscheduled tasks with the info panel component, since the FDS
-	// core provides the info panel with only the currently selected items.
+	// The panel should push the whole FDS container aside, not just the
+	// calendar, so anchor it to the FDS root. FDS does not expose that
+	// element, so resolve it from the DOM.
+	//
+	// Store it in state, not a ref: the panel reads the container in a
+	// layout effect that runs before this component's effects, and a ref
+	// mutation would never re-trigger it.
 
 	useEffect(() => {
-		setUnscheduledTasks(unscheduledTasks);
-	}, [setUnscheduledTasks, unscheduledTasks]);
+		setFDSContainerElement(
+			calendarViewRef.current?.closest<HTMLElement>('.fds') ?? null
+		);
+	}, []);
+
+	// Anchor to the top of the FDS container, pulling up past the CMS
+	// breadcrumb and the project tab navigation above it.
+
+	useEffect(() => {
+		if (!fdsContainerElement) {
+			return;
+		}
+
+		return () => {
+			fdsContainerElement.classList.remove(
+				'c-slideout-container',
+				'c-slideout-push-end',
+				'c-slideout-transition',
+				'c-slideout-transition-in',
+				'c-slideout-transition-out'
+			);
+		};
+	}, [fdsContainerElement]);
+
+	const fdsContainerRef = useMemo(
+		() => ({current: fdsContainerElement}),
+		[fdsContainerElement]
+	);
 
 	useEffect(() => {
 		Liferay.fire(UPDATE_TASKS_QUICK_FILTER_VISIBILITY, {visible: false});
@@ -131,6 +170,7 @@ export default function CalendarView({items, projectId}: CalendarViewProps) {
 					dueDate={dueDate}
 					loadData={loadData}
 					projectId={projectId}
+					projectObjectDefinitionId={projectObjectDefinitionId}
 					state={DEFAULT_TASK_STATE_KEY}
 				/>
 			),
@@ -150,8 +190,11 @@ export default function CalendarView({items, projectId}: CalendarViewProps) {
 				>
 					{!!unscheduledTasks.length && (
 						<ClayButton
+							aria-pressed={unscheduledTasksPanelOpen}
 							displayType="warning"
-							onClick={() => onInfoPanelToggleButtonClick()}
+							onClick={() =>
+								setUnscheduledTasksPanelOpen((open) => !open)
+							}
 							outline
 							size="sm"
 						>
@@ -292,7 +335,11 @@ export default function CalendarView({items, projectId}: CalendarViewProps) {
 				dayHeaderFormat={{weekday: 'long'}}
 				dayMaxEvents
 				eventContent={(arg) => (
-					<CalendarTaskCard task={arg.event.extendedProps.task} />
+					<CalendarTaskCard
+						itemsActions={itemsActions}
+						loadData={loadData}
+						task={arg.event.extendedProps.task}
+					/>
 				)}
 				events={events}
 				fixedWeekCount={false}
@@ -361,8 +408,19 @@ export default function CalendarView({items, projectId}: CalendarViewProps) {
 			{moreLinkPopover && (
 				<CalendarMoreLinkPopover
 					alignElement={moreLinkPopover.alignElement}
+					itemsActions={itemsActions}
+					loadData={loadData}
 					onClose={() => setMoreLinkPopover(null)}
 					tasks={moreLinkPopover.tasks}
+				/>
+			)}
+
+			{fdsContainerElement && (
+				<UnscheduledTasksPanel
+					containerRef={fdsContainerRef}
+					onOpenChange={setUnscheduledTasksPanelOpen}
+					open={unscheduledTasksPanelOpen}
+					tasks={unscheduledTasks}
 				/>
 			)}
 		</div>

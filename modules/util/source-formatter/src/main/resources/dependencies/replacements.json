@@ -2508,6 +2508,15 @@
 		"to": "_trashHelper.${prefixMethodName}(${variableName})"
 	},
 	{
+		"from": "regex:liferay-ui:membership-policy-error",
+		"issueKey": "LPD-27743",
+		"to": "liferay-site:membership-policy-error",
+		"validExtensions": [
+			"jsp",
+			"jspf"
+		]
+	},
+	{
 		"from": "XMLUtil.formatXML(String param)",
 		"issueKey": "LPD-27744",
 		"newImports": [
@@ -3096,6 +3105,16 @@
 		]
 	},
 	{
+		"from": "regex:!company\\.isSendPassword\\(\\) && (?<condition>!company\\.isSendPasswordResetLink\\(\\))",
+		"issueKey": "LPD-28363",
+		"to": "${condition}"
+	},
+	{
+		"from": "regex:PropsKeys\\.COMPANY_SECURITY_SEND_PASSWORD,\\s+(?<suffix>PropsKeys\\.COMPANY_SECURITY_SEND_PASSWORD_RESET_LINK)",
+		"issueKey": "LPD-28363",
+		"to": "${suffix}"
+	},
+	{
 		"classNames": [
 			"StrutsAction"
 		],
@@ -3522,6 +3541,14 @@
 	},
 	{
 		"classNames": [
+			"RecurrenceSerializer"
+		],
+		"from": "toCronText(Recurrence paramName)",
+		"hasMessage": true,
+		"issueKey": "LPD-31312"
+	},
+	{
+		"classNames": [
 			"CustomFacetPortletPreferences"
 		],
 		"from": "getFederatedSearchKeyOptional",
@@ -3689,6 +3716,20 @@
 		"from": "updateDocuments(String paramName, long paramName, Collection<Document> paramName, boolean paramName)",
 		"issueKey": "LPD-35137",
 		"to": "updateDocuments(param#1#, param#2#, param#3#)"
+	},
+	{
+		"classNames": [
+			"BaseJSPDynamicInclude"
+		],
+		"classStructurePattern": true,
+		"issueKey": "LPD-35156",
+		"newImports": [
+			"jakarta.servlet.ServletContext"
+		],
+		"newMethods": [
+			"@Override\n\tprotected ServletContext getServletContext() {\n\t\treturn _servletContext;\n\t}"
+		],
+		"newReference": "ServletContext _servletContext"
 	},
 	{
 		"classNames": [
@@ -5131,6 +5172,16 @@
 		]
 	},
 	{
+		"from": "JournalServiceConfigurationKeys",
+		"hasMessage": true,
+		"issueKey": "LPD-58184"
+	},
+	{
+		"from": "JournalServiceConfigurationValues",
+		"hasMessage": true,
+		"issueKey": "LPD-58184"
+	},
+	{
 		"classNames": [
 			"DDMTemplateLocalService",
 			"DDMTemplateLocalServiceUtil"
@@ -5496,6 +5547,7 @@
 	},
 	{
 		"classNames": [
+			"CPCompareHelper",
 			"CPCompareHelperUtil"
 		],
 		"from": "getCPDefinitionIds(long paramName, long paramName, HttpSession paramName)",
@@ -5880,6 +5932,19 @@
 	},
 	{
 		"classNames": [
+			"BasePortletProvider"
+		],
+		"classStructurePattern": true,
+		"issueKey": "LPD-81227",
+		"newImports": [
+			"com.liferay.portal.kernel.portlet.PortletProvider"
+		],
+		"newMethods": [
+			"@Override\n\tpublic Action[] getSupportedActions() {\n\t\treturn PortletProvider.Action.values();\n\t}"
+		]
+	},
+	{
+		"classNames": [
 			"AssetEntryLocalService",
 			"AssetEntryLocalServiceUtil"
 		],
@@ -5897,6 +5962,37 @@
 		"from": "getCompanyByMx(String paramName)",
 		"hasMessage": true,
 		"issueKey": "LPD-82354"
+	},
+	{
+		"from": "regex:(?<varName>\\w*?FileEntryType)\\.getDDMStructures\\(\\)",
+		"issueKey": "LPD-84010",
+		"newImports": [
+			"com.liferay.document.library.util.DLFileEntryTypeUtil"
+		],
+		"to": "DLFileEntryTypeUtil.getDDMStructures(${varName})"
+	},
+	{
+		"classNames": [
+			"PhoneLocalService",
+			"PhoneLocalServiceUtil",
+			"PhoneService",
+			"PhoneServiceUtil"
+		],
+		"from": "updatePhone(long paramName, String paramName, String paramName, long paramName, boolean paramName)",
+		"issueKey": "LPD-85864",
+		"to": "updatePhone(null, param#0#, param#1#, param#2#, param#3#, param#4#)"
+	},
+	{
+		"from": "CustomFieldsUtil.hasVisibleCustomFields",
+		"issueKey": "LPD-85980",
+		"newImports": [
+			"com.liferay.expando.util.ExpandoAttributesUtil"
+		],
+		"to": "ExpandoAttributesUtil.hasVisibleAttributes",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
 	},
 	{
 		"from": "regex:MultiVMPoolUtil\\s*.\\s*getPortalCache\\(\\s*(?<prefixMethodName>[\\s\\S]*?)\\)",

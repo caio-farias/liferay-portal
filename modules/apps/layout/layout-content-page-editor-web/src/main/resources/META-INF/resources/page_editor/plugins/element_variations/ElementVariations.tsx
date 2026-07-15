@@ -7,10 +7,11 @@ import ClayButton from '@clayui/button';
 import {Option, Picker} from '@clayui/core';
 import ClayEmptyState from '@clayui/empty-state';
 import {useId} from 'frontend-js-components-web';
-import React, {useReducer, useRef, useState} from 'react';
+import React, {useReducer, useRef} from 'react';
 
 import {initializeConfig} from '../../app/config/index';
 import {Config} from '../../types/config';
+import AudiencePriority from './AudiencePriority';
 import ElementVariationForm from './ElementVariationForm';
 import ElementVariationService from './ElementVariationService';
 import ElementVariationsList from './ElementVariationsList';
@@ -33,21 +34,44 @@ interface Props {
 	deleteElementVariationURL: string;
 	elementVariations: Array<LoadedElementVariation>;
 	experiences: Array<{
+		audienceEntryERCs: Array<string>;
 		label: string;
 		segmentsExperienceERC: string;
 		segmentsExperienceId: number;
 	}>;
+	itemNames: Record<string, string>;
 	locales: Array<{id: string; label: string; symbol: string}>;
 	plid: number;
 	portletNamespace: string;
 	previewURL: string;
 	selectedSegmentsExperienceId: number;
+	updateAudiencesPriorityURL: string;
 }
 
 export default function (props: Props) {
 	initializeConfig({portletNamespace: props.portletNamespace} as Config);
 
 	return <ElementVariations {...props} />;
+}
+
+function getOrderedAudiences(
+	audiences: Array<{label: string; value: string}>,
+	audienceEntryERCs: Array<string>
+): Array<{label: string; value: string}> {
+	const explicitAudiences = audienceEntryERCs
+		.map((audienceEntryERC) =>
+			audiences.find(({value}) => value === audienceEntryERC)
+		)
+		.filter(
+			(audience): audience is {label: string; value: string} =>
+				audience !== undefined
+		);
+
+	const remainingAudiences = audiences.filter(
+		({value}) => !audienceEntryERCs.includes(value)
+	);
+
+	return [...explicitAudiences, ...remainingAudiences];
 }
 
 function ElementVariations({
@@ -57,39 +81,43 @@ function ElementVariations({
 	deleteElementVariationURL,
 	elementVariations: initialElementVariations = [],
 	experiences = [],
+	itemNames,
 	locales,
 	plid,
 	previewURL,
 	selectedSegmentsExperienceId,
+	updateAudiencesPriorityURL,
 }: Props) {
 	const experienceId = useId();
 
-	const [experienceKey, setExperienceKey] = useState(() => {
-		const selectedExperience = experiences.find(
-			(experience) =>
-				experience.segmentsExperienceId === selectedSegmentsExperienceId
-		);
-
-		return (
-			selectedExperience?.segmentsExperienceERC ??
-			experiences[0]?.segmentsExperienceERC ??
-			''
-		);
-	});
-
-	const [{draftElementVariation, elementVariations, languageId}, dispatch] =
-		useReducer(
-			reducer,
-			{
-				defaultLanguageId,
-				elementVariations: initialElementVariations,
-			},
-			createInitialState
-		);
+	const [
+		{
+			draftElementVariation,
+			editableElementOptions,
+			elementVariations,
+			experienceKey,
+			highlightedTargetElement,
+			languageId,
+		},
+		dispatch,
+	] = useReducer(
+		reducer,
+		{
+			defaultLanguageId,
+			elementVariations: initialElementVariations,
+			experiences,
+			selectedSegmentsExperienceId,
+		},
+		createInitialState
+	);
 
 	const experienceElementVariations = elementVariations.filter(
 		(elementVariation) =>
 			elementVariation.segmentsExperienceERC === experienceKey
+	);
+
+	const selectedExperience = experiences.find(
+		(experience) => experience.segmentsExperienceERC === experienceKey
 	);
 
 	const elementVariationsPreviewRef =
@@ -103,6 +131,8 @@ function ElementVariations({
 						<ElementVariationForm
 							audiences={audiences}
 							defaultLanguageId={defaultLanguageId}
+							dispatch={dispatch}
+							editableElementOptions={editableElementOptions}
 							elementVariation={draftElementVariation}
 							key={draftElementVariation.key}
 							languageId={languageId}
@@ -161,7 +191,11 @@ function ElementVariations({
 										id={experienceId}
 										items={experiences}
 										onSelectionChange={(selection) =>
-											setExperienceKey(String(selection))
+											dispatch({
+												experienceKey:
+													String(selection),
+												type: 'SET_EXPERIENCE_KEY',
+											})
 										}
 										selectedKey={experienceKey}
 									>
@@ -175,9 +209,25 @@ function ElementVariations({
 									</Picker>
 								</div>
 
+								<AudiencePriority
+									audiences={getOrderedAudiences(
+										audiences,
+										selectedExperience?.audienceEntryERCs ??
+											[]
+									)}
+									key={experienceKey}
+									segmentsExperienceERC={experienceKey}
+									updateAudiencesPriorityURL={
+										updateAudiencesPriorityURL
+									}
+								/>
+
 								{experienceElementVariations.length ? (
 									<ElementVariationsList
 										audiences={audiences}
+										editableElementOptions={
+											editableElementOptions
+										}
 										elementVariations={
 											experienceElementVariations
 										}
@@ -243,7 +293,10 @@ function ElementVariations({
 
 				<ElementVariationsPreview
 					defaultLanguageId={defaultLanguageId}
+					dispatch={dispatch}
 					draftElementVariation={draftElementVariation}
+					highlightedTargetElement={highlightedTargetElement}
+					itemNames={itemNames}
 					languageId={languageId}
 					previewURL={previewURL}
 					ref={elementVariationsPreviewRef}

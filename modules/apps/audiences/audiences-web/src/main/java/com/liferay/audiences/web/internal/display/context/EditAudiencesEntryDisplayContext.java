@@ -12,15 +12,17 @@ import com.liferay.audiences.service.AudiencesEntryServiceUtil;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ParamUtil;
-import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
+import com.liferay.portal.kernel.uuid.PortalUUIDUtil;
 
 import jakarta.portlet.PortletURL;
 import jakarta.portlet.RenderResponse;
@@ -52,6 +54,24 @@ public class EditAudiencesEntryDisplayContext {
 			_httpServletRequest, "audiencesEntryId");
 
 		return _audiencesEntryId;
+	}
+
+	public JSONObject getAudiencesEntryJSONObject() {
+		try {
+			AudiencesEntry audiencesEntry = _getAudiencesEntry();
+
+			if (audiencesEntry != null) {
+				return JSONFactoryUtil.createJSONObject(
+					audiencesEntry.getJSON());
+			}
+		}
+		catch (PortalException portalException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(portalException);
+			}
+		}
+
+		return JSONFactoryUtil.createJSONObject();
 	}
 
 	public String getBackURL() {
@@ -93,14 +113,17 @@ public class EditAudiencesEntryDisplayContext {
 						audiencesCriteria -> HashMapBuilder.<String, Object>put(
 							"icon", audiencesCriteria.getIcon()
 						).put(
+							"inputType",
+							() -> {
+								AudiencesCriteria.InputType inputType =
+									audiencesCriteria.getInputType();
+
+								return inputType.getValue();
+							}
+						).put(
 							"key", audiencesCriteria.getKey()
 						).put(
 							"label", audiencesCriteria.getLabel()
-						).put(
-							"operators",
-							TransformUtil.transform(
-								audiencesCriteria.getOperators(),
-								AudiencesCriteria.Operator::getValue)
 						).put(
 							"options",
 							TransformUtil.transform(
@@ -112,18 +135,30 @@ public class EditAudiencesEntryDisplayContext {
 								).build())
 						).put(
 							"type",
-							StringUtil.toLowerCase(
-								String.valueOf(audiencesCriteria.getType()))
+							() -> {
+								AudiencesCriteria.Type type =
+									audiencesCriteria.getType();
+
+								return type.getValue();
+							}
 						).build())
+				).put(
+					"key", audiencesCriteriaType.getKey()
 				).put(
 					"label", audiencesCriteriaType.getLabel()
 				).build())
 		).put(
 			"backURL", getBackURL()
 		).put(
+			"backURLTitle", getBackURLTitle()
+		).put(
+			"externalReferenceCode", _getExternalReferenceCode()
+		).put(
 			"name", _getName()
 		).put(
 			"namespace", _renderResponse.getNamespace()
+		).put(
+			"rulesGroup", getAudiencesEntryJSONObject()
 		).build();
 	}
 
@@ -175,6 +210,23 @@ public class EditAudiencesEntryDisplayContext {
 		}
 
 		return null;
+	}
+
+	private String _getExternalReferenceCode() {
+		try {
+			AudiencesEntry audiencesEntry = _getAudiencesEntry();
+
+			if (audiencesEntry != null) {
+				return audiencesEntry.getExternalReferenceCode();
+			}
+		}
+		catch (PortalException portalException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(portalException);
+			}
+		}
+
+		return PortalUUIDUtil.generate();
 	}
 
 	private String _getName() {

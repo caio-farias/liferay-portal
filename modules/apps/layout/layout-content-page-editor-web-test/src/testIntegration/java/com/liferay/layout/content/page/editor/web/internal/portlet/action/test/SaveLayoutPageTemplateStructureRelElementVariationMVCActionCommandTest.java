@@ -7,8 +7,11 @@ package com.liferay.layout.content.page.editor.web.internal.portlet.action.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.layout.page.template.model.LayoutPageTemplateStructureRelElementVariation;
+import com.liferay.layout.page.template.model.LayoutPageTemplateStructureRelElementVariationAudienceEntryRel;
+import com.liferay.layout.page.template.service.LayoutPageTemplateStructureRelElementVariationAudienceEntryRelLocalService;
 import com.liferay.layout.page.template.service.LayoutPageTemplateStructureRelElementVariationLocalService;
 import com.liferay.layout.test.util.LayoutTestUtil;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.Group;
@@ -28,6 +31,8 @@ import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.Assert;
@@ -52,6 +57,8 @@ public class
 
 	@Test
 	public void testProcessAction() throws Exception {
+		String audienceEntryERC1 = RandomTestUtil.randomString();
+		String audienceEntryERC2 = RandomTestUtil.randomString();
 		String externalReferenceCode = RandomTestUtil.randomString();
 		String name = RandomTestUtil.randomString();
 		String targetElement = RandomTestUtil.randomString();
@@ -63,12 +70,12 @@ public class
 		_mvcActionCommand.processAction(
 			_getMockLiferayPortletActionRequest(
 				JSONUtil.put(
-					"audienceEntryERC", RandomTestUtil.randomString()
+					"audienceEntryERCs",
+					JSONUtil.putAll(audienceEntryERC1, audienceEntryERC2)
 				).put(
 					"externalReferenceCode", externalReferenceCode
 				).put(
-					"hideMap",
-					JSONUtil.put("en_US", RandomTestUtil.randomString())
+					"hide", "true"
 				).put(
 					"htmlMap",
 					JSONUtil.put("en_US", RandomTestUtil.randomString())
@@ -99,28 +106,39 @@ public class
 			layoutPageTemplateStructureRelElementVariation =
 				layoutPageTemplateStructureRelElementVariations.get(0);
 
+		_assertAudienceEntryERCs(
+			externalReferenceCode,
+			Arrays.asList(audienceEntryERC1, audienceEntryERC2));
+
+		Assert.assertTrue(
+			layoutPageTemplateStructureRelElementVariation.isActive());
 		Assert.assertEquals(
 			externalReferenceCode,
 			layoutPageTemplateStructureRelElementVariation.
 				getExternalReferenceCode());
+		Assert.assertEquals(
+			"true", layoutPageTemplateStructureRelElementVariation.getHide());
 		Assert.assertEquals(
 			name, layoutPageTemplateStructureRelElementVariation.getName());
 		Assert.assertEquals(
 			targetElement,
 			layoutPageTemplateStructureRelElementVariation.getTargetElement());
 
+		String updatedAudienceEntryERC = RandomTestUtil.randomString();
 		String updatedName = RandomTestUtil.randomString();
 		String updatedTargetElement = RandomTestUtil.randomString();
 
 		_mvcActionCommand.processAction(
 			_getMockLiferayPortletActionRequest(
 				JSONUtil.put(
-					"audienceEntryERC", RandomTestUtil.randomString()
+					"active", false
+				).put(
+					"audienceEntryERCs",
+					JSONUtil.putAll(updatedAudienceEntryERC)
 				).put(
 					"externalReferenceCode", externalReferenceCode
 				).put(
-					"hideMap",
-					JSONUtil.put("en_US", RandomTestUtil.randomString())
+					"hide", "false"
 				).put(
 					"htmlMap",
 					JSONUtil.put("en_US", RandomTestUtil.randomString())
@@ -149,12 +167,35 @@ public class
 		layoutPageTemplateStructureRelElementVariation =
 			layoutPageTemplateStructureRelElementVariations.get(0);
 
+		_assertAudienceEntryERCs(
+			externalReferenceCode,
+			Collections.singletonList(updatedAudienceEntryERC));
+
+		Assert.assertFalse(
+			layoutPageTemplateStructureRelElementVariation.isActive());
 		Assert.assertEquals(
 			updatedName,
 			layoutPageTemplateStructureRelElementVariation.getName());
 		Assert.assertEquals(
 			updatedTargetElement,
 			layoutPageTemplateStructureRelElementVariation.getTargetElement());
+	}
+
+	private void _assertAudienceEntryERCs(
+		String externalReferenceCode, List<String> audienceEntryERCs) {
+
+		Collections.sort(audienceEntryERCs);
+
+		List<String> actualAudienceEntryERCs = TransformUtil.transform(
+			_layoutPageTemplateStructureRelElementVariationAudienceEntryRelLocalService.
+				getLayoutPageTemplateStructureRelElementVariationAudienceEntryRels(
+					externalReferenceCode),
+			LayoutPageTemplateStructureRelElementVariationAudienceEntryRel::
+				getAudienceEntryERC);
+
+		Collections.sort(actualAudienceEntryERCs);
+
+		Assert.assertEquals(audienceEntryERCs, actualAudienceEntryERCs);
 	}
 
 	private MockLiferayPortletActionRequest _getMockLiferayPortletActionRequest(
@@ -192,6 +233,11 @@ public class
 
 	@Inject
 	private GroupLocalService _groupLocalService;
+
+	@Inject
+	private
+		LayoutPageTemplateStructureRelElementVariationAudienceEntryRelLocalService
+			_layoutPageTemplateStructureRelElementVariationAudienceEntryRelLocalService;
 
 	@Inject
 	private LayoutPageTemplateStructureRelElementVariationLocalService

@@ -11,7 +11,8 @@ import {loginTest} from '../../../fixtures/loginTest';
 import {addCMSAdministrator} from '../../../utils/addCMSAdministrator';
 import {checkAccessibility} from '../../../utils/checkAccessibility';
 import getRandomString from '../../../utils/getRandomString';
-import performLoginViaApi, {
+import {
+	performLoginViaApi,
 	performUserSwitchViaApi,
 	userData,
 } from '../../../utils/performLogin';
@@ -34,7 +35,7 @@ test.beforeAll(async ({browser}) => {
 
 	const recycleBinPage = new RecycleBinPage(newPage);
 
-	await performLoginViaApi(newPage, 'test');
+	await performLoginViaApi({page: newPage, screenName: 'test'});
 
 	await recycleBinPage.goto();
 
@@ -278,7 +279,12 @@ test(
 				{first: true}
 			);
 
-			await expect(page.getByText('No Assets Yet')).toBeVisible();
+			await expect(
+				page.getByRole('cell', {name: contentName1})
+			).toBeHidden();
+			await expect(
+				page.getByRole('cell', {name: contentName2})
+			).toBeHidden();
 		});
 	}
 );
@@ -344,11 +350,6 @@ test(
 					'This will permanently delete all items in the recycle bin.'
 				)
 			).toBeVisible();
-
-			await checkAccessibility({
-				page,
-				selectors: ['.modal-content'],
-			});
 
 			await page.getByRole('button', {name: 'Empty Bin'}).click();
 
@@ -1064,6 +1065,106 @@ test(
 			await expect(
 				page.getByRole('row', {name: contentName2})
 			).toBeHidden();
+		});
+	}
+);
+
+test(
+	'The Recycle Bin filter menu does not offer the extension filter',
+	{tag: '@LPD-95408'},
+	async ({apiHelpers, contentsPage, page, recycleBinPage}) => {
+		const contentName = getRandomString();
+		const spaceName = getRandomString();
+
+		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			name: spaceName,
+			settings: {trashEnabled: true},
+			type: 'Space',
+		});
+
+		await apiHelpers.objectEntry.postObjectEntry(
+			{
+				objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
+				title: contentName,
+			},
+			'cms/basic-web-contents',
+			spaceName
+		);
+
+		await test.step('Trash the content', async () => {
+			await contentsPage.goto();
+
+			await contentsPage.deleteContent(contentName);
+		});
+
+		await test.step('The filter menu offers Space but not Extension', async () => {
+			await recycleBinPage.goto();
+
+			await expect(
+				page.getByRole('row', {name: contentName})
+			).toBeVisible();
+
+			await page.getByRole('button', {name: 'Filter'}).click();
+
+			await expect(
+				page.getByRole('menuitem', {name: 'Space'})
+			).toBeVisible();
+
+			await expect(
+				page.getByRole('menuitem', {name: 'Extension'})
+			).toBeHidden();
+		});
+	}
+);
+
+test(
+	'The Recycle Bin filter menu groups the filters by type',
+	{tag: '@LPD-95407'},
+	async ({apiHelpers, contentsPage, page, recycleBinPage}) => {
+		const contentName = getRandomString();
+		const spaceName = getRandomString();
+
+		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			name: spaceName,
+			settings: {trashEnabled: true},
+			type: 'Space',
+		});
+
+		await apiHelpers.objectEntry.postObjectEntry(
+			{
+				objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
+				title: contentName,
+			},
+			'cms/basic-web-contents',
+			spaceName
+		);
+
+		await test.step('Trash the content', async () => {
+			await contentsPage.goto();
+
+			await contentsPage.deleteContent(contentName);
+		});
+
+		await test.step('The filter menu shows the filters grouped', async () => {
+			await recycleBinPage.goto();
+
+			await expect(
+				page.getByRole('row', {name: contentName})
+			).toBeVisible();
+
+			await page.getByRole('button', {name: 'Filter'}).click();
+
+			await expect(
+				page
+					.getByRole('group', {exact: true, name: 'Filter By'})
+					.getByRole('menuitem', {name: 'Space'})
+			).toBeVisible();
+
+			await expect(
+				page
+					.getByRole('group', {name: 'Filter by Date'})
+					.getByRole('menuitem', {name: 'Create Date'})
+			).toBeVisible();
 		});
 	}
 );

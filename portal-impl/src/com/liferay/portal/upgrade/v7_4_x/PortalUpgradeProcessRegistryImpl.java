@@ -783,6 +783,33 @@ public class PortalUpgradeProcessRegistryImpl
 				"AssetVocabularyGroupRel", "depotEntryType INTEGER"),
 			UpgradeProcessFactory.runSQL(
 				"update AssetVocabularyGroupRel set depotEntryType = 1"));
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 7, 0),
+			UpgradeProcessFactory.addColumns(
+				"AssetCategory", "system_ BOOLEAN"));
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 7, 1),
+			UpgradeModulesFactory.create(
+				new String[] {"com.liferay.portal.vulcan.impl"}, null));
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 7, 2),
+			new LayoutRemoveUnusedTypeSettingsUpgradeProcess());
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 7, 3),
+			new LayoutSetPrototypeRemoveReadyForPropagationUpgradeProcess());
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 7, 4),
+			new LayoutSetRemoveUnusedSettingsUpgradeProcess());
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 7, 5),
+			UpgradeModulesFactory.create(
+				new String[] {"com.liferay.site.cms.site.initializer"}, null));
 	}
 
 }

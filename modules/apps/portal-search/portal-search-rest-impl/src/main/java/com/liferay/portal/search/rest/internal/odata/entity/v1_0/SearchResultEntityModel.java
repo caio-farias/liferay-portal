@@ -34,6 +34,10 @@ public class SearchResultEntityModel implements EntityModel {
 				new IntegerEntityField("groupIds", locale -> Field.GROUP_ID)),
 			new CollectionEntityField(
 				new IntegerEntityField(
+					"internalTaxonomyCategoryIds",
+					locale -> Field.ASSET_INTERNAL_CATEGORY_IDS)),
+			new CollectionEntityField(
+				new IntegerEntityField(
 					"taxonomyCategoryIds", locale -> "assetCategoryIds")),
 			new CollectionEntityField(
 				new StringEntityField(
@@ -90,7 +94,6 @@ public class SearchResultEntityModel implements EntityModel {
 			new IntegerEntityField("status", locale -> Field.STATUS),
 			new StringEntityField("cmpAssignTo", locale -> "cmpAssignTo"),
 			new StringEntityField("cmpState", locale -> "cmpState"),
-			new StringEntityField("cmsKind", locale -> "cms_kind"),
 			new StringEntityField("cmsSection", locale -> "cms_section"),
 			new StringEntityField("extension", locale -> "extension"),
 			new StringEntityField(

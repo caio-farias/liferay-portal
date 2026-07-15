@@ -20,6 +20,7 @@ let handleConnect = false;
 
 export default function BaseNode({
 	actions,
+	agentDefinitionExternalReferenceCode,
 	assignments,
 	className,
 	description,
@@ -31,6 +32,7 @@ export default function BaseNode({
 	inputVariables,
 	isConnectable,
 	isDragging,
+	javaDelegate,
 	label,
 	newNode,
 	nodeTypeClassName,
@@ -143,10 +145,12 @@ export default function BaseNode({
 		setSelectedItem({
 			data: {
 				actions,
+				agentDefinitionExternalReferenceCode,
 				assignments,
 				description,
 				httpMethod,
 				inputVariables,
+				javaDelegate,
 				label,
 				newNode: false,
 				notifications,
@@ -221,10 +225,12 @@ export default function BaseNode({
 						setSelectedItem({
 							data: {
 								actions,
+								agentDefinitionExternalReferenceCode,
 								assignments,
 								description,
 								httpMethod,
 								inputVariables,
+								javaDelegate,
 								label,
 								notifications,
 								outputVariables,
@@ -278,6 +284,7 @@ export default function BaseNode({
 }
 
 BaseNode.propTypes = {
+	agentDefinitionExternalReferenceCode: PropTypes.string,
 	className: PropTypes.string,
 	description: PropTypes.string,
 	descriptionSidebar: PropTypes.string,
@@ -285,6 +292,7 @@ BaseNode.propTypes = {
 	icon: PropTypes.string.isRequired,
 	id: PropTypes.string,
 	inputVariables: PropTypes.object,
+	javaDelegate: PropTypes.string,
 	label: PropTypes.object,
 	nodeTypeClassName: PropTypes.string,
 	outputVariables: PropTypes.object,

@@ -296,6 +296,35 @@ export class DocumentLibraryPage {
 		});
 	}
 
+	async assertFileEntryActionAbsent(action: string, entryTitle: string) {
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: this.page.getByRole('menuitem', {
+				exact: true,
+				name: 'Delete',
+			}),
+			trigger: this.page
+				.locator(`.card-body:has-text('${entryTitle}')`)
+				.getByLabel('Actions'),
+		});
+
+		await expect(
+			this.page.getByRole('menuitem', {exact: true, name: action})
+		).toBeHidden();
+	}
+
+	async moveFolderToRecycleBin(folderName: string) {
+		await this.goToFolderAction('Delete', folderName);
+
+		await waitForAlert(this.page, 'was moved to the Recycle Bin');
+	}
+
+	async moveToRecycleBin(entryTitle: string) {
+		await this.goToFileEntryAction('Delete', entryTitle);
+
+		await waitForAlert(this.page, 'was moved to the Recycle Bin');
+	}
+
 	async openBulkEditCategoriesModal(titles: string[]) {
 		await this.selectFileEntries(titles);
 		await this.page.getByRole('button', {name: 'Edit Categories'}).click();

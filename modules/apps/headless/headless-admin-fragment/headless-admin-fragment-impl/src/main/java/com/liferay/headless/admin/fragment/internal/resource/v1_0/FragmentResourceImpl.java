@@ -11,10 +11,10 @@ import com.liferay.fragment.exception.RequiredFragmentEntryVersionException;
 import com.liferay.fragment.exception.UnsupportedUnpublishFragmentEntryOperationException;
 import com.liferay.fragment.model.FragmentCollection;
 import com.liferay.fragment.model.FragmentEntry;
-import com.liferay.fragment.service.FragmentCollectionLocalService;
 import com.liferay.fragment.service.FragmentCollectionService;
 import com.liferay.fragment.service.FragmentEntryLocalService;
 import com.liferay.fragment.service.FragmentEntryService;
+import com.liferay.headless.admin.fragment.dto.v1_0.FormFragment;
 import com.liferay.headless.admin.fragment.dto.v1_0.Fragment;
 import com.liferay.headless.admin.fragment.dto.v1_0.FragmentSet;
 import com.liferay.headless.admin.fragment.dto.v1_0.FragmentVersion;
@@ -22,12 +22,13 @@ import com.liferay.headless.admin.fragment.internal.odata.entity.v1_0.FragmentEn
 import com.liferay.headless.admin.fragment.internal.resource.v1_0.util.FragmentSetUtil;
 import com.liferay.headless.admin.fragment.internal.resource.v1_0.util.ServiceContextUtil;
 import com.liferay.headless.admin.fragment.internal.util.EnabledUtil;
+import com.liferay.headless.admin.fragment.internal.util.FieldTypeUtil;
 import com.liferay.headless.admin.fragment.resource.v1_0.FragmentResource;
 import com.liferay.headless.admin.site.dto.v1_0.util.FileEntryUtil;
 import com.liferay.headless.common.spi.util.GroupUtil;
 import com.liferay.portal.kernel.exception.NoSuchModelException;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.language.Language;
-import com.liferay.portal.kernel.lazy.referencing.LazyReferencingThreadLocal;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.search.Field;
@@ -166,8 +167,7 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 
 		return _addFragmentEntry(
 			fragment.getExternalReferenceCode(), fragment,
-			_getOrAddFragmentCollection(fragment.getFragmentSet(), groupId),
-			groupId);
+			_getOrAddFragmentCollection(fragment, groupId), groupId);
 	}
 
 	@Override
@@ -224,8 +224,7 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 
 			return _addFragmentEntry(
 				fragmentExternalReferenceCode, fragment,
-				_getOrAddFragmentCollection(fragment.getFragmentSet(), groupId),
-				groupId);
+				_getOrAddFragmentCollection(fragment, groupId), groupId);
 		}
 	}
 
@@ -240,6 +239,8 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 			fragment, FragmentVersion.Status.APPROVED);
 		FragmentVersion draftFragmentVersion = _getFragmentVersion(
 			fragment, FragmentVersion.Status.DRAFT);
+		int type = _getType(fragment);
+		String typeOptions = _getTypeOptions(fragment);
 
 		ServiceContext serviceContext = ServiceContextUtil.getServiceContext(
 			contextCompany.getCompanyId(), fragment.getDateCreated(), groupId,
@@ -259,9 +260,8 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 				approvedFragmentVersion.getConfiguration(), fragment.getIcon(),
 				previewFileEntryId,
 				GetterUtil.getBoolean(fragment.getMarketplace()),
-				GetterUtil.getBoolean(fragment.getReadOnly()),
-				FragmentConstants.TYPE_COMPONENT, null,
-				WorkflowConstants.STATUS_APPROVED, serviceContext);
+				GetterUtil.getBoolean(fragment.getReadOnly()), type,
+				typeOptions, WorkflowConstants.STATUS_APPROVED, serviceContext);
 
 			if (draftFragmentVersion != null) {
 				_updateDraft(
@@ -278,9 +278,8 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 				draftFragmentVersion.getConfiguration(), fragment.getIcon(),
 				previewFileEntryId,
 				GetterUtil.getBoolean(fragment.getMarketplace()),
-				GetterUtil.getBoolean(fragment.getReadOnly()),
-				FragmentConstants.TYPE_COMPONENT, null,
-				WorkflowConstants.STATUS_DRAFT, serviceContext);
+				GetterUtil.getBoolean(fragment.getReadOnly()), type,
+				typeOptions, WorkflowConstants.STATUS_DRAFT, serviceContext);
 		}
 		else {
 			fragmentEntry = _fragmentEntryService.addFragmentEntry(
@@ -290,9 +289,8 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 				GetterUtil.getBoolean(fragment.getCacheable()), null, null,
 				previewFileEntryId,
 				GetterUtil.getBoolean(fragment.getMarketplace()),
-				GetterUtil.getBoolean(fragment.getReadOnly()),
-				FragmentConstants.TYPE_COMPONENT, null,
-				WorkflowConstants.STATUS_DRAFT, serviceContext);
+				GetterUtil.getBoolean(fragment.getReadOnly()), type,
+				typeOptions, WorkflowConstants.STATUS_DRAFT, serviceContext);
 		}
 
 		return _toFragment(fragmentEntry);
@@ -349,42 +347,17 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 	}
 
 	private FragmentCollection _getOrAddFragmentCollection(
-			FragmentSet fragmentSet, long groupId)
+			Fragment fragment, long groupId)
 		throws Exception {
 
-		if ((fragmentSet == null) ||
-			Validator.isNull(fragmentSet.getExternalReferenceCode())) {
-
-			throw new IllegalArgumentException(
-				_language.get(
-					contextAcceptLanguage.getPreferredLocale(),
-					"a-fragment-set-external-reference-code-is-required-to-" +
-						"create-a-new-fragment"));
-		}
-
-		FragmentCollection fragmentCollection =
-			_fragmentCollectionLocalService.
-				fetchFragmentCollectionByExternalReferenceCode(
-					fragmentSet.getExternalReferenceCode(), groupId);
-
-		if (fragmentCollection != null) {
-			return fragmentCollection;
-		}
-
-		if (!LazyReferencingThreadLocal.isEnabled()) {
-			throw new IllegalArgumentException(
-				_language.format(
-					contextAcceptLanguage.getPreferredLocale(),
-					"no-fragment-set-was-found-with-external-reference-code-x",
-					fragmentSet.getExternalReferenceCode()));
-		}
-
-		return FragmentSetUtil.addFragmentCollection(
-			fragmentSet,
-			ServiceContextUtil.getServiceContext(
-				contextCompany.getCompanyId(), fragmentSet.getDateCreated(),
-				groupId, contextHttpServletRequest,
-				fragmentSet.getDateModified(), contextUser.getUserId()));
+		return FragmentSetUtil.getOrAddFragmentCollection(
+			contextCompany.getCompanyId(), fragment.getFragmentSet(),
+			fragment.getFragmentSetExternalReferenceCode(), groupId,
+			contextHttpServletRequest,
+			"a-fragment-set-external-reference-code-is-required-to-create-a-" +
+				"new-fragment",
+			contextAcceptLanguage.getPreferredLocale(),
+			contextUser.getUserId());
 	}
 
 	private long _getPreviewFileEntryId(Fragment fragment, long groupId)
@@ -393,6 +366,36 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 		return FileEntryUtil.getPreviewFileEntryId(
 			groupId, FragmentPortletKeys.FRAGMENT,
 			fragment.getThumbnailURLReference(), contextUser.getUserId());
+	}
+
+	private int _getType(Fragment fragment) {
+		Fragment.Type type = fragment.getType();
+
+		if (type == Fragment.Type.BASIC_FRAGMENT) {
+			return FragmentConstants.TYPE_COMPONENT;
+		}
+
+		if (type == Fragment.Type.FORM_FRAGMENT) {
+			return FragmentConstants.TYPE_INPUT;
+		}
+
+		throw new IllegalArgumentException(
+			_language.get(
+				contextAcceptLanguage.getPreferredLocale(),
+				"a-fragment-type-is-required"));
+	}
+
+	private String _getTypeOptions(Fragment fragment) {
+		if (!(fragment instanceof FormFragment formFragment)) {
+			return null;
+		}
+
+		return JSONUtil.put(
+			"fieldTypes",
+			JSONUtil.putAll(
+				(Object[])FieldTypeUtil.toInternalFieldTypes(
+					formFragment.getFieldTypes()))
+		).toString();
 	}
 
 	private Fragment _toFragment(FragmentEntry fragmentEntry) throws Exception {
@@ -439,17 +442,28 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 			throw new UnsupportedUnpublishFragmentEntryOperationException();
 		}
 
+		if ((fragment instanceof FormFragment) != fragmentEntry.isTypeInput()) {
+			throw new IllegalArgumentException(
+				_language.get(
+					contextAcceptLanguage.getPreferredLocale(),
+					"the-fragment-type-cannot-be-changed"));
+		}
+
+		String typeOptions = _getTypeOptions(fragment);
+
 		FragmentEntry updatedFragmentEntry = null;
 
 		long fragmentCollectionId = fragmentEntry.getFragmentCollectionId();
 
 		FragmentSet fragmentSet = fragment.getFragmentSet();
 
-		if ((fragmentSet != null) &&
-			Validator.isNotNull(fragmentSet.getExternalReferenceCode())) {
+		if (((fragmentSet != null) &&
+			 Validator.isNotNull(fragmentSet.getExternalReferenceCode())) ||
+			Validator.isNotNull(
+				fragment.getFragmentSetExternalReferenceCode())) {
 
 			FragmentCollection fragmentCollection = _getOrAddFragmentCollection(
-				fragmentSet, groupId);
+				fragment, groupId);
 
 			fragmentCollectionId = fragmentCollection.getFragmentCollectionId();
 		}
@@ -474,8 +488,7 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 				GetterUtil.getBoolean(fragment.getCacheable()),
 				approvedFragmentVersion.getConfiguration(), fragment.getIcon(),
 				previewFileEntryId,
-				GetterUtil.getBoolean(fragment.getReadOnly()),
-				fragmentEntry.getTypeOptions(),
+				GetterUtil.getBoolean(fragment.getReadOnly()), typeOptions,
 				WorkflowConstants.STATUS_APPROVED);
 
 			if (draftFragmentVersion != null) {
@@ -492,8 +505,8 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 				GetterUtil.getBoolean(fragment.getCacheable()),
 				draftFragmentVersion.getConfiguration(), fragment.getIcon(),
 				previewFileEntryId,
-				GetterUtil.getBoolean(fragment.getReadOnly()),
-				fragmentEntry.getTypeOptions(), WorkflowConstants.STATUS_DRAFT);
+				GetterUtil.getBoolean(fragment.getReadOnly()), typeOptions,
+				WorkflowConstants.STATUS_DRAFT);
 
 			updatedFragmentEntry = _fragmentEntryService.updateDraft(
 				updatedFragmentEntry);
@@ -509,9 +522,6 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 
 	@Reference
 	private DTOConverterRegistry _dtoConverterRegistry;
-
-	@Reference
-	private FragmentCollectionLocalService _fragmentCollectionLocalService;
 
 	@Reference
 	private FragmentCollectionService _fragmentCollectionService;

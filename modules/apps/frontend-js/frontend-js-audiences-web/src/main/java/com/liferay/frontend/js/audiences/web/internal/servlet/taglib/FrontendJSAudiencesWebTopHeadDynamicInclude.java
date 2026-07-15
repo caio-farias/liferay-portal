@@ -11,12 +11,15 @@ import com.liferay.frontend.js.audiences.ElementVariations;
 import com.liferay.frontend.js.audiences.ElementVariationsProvider;
 import com.liferay.frontend.js.audiences.web.internal.configuration.FrontendJSAudiencesConfiguration;
 import com.liferay.frontend.js.audiences.web.internal.util.BootstrapJavaScriptUtil;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.content.security.policy.ContentSecurityPolicyNonceProviderUtil;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.module.configuration.ConfigurationException;
 import com.liferay.portal.kernel.servlet.taglib.DynamicInclude;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.Constants;
+import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.url.builder.AbsolutePortalURLBuilder;
@@ -28,6 +31,8 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+
+import java.util.Objects;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -47,7 +52,14 @@ public class FrontendJSAudiencesWebTopHeadDynamicInclude
 
 		long companyId = _portal.getCompanyId(httpServletRequest);
 
-		if (!FeatureFlagManagerUtil.isEnabled(companyId, "LPD-83647")) {
+		if (!FeatureFlagManagerUtil.isEnabled(companyId, "LPD-85746")) {
+			return;
+		}
+
+		String mode = ParamUtil.getString(
+			httpServletRequest, "p_l_mode", Constants.VIEW);
+
+		if (!Objects.equals(mode, Constants.VIEW)) {
 			return;
 		}
 
@@ -58,6 +70,19 @@ public class FrontendJSAudiencesWebTopHeadDynamicInclude
 			return;
 		}
 
+		FrontendJSAudiencesConfiguration frontendJSAudiencesConfiguration;
+
+		try {
+			frontendJSAudiencesConfiguration =
+				_configurationProvider.getCompanyConfiguration(
+					FrontendJSAudiencesConfiguration.class, companyId);
+		}
+		catch (ConfigurationException configurationException) {
+			throw new IOException(configurationException);
+		}
+
+		PrintWriter printWriter = httpServletResponse.getWriter();
+
 		ThemeDisplay themeDisplay =
 			(ThemeDisplay)httpServletRequest.getAttribute(
 				WebKeys.THEME_DISPLAY);
@@ -66,13 +91,16 @@ public class FrontendJSAudiencesWebTopHeadDynamicInclude
 			_elementVariationsProvider.getElementVariations(
 				themeDisplay.getPlid());
 
-		if (elementVariations == null) {
-			return;
+		if (elementVariations != null) {
+			printWriter.print("<meta content=\"");
+			printWriter.print(themeDisplay.getPlid());
+			printWriter.print(StringPool.COLON);
+			printWriter.print(elementVariations.getHash());
+			printWriter.print("\" name=\"audiences-variations\">");
 		}
 
-		PrintWriter printWriter = httpServletResponse.getWriter();
-
-		printWriter.print("<script data-senna-track=\"temporary\"");
+		printWriter.print(
+			"<script data-senna-track=\"permanent\" id=\"audiencesBootstrap\"");
 		printWriter.print(
 			ContentSecurityPolicyNonceProviderUtil.getNonceAttribute(
 				httpServletRequest));
@@ -91,25 +119,8 @@ public class FrontendJSAudiencesWebTopHeadDynamicInclude
 		printWriter.print(BootstrapJavaScriptUtil.getHash());
 		printWriter.print(").js?audiencesDefinitionHash=");
 		printWriter.print(audiencesDefinition.getHash());
-		printWriter.print("&elementVariationsHash=");
-		printWriter.print(elementVariations.getHash());
 		printWriter.print("&enableLog=");
-
-		FrontendJSAudiencesConfiguration frontendJSAudiencesConfiguration;
-
-		try {
-			frontendJSAudiencesConfiguration =
-				_configurationProvider.getCompanyConfiguration(
-					FrontendJSAudiencesConfiguration.class, companyId);
-		}
-		catch (ConfigurationException configurationException) {
-			throw new IOException(configurationException);
-		}
-
 		printWriter.print(frontendJSAudiencesConfiguration.enableLog());
-
-		printWriter.print("&plid=");
-		printWriter.print(themeDisplay.getPlid());
 		printWriter.print("\" type=\"module\"></script>");
 	}
 

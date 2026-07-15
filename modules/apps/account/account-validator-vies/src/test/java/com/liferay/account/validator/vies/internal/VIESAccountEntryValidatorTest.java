@@ -7,6 +7,7 @@ package com.liferay.account.validator.vies.internal;
 
 import com.liferay.account.constants.AccountConstants;
 import com.liferay.account.constants.AccountEntryValidatorConstants;
+import com.liferay.account.manager.AccountEntryValidatorResultManager;
 import com.liferay.account.model.AccountEntry;
 import com.liferay.account.validator.AccountEntryValidatorResult;
 import com.liferay.account.validator.vies.configuration.VIESAccountEntryValidatorConfiguration;
@@ -68,6 +69,9 @@ public class VIESAccountEntryValidatorTest {
 
 	@Before
 	public void setUp() {
+		ReflectionTestUtil.setFieldValue(
+			_viesAccountEntryValidator, "accountEntryValidatorResultManager",
+			_accountEntryValidatorResultManager);
 		ReflectionTestUtil.setFieldValue(
 			_viesAccountEntryValidator, "_addressLocalService",
 			_addressLocalService);
@@ -216,12 +220,27 @@ public class VIESAccountEntryValidatorTest {
 				accountEntryValidatorResult.getResultStatus());
 			Assert.assertFalse(accountEntryValidatorResult.isValid());
 
+			String blockedVatNumber = RandomTestUtil.randomString();
+			String invalidInputVatNumber = RandomTestUtil.randomString();
 			String invalidVatNumber = RandomTestUtil.randomString();
 			String unavailableVatNumber = RandomTestUtil.randomString();
+			String unexpectedVatNumber = RandomTestUtil.randomString();
 			String validVatNumber = RandomTestUtil.randomString();
 
 			_startHttpServer(
 				HashMapBuilder.put(
+					blockedVatNumber,
+					JSONUtil.put(
+						"errorWrappers",
+						JSONUtil.putAll(JSONUtil.put("error", "VAT_BLOCKED"))
+					).toString()
+				).put(
+					invalidInputVatNumber,
+					JSONUtil.put(
+						"errorWrappers",
+						JSONUtil.putAll(JSONUtil.put("error", "INVALID_INPUT"))
+					).toString()
+				).put(
 					invalidVatNumber,
 					JSONUtil.put(
 						"valid", false
@@ -230,8 +249,15 @@ public class VIESAccountEntryValidatorTest {
 					unavailableVatNumber,
 					JSONUtil.put(
 						"errorWrappers",
+						JSONUtil.putAll(JSONUtil.put("error", "MS_UNAVAILABLE"))
+					).toString()
+				).put(
+					unexpectedVatNumber,
+					JSONUtil.put(
+						"errorWrappers",
 						JSONUtil.putAll(
-							JSONUtil.put("error", _SERVICE_UNAVAILABLE))
+							JSONUtil.put(
+								"error", RandomTestUtil.randomString()))
 					).toString()
 				).put(
 					validVatNumber,
@@ -239,6 +265,30 @@ public class VIESAccountEntryValidatorTest {
 						"valid", true
 					).toString()
 				).build());
+
+			accountEntryValidatorResult = _validate(
+				billingAddressId, RandomTestUtil.randomLong(),
+				blockedVatNumber);
+
+			Assert.assertEquals(
+				"vies-vat-blocked-error",
+				accountEntryValidatorResult.getResultMessage());
+			Assert.assertEquals(
+				AccountEntryValidatorConstants.RESULT_FAILURE,
+				accountEntryValidatorResult.getResultStatus());
+			Assert.assertFalse(accountEntryValidatorResult.isValid());
+
+			accountEntryValidatorResult = _validate(
+				billingAddressId, RandomTestUtil.randomLong(),
+				invalidInputVatNumber);
+
+			Assert.assertEquals(
+				"vies-invalid-input-error",
+				accountEntryValidatorResult.getResultMessage());
+			Assert.assertEquals(
+				AccountEntryValidatorConstants.RESULT_FAILURE,
+				accountEntryValidatorResult.getResultStatus());
+			Assert.assertFalse(accountEntryValidatorResult.isValid());
 
 			accountEntryValidatorResult = _validate(
 				billingAddressId, RandomTestUtil.randomLong(),
@@ -254,7 +304,19 @@ public class VIESAccountEntryValidatorTest {
 				unavailableVatNumber);
 
 			Assert.assertEquals(
-				_SERVICE_UNAVAILABLE,
+				"vies-unexpected-error",
+				accountEntryValidatorResult.getResultMessage());
+			Assert.assertEquals(
+				AccountEntryValidatorConstants.RESULT_WARNING,
+				accountEntryValidatorResult.getResultStatus());
+			Assert.assertTrue(accountEntryValidatorResult.isValid());
+
+			accountEntryValidatorResult = _validate(
+				billingAddressId, RandomTestUtil.randomLong(),
+				unexpectedVatNumber);
+
+			Assert.assertEquals(
+				"vies-unexpected-error",
 				accountEntryValidatorResult.getResultMessage());
 			Assert.assertEquals(
 				AccountEntryValidatorConstants.RESULT_WARNING,
@@ -421,8 +483,9 @@ public class VIESAccountEntryValidatorTest {
 
 	private static final int _PORT = 4252;
 
-	private static final String _SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE";
-
+	private final AccountEntryValidatorResultManager
+		_accountEntryValidatorResultManager = Mockito.mock(
+			AccountEntryValidatorResultManager.class);
 	private final AddressLocalService _addressLocalService = Mockito.mock(
 		AddressLocalService.class);
 	private final ConfigurationProvider _configurationProvider = Mockito.mock(

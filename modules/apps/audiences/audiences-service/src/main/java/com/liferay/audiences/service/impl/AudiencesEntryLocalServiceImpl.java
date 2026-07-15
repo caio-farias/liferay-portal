@@ -106,7 +106,8 @@ public class AudiencesEntryLocalServiceImpl
 
 	@Override
 	public AudiencesEntry updateAudiencesEntry(
-			long audiencesEntryId, String json, String name)
+			long audiencesEntryId, String externalReferenceCode, String json,
+			String name)
 		throws PortalException {
 
 		_validate(json, name);
@@ -114,6 +115,7 @@ public class AudiencesEntryLocalServiceImpl
 		AudiencesEntry audiencesEntry =
 			audiencesEntryPersistence.findByPrimaryKey(audiencesEntryId);
 
+		audiencesEntry.setExternalReferenceCode(externalReferenceCode);
 		audiencesEntry.setJSON(json);
 		audiencesEntry.setName(name);
 
@@ -137,7 +139,7 @@ public class AudiencesEntryLocalServiceImpl
 	private static final JSONValidator _criteriaJSONValidator =
 		new JSONValidator(
 			AudiencesEntryLocalServiceImpl.class.getResource(
-				"dependencies/criteria-json-schema.json"));
+				"dependencies/audiences-criteria-json-schema.json"));
 
 	@Reference
 	private CustomSQL _customSQL;

@@ -5,11 +5,14 @@
 
 import {fetch} from 'frontend-js-web';
 
+import {WORKFLOW_STATUS_DRAFT} from '../constants';
 import {AgentDefinition} from '../types/AgentDefinition';
 
 const AGENT_DEFINITION_BASE_URI = '/o/ai-hub/agent-definitions';
 
 const AGENT_DEFINITION_BY_ERC_URI = `${AGENT_DEFINITION_BASE_URI}/by-external-reference-code/`;
+
+const AGENT_DEFINITION_V1_0_BASE_URI = '/o/ai-hub/v1.0/agent-definitions';
 
 async function disassociateAgentDefinitionFromContentRetriever(
 	agentDefinitionERC: string,
@@ -45,8 +48,14 @@ async function getAgentDefinition(externalReferenceCode: string) {
 	return response.json();
 }
 
-async function getAgentDefinitions() {
-	const response = await fetch(AGENT_DEFINITION_BASE_URI, {
+async function getAgentDefinitions(params?: Record<string, string>) {
+	const baseURL = '/o/ai-hub/v1.0/agent-definitions';
+
+	const queryString = params ? new URLSearchParams(params).toString() : '';
+
+	const url = queryString ? `${baseURL}?${queryString}` : baseURL;
+
+	const response = await fetch(url, {
 		method: 'GET',
 	});
 
@@ -71,9 +80,29 @@ async function postAgentDefinition(agentDefinition: AgentDefinition) {
 	return response.json();
 }
 
-async function putAgentDefinition(agentDefinition: AgentDefinition) {
+async function postAgentDefinitionDraft() {
+	const response = await fetch(`${AGENT_DEFINITION_V1_0_BASE_URI}/draft`, {
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		method: 'POST',
+	});
+
+	if (!response.ok) {
+		const errorBody = await response.json().catch(() => ({}));
+
+		throw new Error(errorBody?.detail || errorBody?.title || '');
+	}
+
+	return response.json();
+}
+
+async function putAgentDefinition(
+	agentDefinition: AgentDefinition,
+	externalReferenceCode: string
+) {
 	const response = await fetch(
-		`${AGENT_DEFINITION_BY_ERC_URI}${agentDefinition.externalReferenceCode}`,
+		`${AGENT_DEFINITION_BY_ERC_URI}${externalReferenceCode}`,
 		{
 			body: JSON.stringify(agentDefinition),
 			headers: {
@@ -82,6 +111,36 @@ async function putAgentDefinition(agentDefinition: AgentDefinition) {
 			method: 'PUT',
 		}
 	);
+
+	if (!response.ok) {
+		const errorBody = await response.json().catch(() => ({}));
+
+		throw new Error(errorBody?.detail || errorBody?.title || '');
+	}
+
+	return response.json();
+}
+
+async function putAgentDefinitionDraft(agentDefinition: AgentDefinition) {
+	const response = await fetch(
+		`${AGENT_DEFINITION_BY_ERC_URI}${agentDefinition.externalReferenceCode}`,
+		{
+			body: JSON.stringify({
+				...agentDefinition,
+				status: {code: WORKFLOW_STATUS_DRAFT},
+			}),
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			method: 'PUT',
+		}
+	);
+
+	if (!response.ok) {
+		const errorBody = await response.json().catch(() => ({}));
+
+		throw new Error(errorBody?.detail || errorBody?.title || '');
+	}
 
 	return response.json();
 }
@@ -114,7 +173,9 @@ export {
 	getAgentDefinition,
 	getAgentDefinitions,
 	postAgentDefinition,
+	postAgentDefinitionDraft,
 	putAgentDefinition,
 	putAgentDefinitionToContentRetrievers,
 	putAgentDefinitionToGuardrails,
+	putAgentDefinitionDraft,
 };

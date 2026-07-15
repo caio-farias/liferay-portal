@@ -5,12 +5,16 @@
 
 import ClayEmptyState from '@clayui/empty-state';
 import ClayForm, {ClaySelectWithOption} from '@clayui/form';
-import ClayIcon from '@clayui/icon';
-import ClayList from '@clayui/list';
 import {SearchForm} from '@liferay/layout-js-components-web';
 import React, {useState} from 'react';
 
+import {
+	CATEGORY_ICON_COLORS,
+	DEFAULT_ICON_COLOR,
+} from '../constants/categoryIconColors';
+import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import {AudiencesCriteriaType} from '../types';
+import AttributeListItem from './AttributeListItem';
 
 interface IProps {
 	audiencesCriteriaTypes: AudiencesCriteriaType[];
@@ -22,11 +26,17 @@ export default function AttributesSidebar({audiencesCriteriaTypes}: IProps) {
 
 	const normalizedQuery = query.trim().toLowerCase();
 
+	const selectedKey = audiencesCriteriaTypes[selectedIndex]?.key ?? '';
+
 	const audiencesCriterias =
 		audiencesCriteriaTypes[selectedIndex]?.audiencesCriterias?.filter(
 			(audiencesCriteria) =>
 				audiencesCriteria.label.toLowerCase().includes(normalizedQuery)
 		) ?? [];
+
+	const {getItemProps} = useKeyboardNavigation({
+		itemCount: audiencesCriterias.length,
+	});
 
 	return (
 		<div className="d-flex flex-column flex-grow-0 h-100">
@@ -37,6 +47,7 @@ export default function AttributesSidebar({audiencesCriteriaTypes}: IProps) {
 			<ClayForm.Group>
 				<ClaySelectWithOption
 					aria-label={Liferay.Language.get('attributes-types')}
+					className="bg-white font-weight-semi-bold text-4"
 					onChange={(event) => {
 						setSelectedIndex(Number(event.target.value));
 						setQuery('');
@@ -58,24 +69,23 @@ export default function AttributesSidebar({audiencesCriteriaTypes}: IProps) {
 			/>
 
 			{audiencesCriterias.length ? (
-				<div className="overflow-auto">
-					<ClayList>
-						{audiencesCriterias.map((audiencesCriteria) => (
-							<ClayList.Item
-								className="align-items-center border-0"
-								flex
-								key={audiencesCriteria.key}
-							>
-								<ClayList.ItemField>
-									<ClayIcon symbol={audiencesCriteria.icon} />
-								</ClayList.ItemField>
-
-								<ClayList.ItemField expand>
-									{audiencesCriteria.label}
-								</ClayList.ItemField>
-							</ClayList.Item>
-						))}
-					</ClayList>
+				<div
+					aria-label={Liferay.Language.get('attributes')}
+					aria-orientation="vertical"
+					className="overflow-auto"
+					role="menu"
+				>
+					{audiencesCriterias.map((audiencesCriteria, index) => (
+						<AttributeListItem
+							audiencesCriteria={audiencesCriteria}
+							iconColor={
+								CATEGORY_ICON_COLORS[selectedKey] ??
+								DEFAULT_ICON_COLOR
+							}
+							key={audiencesCriteria.key}
+							navigationProps={getItemProps(index)}
+						/>
+					))}
 				</div>
 			) : (
 				<ClayEmptyState

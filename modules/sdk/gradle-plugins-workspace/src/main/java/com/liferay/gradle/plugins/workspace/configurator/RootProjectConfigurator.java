@@ -22,7 +22,6 @@ import com.bmuschko.gradle.docker.tasks.image.Dockerfile;
 import com.liferay.gradle.plugins.LiferayBasePlugin;
 import com.liferay.gradle.plugins.node.NodeExtension;
 import com.liferay.gradle.plugins.node.task.NpmInstallTask;
-import com.liferay.gradle.plugins.source.formatter.FormatSourceTask;
 import com.liferay.gradle.plugins.source.formatter.SourceFormatterPlugin;
 import com.liferay.gradle.plugins.workspace.LiferayWorkspaceYarnPlugin;
 import com.liferay.gradle.plugins.workspace.WorkspaceExtension;
@@ -33,6 +32,7 @@ import com.liferay.gradle.plugins.workspace.internal.util.GradleUtil;
 import com.liferay.gradle.plugins.workspace.internal.util.StringUtil;
 import com.liferay.gradle.plugins.workspace.task.CreateTokenTask;
 import com.liferay.gradle.plugins.workspace.task.InitBundleTask;
+import com.liferay.gradle.plugins.workspace.task.UpgradeJakartaTask;
 import com.liferay.gradle.plugins.workspace.task.UpgradeSourceCodeTask;
 import com.liferay.gradle.plugins.workspace.task.VerifyBundleTask;
 import com.liferay.gradle.plugins.workspace.task.VerifyProductTask;
@@ -1565,18 +1565,16 @@ public class RootProjectConfigurator implements Plugin<Project> {
 		return task;
 	}
 
-	private FormatSourceTask _addTaskUpgradeJakarta(Project project) {
-		FormatSourceTask formatSourceTask = GradleUtil.addTask(
-			project, UPGRADE_JAKARTA_TASK_NAME, FormatSourceTask.class);
+	private void _addTaskUpgradeJakarta(Project project) {
+		UpgradeJakartaTask upgradeJakartaTask = GradleUtil.addTask(
+			project, UPGRADE_JAKARTA_TASK_NAME, UpgradeJakartaTask.class);
 
-		formatSourceTask.onlyIf(_skipIfExecutingParentTaskSpec);
-		formatSourceTask.setCheckCategoryNames("JakartaTransform");
-		formatSourceTask.setDescription(
+		upgradeJakartaTask.onlyIf(_skipIfExecutingParentTaskSpec);
+		upgradeJakartaTask.setCheckCategoryNames("JakartaTransform");
+		upgradeJakartaTask.setDescription(
 			"Runs the Jakarta source code upgrade.");
-		formatSourceTask.setGroup("build");
-		formatSourceTask.setJavaParserEnabled(false);
-
-		return formatSourceTask;
+		upgradeJakartaTask.setGroup("build");
+		upgradeJakartaTask.setJavaParserEnabled(false);
 	}
 
 	private UpgradeSourceCodeTask _addTaskUpgradeSourceCode(Project project) {

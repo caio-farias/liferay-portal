@@ -16,6 +16,7 @@ import com.liferay.asset.kernel.model.AssetVocabulary;
 import com.liferay.asset.kernel.model.AssetVocabularyConstants;
 import com.liferay.asset.kernel.service.AssetCategoryLocalService;
 import com.liferay.exportimport.kernel.empty.model.EmptyModelManagerUtil;
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
@@ -53,6 +54,7 @@ import com.liferay.portal.kernel.util.GroupThreadLocal;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
@@ -291,6 +293,7 @@ public class AssetVocabularyLocalServiceImpl
 
 		if (FeatureFlagManagerUtil.isEnabled(
 				vocabulary.getCompanyId(), "LPD-86291") &&
+			!ExportImportThreadLocal.isImportInProcess() &&
 			!GroupThreadLocal.isDeleteInProcess() && vocabulary.isSystem()) {
 
 			throw new SystemVocabularyException.MustNotDelete(
@@ -683,6 +686,16 @@ public class AssetVocabularyLocalServiceImpl
 		}
 	}
 
+	private boolean _equals(
+		Map<Locale, String> map1, Map<Locale, String> map2) {
+
+		if (MapUtil.isEmpty(map1) && MapUtil.isEmpty(map2)) {
+			return true;
+		}
+
+		return Objects.equals(map1, map2);
+	}
+
 	private String _generateVocabularyName(long groupId, String name) {
 		String vocabularyName = _getVocabularyName(name);
 
@@ -804,6 +817,7 @@ public class AssetVocabularyLocalServiceImpl
 
 		if (!FeatureFlagManagerUtil.isEnabled(
 				vocabulary.getCompanyId(), "LPD-86291") ||
+			ExportImportThreadLocal.isImportInProcess() ||
 			!vocabulary.isSystem()) {
 
 			return;
@@ -818,7 +832,7 @@ public class AssetVocabularyLocalServiceImpl
 				vocabulary.getVocabularyId());
 		}
 
-		if (!Objects.equals(descriptionMap, vocabulary.getDescriptionMap()) ||
+		if (!_equals(descriptionMap, vocabulary.getDescriptionMap()) ||
 			(visibilityType != vocabulary.getVisibilityType()) ||
 			!_isValidSystemVocabularySettings(
 				vocabulary.getSettings(), settings)) {

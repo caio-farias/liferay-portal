@@ -542,6 +542,24 @@ function appendXMLTaskTimers(buffer, taskTimers) {
 	}
 }
 
+function appendXMLLabels(buffer, label) {
+	const xmlLabels = XMLUtil.createObj('labels');
+
+	buffer.push(xmlLabels.open);
+
+	Object.entries(label).map(([key, value]) => {
+		const xmlLabel = XMLUtil.createObj('label', {
+			'language-id': `${key}`,
+		});
+
+		buffer.push(xmlLabel.open, value);
+
+		buffer.push(xmlLabel.close);
+	});
+
+	buffer.push(xmlLabels.close);
+}
+
 function appendXMLTransitions(buffer, transitions) {
 	if (transitions.length) {
 		const xmlTransitions = XMLUtil.createObj('transitions');
@@ -553,20 +571,7 @@ function appendXMLTransitions(buffer, transitions) {
 		transitions.forEach((item) => {
 			buffer.push(xmlTransition.open);
 
-			const xmlLabels = XMLUtil.createObj('labels');
-
-			buffer.push(xmlLabels.open);
-
-			Object.entries(item.data.label).map(([key, value]) => {
-				const xmlLabel = XMLUtil.createObj('label', {
-					'language-id': `${key}`,
-				});
-				buffer.push(xmlLabel.open, value);
-
-				buffer.push(xmlLabel.close);
-			});
-
-			buffer.push(xmlLabels.close);
+			appendXMLLabels(buffer, item.data.label);
 
 			buffer.push(createTagWithEscapedContent('name', item.data.name));
 
@@ -667,20 +672,9 @@ function serializeDefinition(xmlNamespace, metadata, nodes, transitions) {
 			buffer.push(createTagWithEscapedContent('initial', initial));
 		}
 
-		const xmlLabels = XMLUtil.createObj('labels');
-
-		buffer.push(xmlLabels.open);
-
-		Object.entries(item.data.label).map(([key, value]) => {
-			const xmlLabel = XMLUtil.createObj('label', {
-				'language-id': `${key}`,
-			});
-			buffer.push(xmlLabel.open, value);
-
-			buffer.push(xmlLabel.close);
-		});
-
-		buffer.push(xmlLabels.close);
+		if (item.type !== 'service') {
+			appendXMLLabels(buffer, item.data.label);
+		}
 
 		appendXMLTaskTimers(buffer, item.data.taskTimers);
 
@@ -688,16 +682,7 @@ function serializeDefinition(xmlNamespace, metadata, nodes, transitions) {
 			buffer.push(XMLUtil.create('script', cdata(script)));
 		}
 
-		if (xmlType === 'condition') {
-			buffer.push(
-				createTagWithEscapedContent(
-					'scriptLanguage',
-					scriptLanguage || DEFAULT_LANGUAGE
-				)
-			);
-		}
-
-		if (item.type === 'llm' || item.type === 'ai-decision') {
+		if (item.type === 'ai-decision' || item.type === 'llm') {
 			buffer.push(
 				XMLUtil.create(
 					'input-variables',
@@ -716,6 +701,30 @@ function serializeDefinition(xmlNamespace, metadata, nodes, transitions) {
 			);
 			buffer.push(
 				XMLUtil.create('tools', cdata(jsonStringify(item.data.tools)))
+			);
+		}
+
+		if (item.type === 'ai-hub-agent') {
+			buffer.push(
+				createTagWithEscapedContent(
+					'agent-definition-external-reference-code',
+					item.data.agentDefinitionExternalReferenceCode || ''
+				)
+			);
+
+			if (item.data.timeout) {
+				buffer.push(
+					createTagWithEscapedContent('timeout', item.data.timeout)
+				);
+			}
+		}
+
+		if (xmlType === 'condition') {
+			buffer.push(
+				createTagWithEscapedContent(
+					'scriptLanguage',
+					scriptLanguage || DEFAULT_LANGUAGE
+				)
 			);
 		}
 
@@ -750,6 +759,17 @@ function serializeDefinition(xmlNamespace, metadata, nodes, transitions) {
 					createTagWithEscapedContent('timeout', item.data.timeout)
 				);
 			}
+		}
+
+		if (item.type === 'service') {
+			buffer.push(
+				createTagWithEscapedContent(
+					'java-delegate',
+					item.data.javaDelegate || ''
+				)
+			);
+
+			appendXMLLabels(buffer, item.data.label);
 		}
 
 		const nodeTransitions = transitions.filter(

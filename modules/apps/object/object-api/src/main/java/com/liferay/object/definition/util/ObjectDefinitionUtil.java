@@ -170,12 +170,13 @@ public class ObjectDefinitionUtil {
 		"com.liferay.content.site.generator.impl", "com.liferay.cookies.impl",
 		"com.liferay.frontend.data.set.admin.web",
 		"com.liferay.frontend.data.set.impl",
-		"com.liferay.headless.builder.impl", "com.liferay.launch.impl",
+		"com.liferay.headless.builder.impl",
+		"com.liferay.headless.data.mask.impl", "com.liferay.launch.impl",
 		"com.liferay.list.type.service", "com.liferay.mcp.server.rest.impl",
 		"com.liferay.notification.service", "com.liferay.object.service",
 		"com.liferay.seo.studio.site.initializer",
 		"com.liferay.site.initializer.cmp", "com.liferay.site.initializer.cms",
-		"com.liferay.site.initializer.dsr"
+		"com.liferay.site.initializer.dsr", "com.liferay.site.initializer.pim"
 	};
 
 	private static final Map<String, String>
@@ -238,6 +239,8 @@ public class ObjectDefinitionUtil {
 		).put(
 			"CSGGenerationItem", "/content-site-generator/generation-items"
 		).put(
+			"DataMask", "/data-masks"
+		).put(
 			"DataSet", "/data-set-admin/data-sets"
 		).put(
 			"DataSetAction", "/data-set-admin/actions"
@@ -269,8 +272,6 @@ public class ObjectDefinitionUtil {
 		).put(
 			"LaunchSet", "/launch-sets"
 		).put(
-			"MCPServerDataMask", "/mcp/server-data-masks"
-		).put(
 			"MCPServerProfile", "/mcp/server-profiles"
 		).put(
 			"MCPServerProfileDataMask", "/mcp/server-profile-data-masks"
@@ -283,6 +284,10 @@ public class ObjectDefinitionUtil {
 		).put(
 			"PersonalizationCookieEntry", "/personalization-cookies-entries"
 		).put(
+			"PIMBaseSku", "/pim/base-skus"
+		).put(
+			"PIMCatalog", "/pim/catalogs"
+		).put(
 			"SEOStudioDomain", "/seo-studio/domains"
 		).put(
 			"SEOStudioGSCCredentials", "/seo-studio/gsc-credentials"
@@ -291,11 +296,19 @@ public class ObjectDefinitionUtil {
 		).put(
 			"SEOStudioInstance", "/seo-studio/instances"
 		).put(
+			"SEOStudioIntegration", "/seo-studio/integrations"
+		).put(
 			"SEOStudioPage", "/seo-studio/pages"
+		).put(
+			"SEOStudioPageSpeedResult", "/seo-studio/pagespeed-results"
 		).put(
 			"SEOStudioScan", "/seo-studio/scans"
 		).put(
 			"SEOStudioScanInsight", "/seo-studio/scan-insights"
+		).put(
+			"SEOStudioScanMetric", "/seo-studio/scan-metrics"
+		).put(
+			"SEOStudioScanRun", "/seo-studio/scan-runs"
 		).build();
 
 }

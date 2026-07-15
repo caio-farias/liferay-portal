@@ -47,6 +47,9 @@ components:
             properties:
                 agentDefinitionExternalReferenceCode:
                     type: string
+                asynchronous:
+                    type: boolean
+                    writeOnly: true
                 context:
                     additionalProperties: true
                     type: object
@@ -60,12 +63,41 @@ components:
                         -   cms
                         -   everywhere
                     type: string
+                output:
+                    readOnly: true
+                    type: string
                 sseEventSinkKey:
                     type: string
             type: object
         Chat:
             properties:
                 externalReferenceCode:
+                    type: string
+            type: object
+        Chatbot:
+            properties:
+                active:
+                    type: boolean
+                avatar:
+                    additionalProperties: true
+                    readOnly: true
+                    type: object
+                disclaimerMessage:
+                    readOnly: true
+                    type: string
+                externalReferenceCode:
+                    type: string
+                introMessage:
+                    readOnly: true
+                    type: string
+                notificationMessage:
+                    readOnly: true
+                    type: string
+                placeholderMessage:
+                    readOnly: true
+                    type: string
+                title:
+                    readOnly: true
                     type: string
             type: object
         ContentRetriever:
@@ -398,6 +430,19 @@ paths:
                             schema:
                                 $ref: "#/components/schemas/AgentDefinition"
             tags: ["AgentDefinition"]
+    "/agent-definitions/draft":
+        post:
+            operationId: postAgentDefinitionDraft
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AgentDefinition"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/AgentDefinition"
+            tags: ["AgentDefinition"]
     "/agent-instances":
         post:
             operationId: postAgentInstance
@@ -432,6 +477,25 @@ paths:
                     content:
                         text/event-stream: {}
             tags: ["AgentInstance"]
+    "/chatbots/by-external-reference-code/{externalReferenceCode}":
+        get:
+            operationId: getChatbotByExternalReferenceCode
+            parameters:
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Chatbot"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/Chatbot"
+            tags: ["Chatbot"]
     "/chats/by-external-reference-code/{externalReferenceCode}/messages":
         post:
             operationId: postChatByExternalReferenceCodeMessage

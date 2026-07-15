@@ -134,6 +134,7 @@ function isEmailAddressValid(email: string) {
 function RoomShare({
 	canAssignAllRoles = false,
 	closeModal,
+	readOnly = false,
 	roomId,
 }: IRoomShareProps) {
 	const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -157,7 +158,10 @@ function RoomShare({
 		(user) => user.id === currentUserId
 	)?.roleKey;
 
-	const assignableRoleKeys = canAssignAllRoles
+	const canManageAllRoles =
+		canAssignAllRoles || currentUserRoleKey === OWNER_ROLE_KEY;
+
+	const assignableRoleKeys = canManageAllRoles
 		? DSR_SITE_ROLES.map((role) => role.key)
 		: ASSIGNABLE_ROLE_KEYS_BY_ROLE_KEY[currentUserRoleKey ?? ''] ?? [];
 
@@ -368,12 +372,12 @@ function RoomShare({
 	}, [loadUsers]);
 
 	const canEditMember = (user: IUserAccount): boolean => {
-		if (user.roleKey === OWNER_ROLE_KEY) {
+		if (readOnly || user.roleKey === OWNER_ROLE_KEY) {
 			return false;
 		}
 
 		if (
-			canAssignAllRoles ||
+			canManageAllRoles ||
 			(user.isInvitedMember && user.ownerId === currentUserId)
 		) {
 			return true;
@@ -421,7 +425,7 @@ function RoomShare({
 								allowDuplicateValues={false}
 								autoFocus={true}
 								data-testid="emailAddressesInput"
-								disabled={loading}
+								disabled={loading || readOnly}
 								inputName="userEmailAddresses"
 								items={emailAddresses}
 								onItemsChange={(emails: Array<any>) =>
@@ -438,7 +442,7 @@ function RoomShare({
 									<ClayButton
 										className="dsr-site-role-trigger-button"
 										data-testid="roleKeyButton"
-										disabled={loading}
+										disabled={loading || readOnly}
 										displayType="secondary"
 										size="xs"
 									>
@@ -469,7 +473,7 @@ function RoomShare({
 
 						<ClayButton
 							data-testid="inviteButton"
-							disabled={loading}
+							disabled={loading || readOnly}
 							onClick={handleInvite}
 						>
 							{Liferay.Language.get('invite')}
@@ -492,7 +496,7 @@ function RoomShare({
 
 						<div className="dsr-expiration-date-picker">
 							<ClayDatePicker
-								disabled={loading}
+								disabled={loading || readOnly}
 								expanded={expirationDatePickerExpanded}
 								min={minExpirationDate}
 								onChange={(value: string) => {
@@ -738,6 +742,7 @@ function RoomShare({
 													>
 														{(item: any) => (
 															<DropDown.Item
+																data-testid={`memberRoleKeyItem_${item.label}`}
 																key={item.key}
 																onClick={() =>
 																	handleUpdateUser(

@@ -26,6 +26,7 @@ import com.liferay.osb.faro.engine.client.model.Activity;
 import com.liferay.osb.faro.engine.client.model.ActivityAggregation;
 import com.liferay.osb.faro.engine.client.model.ActivityAsset;
 import com.liferay.osb.faro.engine.client.model.ActivityGroup;
+import com.liferay.osb.faro.engine.client.model.ApiUsageMetric;
 import com.liferay.osb.faro.engine.client.model.AsahProject;
 import com.liferay.osb.faro.engine.client.model.Asset;
 import com.liferay.osb.faro.engine.client.model.AssetSummary;
@@ -1080,8 +1081,8 @@ public class ContactsEngineClientImpl
 	@Override
 	public Results<ActivityAsset> getActivityAssets(
 		FaroProject faroProject, String query, String applicationId,
-		String channelId, String eventId, int cur, int delta,
-		List<OrderByField> orderByFields) {
+		String channelId, String eventId, String objectDefinitionName, int cur,
+		int delta, List<OrderByField> orderByFields) {
 
 		Map<String, Object> uriVariables = getUriVariables(
 			faroProject, cur, delta, orderByFields);
@@ -1096,6 +1097,9 @@ public class ContactsEngineClientImpl
 			Long.valueOf(channelId));
 		filterBuilder.addFilter(
 			"eventId", FilterConstants.COMPARISON_OPERATOR_EQUALS, eventId);
+		filterBuilder.addFilter(
+			"objectDefinitionName", FilterConstants.COMPARISON_OPERATOR_EQUALS,
+			objectDefinitionName);
 		filterBuilder.addSearchFilter(query, "assetTitle");
 
 		uriVariables.put("filter", filterBuilder.build());
@@ -1158,6 +1162,22 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
+	public Results<ApiUsageMetric> getApiUsageMetrics(
+		FaroProject faroProject, Date usageDate) {
+
+		PagedModel<?, ApiUsageMetric> pagedModel = get(
+			faroProject, Rels.API_USAGE_METRICS,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<ApiUsageMetric>>() {
+			},
+			HashMapBuilder.<String, Object>put(
+				"usageDate", usageDate
+			).build());
+
+		return pagedModel.getResults();
+	}
+
+	@Override
 	public Asset getAsset(FaroProject faroProject, String id)
 		throws FaroEngineClientException {
 
@@ -1210,16 +1230,12 @@ public class ContactsEngineClientImpl
 
 	@Override
 	public Results<AssetSummary> getAssetSummaries(
-		FaroProject faroProject, String accountId, long channelId,
-		String filterString, String keywords, String objectType, int rangeKey,
-		String selectedMetric, int cur, int delta, String sortString) {
+		FaroProject faroProject, long channelId, String filterString,
+		String keywords, String objectType, int rangeKey, String selectedMetric,
+		int cur, int delta, String sortString) {
 
 		Map<String, Object> uriVariables = getUriVariables(
 			faroProject, cur, delta, null);
-
-		if (Validator.isNotNull(accountId)) {
-			uriVariables.put("accountId", accountId);
-		}
 
 		uriVariables.put("channelId", channelId);
 
@@ -1266,7 +1282,7 @@ public class ContactsEngineClientImpl
 			faroProject, cur, delta, null);
 
 		if (Validator.isNotNull(accountId)) {
-			uriVariables.put("accountId", accountId);
+			uriVariables.put("accountIds", Arrays.asList(accountId));
 		}
 
 		uriVariables.put("channelId", channelId);
@@ -1346,7 +1362,7 @@ public class ContactsEngineClientImpl
 			faroProject, cur, delta, null);
 
 		if (Validator.isNotNull(accountId)) {
-			uriVariables.put("accountId", accountId);
+			uriVariables.put("accountIds", Arrays.asList(accountId));
 		}
 
 		uriVariables.put("channelId", channelId);
@@ -2474,11 +2490,11 @@ public class ContactsEngineClientImpl
 
 	@Override
 	public Results<Individual> getIndividuals(
-		FaroProject faroProject, String accountId, String activityStatus,
-		String channelId, String dataSourceId, List<String> fields,
-		String filterString, boolean includeAnonymousUsers,
-		String individualSegmentId, String interestName,
-		String notIndividualSegmentId, List<String> profileTypes, String query,
+		FaroProject faroProject, String accountId, List<String> accountTypes,
+		String activityStatus, String channelId, String dataSourceId,
+		List<String> fields, String filterString, boolean includeAnonymousUsers,
+		String individualSegmentId, List<String> individualTypes,
+		String interestName, String notIndividualSegmentId, String query,
 		String rangeEnd, Integer rangeKey, String rangeStart, int cur,
 		int delta, List<OrderByField> orderByFields) {
 
@@ -2488,6 +2504,11 @@ public class ContactsEngineClientImpl
 
 		if (Validator.isNotNull(accountId)) {
 			uriVariables.put("accountId", accountId);
+		}
+
+		if (accountTypes != null) {
+			uriVariables.put(
+				"accountTypes", String.join(StringPool.COMMA, accountTypes));
 		}
 
 		if (Validator.isNotNull(activityStatus)) {
@@ -2512,17 +2533,18 @@ public class ContactsEngineClientImpl
 			uriVariables.put("segmentId", individualSegmentId);
 		}
 
+		if (individualTypes != null) {
+			uriVariables.put(
+				"individualTypes",
+				String.join(StringPool.COMMA, individualTypes));
+		}
+
 		if (Validator.isNotNull(interestName)) {
 			uriVariables.put("interestName", interestName);
 		}
 
 		if (Validator.isNotNull(notIndividualSegmentId)) {
 			uriVariables.put("notSegmentId", notIndividualSegmentId);
-		}
-
-		if (profileTypes != null) {
-			uriVariables.put(
-				"profileTypes", String.join(StringPool.COMMA, profileTypes));
 		}
 
 		if (Validator.isNotNull(query)) {

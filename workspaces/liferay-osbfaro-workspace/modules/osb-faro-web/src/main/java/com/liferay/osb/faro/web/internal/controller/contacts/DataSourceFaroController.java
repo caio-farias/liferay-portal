@@ -34,6 +34,7 @@ import com.liferay.osb.faro.engine.client.model.provider.CSVProvider;
 import com.liferay.osb.faro.engine.client.model.provider.DemandbaseProvider;
 import com.liferay.osb.faro.engine.client.model.provider.HubSpotProvider;
 import com.liferay.osb.faro.engine.client.model.provider.LiferayProvider;
+import com.liferay.osb.faro.engine.client.model.provider.MarketoCampaignProvider;
 import com.liferay.osb.faro.engine.client.model.provider.MarketoProvider;
 import com.liferay.osb.faro.engine.client.model.provider.SalesforceProvider;
 import com.liferay.osb.faro.engine.client.util.EngineServiceURLUtil;
@@ -48,6 +49,7 @@ import com.liferay.osb.faro.web.internal.controller.BaseFaroController;
 import com.liferay.osb.faro.web.internal.controller.FaroController;
 import com.liferay.osb.faro.web.internal.exception.FaroException;
 import com.liferay.osb.faro.web.internal.exception.FaroValidationException;
+import com.liferay.osb.faro.web.internal.helper.ContactsCSVHelper;
 import com.liferay.osb.faro.web.internal.model.display.FaroResultsDisplay;
 import com.liferay.osb.faro.web.internal.model.display.contacts.ChannelDataSourceDisplay;
 import com.liferay.osb.faro.web.internal.model.display.contacts.DXPGroupDisplay;
@@ -61,7 +63,6 @@ import com.liferay.osb.faro.web.internal.model.display.contacts.FieldValuesDispl
 import com.liferay.osb.faro.web.internal.model.display.contacts.LiferaySyncCountsDisplay;
 import com.liferay.osb.faro.web.internal.param.FaroParam;
 import com.liferay.osb.faro.web.internal.search.FaroSearchContext;
-import com.liferay.osb.faro.web.internal.util.ContactsCSVHelper;
 import com.liferay.osb.faro.web.internal.util.FieldMappingUtil;
 import com.liferay.osb.faro.web.internal.util.OAuthUtil;
 import com.liferay.petra.function.transform.TransformUtil;
@@ -303,6 +304,30 @@ public class DataSourceFaroController extends BaseFaroController {
 			groupId, credentials, marketoProvider, name, null, null, status);
 	}
 
+	@Path("/marketo-campaign")
+	@POST
+	@RolesAllowed(RoleConstants.SITE_ADMINISTRATOR)
+	public DataSourceDisplay createTypeMarketoCampaign(
+			@PathParam("groupId") long groupId,
+			@DefaultValue(StringPool.BLANK) @FormParam("channelsConfiguration")
+				FaroParam<ChannelsConfiguration> channelsConfigurationFaroParam,
+			@FormParam("credentials") Credentials credentials,
+			@FormParam("name") String name,
+			@DefaultValue("ACTIVE") @FormParam("status") String status,
+			@FormParam("url") String url)
+		throws Exception {
+
+		MarketoCampaignProvider marketoCampaignProvider =
+			new MarketoCampaignProvider();
+
+		marketoCampaignProvider.setChannelsConfiguration(
+			channelsConfigurationFaroParam.getValue());
+
+		return create(
+			groupId, credentials, marketoCampaignProvider, name, url, null,
+			status);
+	}
+
 	@Path("/salesforce")
 	@POST
 	@RolesAllowed(RoleConstants.SITE_ADMINISTRATOR)
@@ -311,6 +336,9 @@ public class DataSourceFaroController extends BaseFaroController {
 			@DefaultValue(StringPool.BLANK) @FormParam("accountsConfiguration")
 				FaroParam<SalesforceProvider.AccountsConfiguration>
 					accountsConfigurationFaroParam,
+			@DefaultValue(StringPool.BLANK) @FormParam("campaignsConfiguration")
+				FaroParam<SalesforceProvider.CampaignsConfiguration>
+					campaignsConfigurationFaroParam,
 			@DefaultValue(StringPool.BLANK) @FormParam("channelsConfiguration")
 				FaroParam<ChannelsConfiguration> channelsConfigurationFaroParam,
 			@DefaultValue(StringPool.BLANK) @FormParam("contactsConfiguration")
@@ -318,6 +346,11 @@ public class DataSourceFaroController extends BaseFaroController {
 					contactsConfigurationFaroParam,
 			@FormParam("credentials") Credentials credentials,
 			@FormParam("name") String name,
+			@DefaultValue(StringPool.BLANK)
+			@FormParam("opportunitiesConfiguration")
+			FaroParam
+				<SalesforceProvider.OpportunitiesConfiguration>
+					opportunitiesConfigurationFaroParam,
 			@DefaultValue("INACTIVE") @FormParam("status") String status,
 			@FormParam("url") String url)
 		throws Exception {
@@ -326,10 +359,14 @@ public class DataSourceFaroController extends BaseFaroController {
 
 		salesforceProvider.setAccountsConfiguration(
 			accountsConfigurationFaroParam.getValue());
+		salesforceProvider.setCampaignsConfiguration(
+			campaignsConfigurationFaroParam.getValue());
 		salesforceProvider.setChannelsConfiguration(
 			channelsConfigurationFaroParam.getValue());
 		salesforceProvider.setContactsConfiguration(
 			contactsConfigurationFaroParam.getValue());
+		salesforceProvider.setOpportunitiesConfiguration(
+			opportunitiesConfigurationFaroParam.getValue());
 
 		return create(
 			groupId, credentials, salesforceProvider, name, url, null, status);
@@ -800,9 +837,9 @@ public class DataSourceFaroController extends BaseFaroController {
 			() -> {
 				Results<Individual> individualResults =
 					contactsEngineClient.getIndividuals(
-						faroProject, null, null, null, id, null, null, false,
-						null, null, null, Collections.singletonList("KNOWN"),
-						null, null, null, null, 1, 0, null);
+						faroProject, null, null, null, null, id, null, null,
+						false, null, Collections.singletonList("KNOWN"), null,
+						null, null, null, null, null, 1, 0, null);
 
 				return individualResults.getTotal();
 			}
@@ -1254,6 +1291,39 @@ public class DataSourceFaroController extends BaseFaroController {
 	}
 
 	@PATCH
+	@Path("/{id}/marketo-campaign")
+	@RolesAllowed(RoleConstants.SITE_ADMINISTRATOR)
+	public DataSourceDisplay patchTypeMarketoCampaign(
+			@PathParam("groupId") long groupId, @PathParam("id") String id,
+			@DefaultValue(StringPool.BLANK) @FormParam("channelsConfiguration")
+				FaroParam<ChannelsConfiguration> channelsConfigurationFaroParam,
+			@FormParam("credentials") Credentials credentials,
+			@FormParam("name") String name, @FormParam("status") String status,
+			@FormParam("url") String url)
+		throws Exception {
+
+		MarketoCampaignProvider marketoCampaignProvider = null;
+
+		ChannelsConfiguration channelsConfiguration =
+			channelsConfigurationFaroParam.getValue();
+
+		if (channelsConfiguration != null) {
+			DataSource dataSource = contactsEngineClient.getDataSource(
+				faroProjectLocalService.getFaroProjectByGroupId(groupId), id);
+
+			marketoCampaignProvider =
+				(MarketoCampaignProvider)dataSource.getProvider();
+
+			marketoCampaignProvider.setChannelsConfiguration(
+				channelsConfiguration);
+		}
+
+		return update(
+			groupId, id, credentials, null, null, 0, name, true,
+			marketoCampaignProvider, MarketoCampaignProvider.TYPE, status, url);
+	}
+
+	@PATCH
 	@Path("/{id}/salesforce")
 	@RolesAllowed(RoleConstants.SITE_ADMINISTRATOR)
 	public DataSourceDisplay patchTypeSalesforce(
@@ -1261,38 +1331,59 @@ public class DataSourceFaroController extends BaseFaroController {
 			@DefaultValue(StringPool.BLANK) @FormParam("accountsConfiguration")
 				FaroParam<SalesforceProvider.AccountsConfiguration>
 					accountsConfigurationFaroParam,
+			@DefaultValue(StringPool.BLANK) @FormParam("campaignsConfiguration")
+				FaroParam<SalesforceProvider.CampaignsConfiguration>
+					campaignsConfigurationFaroParam,
 			@DefaultValue(StringPool.BLANK) @FormParam("channelsConfiguration")
 				FaroParam<ChannelsConfiguration> channelsConfigurationFaroParam,
 			@DefaultValue(StringPool.BLANK) @FormParam("contactsConfiguration")
 				FaroParam<SalesforceProvider.ContactsConfiguration>
 					contactsConfigurationFaroParam,
 			@FormParam("credentials") Credentials credentials,
-			@FormParam("name") String name, @FormParam("status") String status,
-			@FormParam("url") String url)
+			@FormParam("name") String name,
+			@DefaultValue(StringPool.BLANK)
+			@FormParam("opportunitiesConfiguration")
+			FaroParam
+				<SalesforceProvider.OpportunitiesConfiguration>
+					opportunitiesConfigurationFaroParam,
+			@FormParam("status") String status, @FormParam("url") String url)
 		throws Exception {
 
 		SalesforceProvider salesforceProvider = null;
 
 		SalesforceProvider.AccountsConfiguration accountsConfiguration =
 			accountsConfigurationFaroParam.getValue();
+		SalesforceProvider.CampaignsConfiguration campaignsConfiguration =
+			campaignsConfigurationFaroParam.getValue();
 		ChannelsConfiguration channelsConfiguration =
 			channelsConfigurationFaroParam.getValue();
 		SalesforceProvider.ContactsConfiguration contactsConfiguration =
 			contactsConfigurationFaroParam.getValue();
+		SalesforceProvider.OpportunitiesConfiguration
+			opportunitiesConfiguration =
+				opportunitiesConfigurationFaroParam.getValue();
 
 		if ((accountsConfiguration != null) &&
+			(campaignsConfiguration != null) &&
 			(channelsConfiguration != null) &&
-			(contactsConfiguration != null)) {
+			(contactsConfiguration != null) &&
+			(opportunitiesConfiguration != null)) {
 
 			salesforceProvider = new SalesforceProvider();
 
 			salesforceProvider.setAccountsConfiguration(accountsConfiguration);
+			salesforceProvider.setCampaignsConfiguration(
+				campaignsConfiguration);
 			salesforceProvider.setChannelsConfiguration(channelsConfiguration);
 			salesforceProvider.setContactsConfiguration(contactsConfiguration);
+			salesforceProvider.setOpportunitiesConfiguration(
+				opportunitiesConfiguration);
 		}
 		else if ((accountsConfiguration != null) ||
+				 (campaignsConfiguration != null) ||
 				 (channelsConfiguration != null) ||
-				 (contactsConfiguration != null)) {
+				 (contactsConfiguration != null) ||
+				 (opportunitiesConfiguration != null)) {
 
 			DataSource dataSource = contactsEngineClient.getDataSource(
 				faroProjectLocalService.getFaroProjectByGroupId(groupId), id);
@@ -1304,6 +1395,11 @@ public class DataSourceFaroController extends BaseFaroController {
 					accountsConfiguration);
 			}
 
+			if (campaignsConfiguration != null) {
+				salesforceProvider.setCampaignsConfiguration(
+					campaignsConfiguration);
+			}
+
 			if (channelsConfiguration != null) {
 				salesforceProvider.setChannelsConfiguration(
 					channelsConfiguration);
@@ -1312,6 +1408,11 @@ public class DataSourceFaroController extends BaseFaroController {
 			if (contactsConfiguration != null) {
 				salesforceProvider.setContactsConfiguration(
 					contactsConfiguration);
+			}
+
+			if (opportunitiesConfiguration != null) {
+				salesforceProvider.setOpportunitiesConfiguration(
+					opportunitiesConfiguration);
 			}
 		}
 
@@ -1537,6 +1638,29 @@ public class DataSourceFaroController extends BaseFaroController {
 			marketoProvider, MarketoProvider.TYPE, status, null);
 	}
 
+	@Path("/{id}/marketo-campaign")
+	@PUT
+	@RolesAllowed(RoleConstants.SITE_ADMINISTRATOR)
+	public DataSourceDisplay updateTypeMarketoCampaign(
+			@PathParam("groupId") long groupId, @PathParam("id") String id,
+			@DefaultValue(StringPool.BLANK) @FormParam("channelsConfiguration")
+				FaroParam<ChannelsConfiguration> channelsConfigurationFaroParam,
+			@FormParam("credentials") Credentials credentials,
+			@FormParam("name") String name, @FormParam("status") String status,
+			@FormParam("url") String url)
+		throws Exception {
+
+		MarketoCampaignProvider marketoCampaignProvider =
+			new MarketoCampaignProvider();
+
+		marketoCampaignProvider.setChannelsConfiguration(
+			channelsConfigurationFaroParam.getValue());
+
+		return update(
+			groupId, id, credentials, null, null, 0, name, false,
+			marketoCampaignProvider, MarketoCampaignProvider.TYPE, status, url);
+	}
+
 	@Path("/{id}/salesforce")
 	@PUT
 	@RolesAllowed(RoleConstants.SITE_ADMINISTRATOR)
@@ -1545,24 +1669,36 @@ public class DataSourceFaroController extends BaseFaroController {
 			@DefaultValue(StringPool.BLANK) @FormParam("accountsConfiguration")
 				FaroParam<SalesforceProvider.AccountsConfiguration>
 					accountsConfigurationFaroParam,
+			@DefaultValue(StringPool.BLANK) @FormParam("campaignsConfiguration")
+				FaroParam<SalesforceProvider.CampaignsConfiguration>
+					campaignsConfigurationFaroParam,
 			@DefaultValue(StringPool.BLANK) @FormParam("channelsConfiguration")
 				FaroParam<ChannelsConfiguration> channelsConfigurationFaroParam,
 			@DefaultValue(StringPool.BLANK) @FormParam("contactsConfiguration")
 				FaroParam<SalesforceProvider.ContactsConfiguration>
 					contactsConfigurationFaroParam,
 			@FormParam("credentials") Credentials credentials,
-			@FormParam("name") String name, @FormParam("status") String status,
-			@FormParam("url") String url)
+			@FormParam("name") String name,
+			@DefaultValue(StringPool.BLANK)
+			@FormParam("opportunitiesConfiguration")
+			FaroParam
+				<SalesforceProvider.OpportunitiesConfiguration>
+					opportunitiesConfigurationFaroParam,
+			@FormParam("status") String status, @FormParam("url") String url)
 		throws Exception {
 
 		SalesforceProvider salesforceProvider = new SalesforceProvider();
 
 		salesforceProvider.setAccountsConfiguration(
 			accountsConfigurationFaroParam.getValue());
+		salesforceProvider.setCampaignsConfiguration(
+			campaignsConfigurationFaroParam.getValue());
 		salesforceProvider.setChannelsConfiguration(
 			channelsConfigurationFaroParam.getValue());
 		salesforceProvider.setContactsConfiguration(
 			contactsConfigurationFaroParam.getValue());
+		salesforceProvider.setOpportunitiesConfiguration(
+			opportunitiesConfigurationFaroParam.getValue());
 
 		return update(
 			groupId, id, credentials, null, null, 0, name, false,
@@ -1706,6 +1842,13 @@ public class DataSourceFaroController extends BaseFaroController {
 		else if (type.equals(OAuth2Credentials.TYPE)) {
 			OAuth2Credentials oAuth2Credentials =
 				(OAuth2Credentials)credentials;
+
+			if (providerType.equals(MarketoCampaignProvider.TYPE)) {
+				return OAuthUtil.getOAuth20Credentials(
+					"CLIENT_CREDENTIALS", StringPool.BLANK, StringPool.BLANK,
+					StringPool.BLANK, oAuth2Credentials.getOAuthClientId(),
+					oAuth2Credentials.getOAuthClientSecret(), providerType);
+			}
 
 			return OAuthUtil.getOAuth20Credentials(
 				"REFRESH_TOKEN", url, oAuth2Credentials.getOAuthCode(),

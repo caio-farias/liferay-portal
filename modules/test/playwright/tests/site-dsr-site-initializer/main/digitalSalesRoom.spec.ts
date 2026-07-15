@@ -11,6 +11,7 @@ import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
 import {digitalSalesRoomPagesTest} from '../../../fixtures/digitalSalesRoomPagesTest';
 import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../fixtures/loginTest';
+import {liferayConfig} from '../../../liferay.config';
 import {PageEditorPage} from '../../../pages/layout-content-page-editor-web/PageEditorPage';
 import {getRandomInt} from '../../../utils/getRandomInt';
 import getRandomString from '../../../utils/getRandomString';
@@ -123,7 +124,7 @@ test(
 
 test(
 	'Update a digital sales room name, ERC and friendly URL from settings',
-	{tag: '@LPD-94454'},
+	{tag: ['@LPD-94454', '@LPD-97477']},
 	async ({
 		apiHelpers,
 		digitalSalesRoomSettingsPage,
@@ -161,6 +162,13 @@ test(
 		);
 
 		await expect(digitalSalesRoomSettingsPage.nameInput).toBeVisible();
+
+		await expect(
+			digitalSalesRoomSettingsPage.externalReferenceCodeInput
+		).toHaveAttribute('required');
+		await expect(
+			digitalSalesRoomSettingsPage.friendlyURLInput
+		).toHaveAttribute('required');
 
 		await digitalSalesRoomSettingsPage.updateRoomSettings({
 			externalReferenceCode: updatedExternalReferenceCode,
@@ -329,7 +337,7 @@ test(
 
 test(
 	'Delete a digital sales room',
-	{tag: '@LPD-73577'},
+	{tag: ['@LPD-73577', '@LPD-97748']},
 	async ({
 		apiHelpers,
 		digitalSalesRoomsPage,
@@ -355,14 +363,9 @@ test(
 			roomName,
 		});
 
-		await digitalSalesRoomsPage.goToRoomsPage();
+		await digitalSalesRoomsPage.goToRoomActionsMenu(roomName);
 
-		await digitalSalesRoomsPage.archiveRoom(roomName);
-		await digitalSalesRoomsPage.showArchivedRooms();
-		await digitalSalesRoomsPage.clickRowActionsMenuItem(
-			roomName,
-			digitalSalesRoomsPage.deleteMenuItem
-		);
+		await digitalSalesRoomsPage.deleteMenuItem.click();
 
 		await expect(
 			digitalSalesRoomsPage.deleteConfirmationModal
@@ -373,6 +376,95 @@ test(
 		await waitForAlert(page);
 
 		await expect(digitalSalesRoomsPage.noResultsFoundMessage).toBeVisible();
+	}
+);
+
+test(
+	'Room archival and deletion should both be available simultaneously to a user with the appropriate permissions',
+	{tag: '@LPD-97748'},
+	async ({apiHelpers, digitalSalesRoomsPage, page}) => {
+		const account = await apiHelpers.headlessAdminUser.postAccount({
+			type: 'business',
+		});
+
+		const roomName = `A${getRandomInt()}`;
+
+		const room = await apiHelpers.headlessDigitalSalesRoom.addRoom({
+			accountEntryId: account.id,
+			name: roomName,
+		});
+
+		const userAccount =
+			await apiHelpers.headlessAdminUser.postUserAccount();
+
+		userData[userAccount.alternateName] = {
+			name: userAccount.givenName,
+			password: 'test',
+			surname: userAccount.familyName,
+		};
+
+		await apiHelpers.headlessAdminUser.postRoleByExternalReferenceCodeUserAccountAssociation(
+			'L_DSR_SELLER',
+			userAccount.id
+		);
+
+		await apiHelpers.headlessAdminUser.assignUserToAccountByEmailAddress(
+			account.id,
+			[userAccount.emailAddress]
+		);
+
+		const role = await apiHelpers.headlessAdminUser.postRole({
+			name: `DSR Room Viewer ${getRandomInt()}`,
+		});
+
+		await apiHelpers.headlessAdminUser.postRoleUserAccountAssociation(
+			role.id,
+			Number(userAccount.id)
+		);
+
+		apiHelpers.data.push({
+			id: `${role.id}_${userAccount.id}`,
+			type: 'roleUserAccountAssociation',
+		});
+
+		const grantRoomPermissions = (actionIds: string[]) =>
+			apiHelpers.objectEntry.putObjectEntryPermissions(
+				'digital-sales-room/rooms',
+				room.id,
+				[{actionIds, roleName: role.name}]
+			);
+
+		await grantRoomPermissions(['VIEW']);
+
+		await performUserSwitch(page, userAccount.alternateName);
+
+		await digitalSalesRoomsPage.goToRoomActionsMenu(roomName, true);
+
+		await performUserSwitch(page, 'test');
+
+		await grantRoomPermissions(['UPDATE', 'VIEW']);
+
+		await performUserSwitch(page, userAccount.alternateName);
+
+		await digitalSalesRoomsPage.goToRoomActionsMenu(roomName);
+
+		await expect(digitalSalesRoomsPage.archiveMenuItem).toBeVisible();
+		await expect(digitalSalesRoomsPage.deleteMenuItem).toBeHidden();
+		await expect(digitalSalesRoomsPage.viewMenuItem).toBeVisible();
+
+		await performUserSwitch(page, 'test');
+
+		await grantRoomPermissions(['DELETE', 'UPDATE', 'VIEW']);
+
+		await performUserSwitch(page, userAccount.alternateName);
+
+		await digitalSalesRoomsPage.goToRoomActionsMenu(roomName);
+
+		await expect(digitalSalesRoomsPage.archiveMenuItem).toBeVisible();
+		await expect(digitalSalesRoomsPage.deleteMenuItem).toBeVisible();
+		await expect(digitalSalesRoomsPage.viewMenuItem).toBeVisible();
+
+		await performUserSwitch(page, 'test');
 	}
 );
 
@@ -737,7 +829,7 @@ test(
 
 test(
 	'A viewer cannot upload files nor share but can make comments',
-	{tag: '@LPD-87116'},
+	{tag: ['@LPD-87116', '@LPD-96701']},
 	async ({
 		apiHelpers,
 		digitalSalesRoomUsersPage,
@@ -807,6 +899,7 @@ test(
 
 		await editDigitalSalesRoomPage.documentsMenuItem.click();
 
+		await expect(editDigitalSalesRoomPage.noDocumentsMessage).toBeVisible();
 		await expect(editDigitalSalesRoomPage.newButton).not.toBeVisible();
 
 		await performUserSwitch(page, 'test');
@@ -917,6 +1010,88 @@ test(
 		await page.goto(`/web/${roomName}`);
 
 		await expect(page).toHaveURL(new RegExp(roomName, 'i'));
+
+		await performUserSwitch(page, 'test');
+	}
+);
+
+test(
+	'An owner does not see the upload button in an archived room',
+	{tag: '@LPD-92367'},
+	async ({
+		apiHelpers,
+		digitalSalesRoomsPage,
+		editDigitalSalesRoomPage,
+		page,
+	}) => {
+		const account = await apiHelpers.headlessAdminUser.postAccount({
+			type: 'business',
+		});
+
+		const userAccount =
+			await apiHelpers.headlessAdminUser.postUserAccount();
+
+		userData[userAccount.alternateName] = {
+			name: userAccount.givenName,
+			password: 'test',
+			surname: userAccount.familyName,
+		};
+
+		const roomName = `A${getRandomInt()}`;
+
+		await digitalSalesRoomsPage.goToRoomsPage();
+
+		await expect(
+			digitalSalesRoomsPage.digitalSalesRoomsTable.searchInput
+		).toBeVisible();
+
+		await digitalSalesRoomsPage.digitalSalesRoomsTable.newButton.click();
+
+		await editDigitalSalesRoomPage.addDigitalSalesRoom({
+			accountName: account.name,
+			roomName,
+		});
+
+		await digitalSalesRoomsPage.goToRoomsPage();
+
+		const rooms = await apiHelpers.headlessDigitalSalesRoom.getRooms();
+
+		const room = rooms.items.find(
+			(item: {name: string}) => item.name === roomName
+		);
+
+		const siteOwnerRole =
+			await apiHelpers.headlessAdminUser.getRoleByName('Site Owner');
+
+		const urlSearchParams = new URLSearchParams();
+
+		urlSearchParams.append('userId', String(userAccount.id));
+		urlSearchParams.append('groupId', String(room.siteId));
+		urlSearchParams.append('roleIds', JSON.stringify([siteOwnerRole.id]));
+
+		await apiHelpers.post(
+			`${liferayConfig.environment.baseUrl}/api/jsonws/usergrouprole/add-user-group-roles`,
+			{
+				data: urlSearchParams.toString(),
+				failOnStatusCode: true,
+				headers: await apiHelpers.getJSONWebServicesHeaders(),
+			}
+		);
+
+		await digitalSalesRoomsPage.archiveRoom(roomName);
+
+		await performUserSwitch(page, userAccount.alternateName);
+
+		await page.goto(`/web/${roomName}`);
+
+		await expect(page).toHaveURL(new RegExp(roomName, 'i'));
+
+		await editDigitalSalesRoomPage.documentsMenuItem.click();
+
+		await expect(page.getByRole('searchbox')).toBeVisible();
+		await expect(
+			page.getByTestId('creationMenuNewButton').filter({hasText: 'New'})
+		).not.toBeVisible();
 
 		await performUserSwitch(page, 'test');
 	}
@@ -1057,6 +1232,11 @@ test(
 		);
 		await digitalSalesRoomUsersPage.userEmailAddressesInput.press('Enter');
 		await editDigitalSalesRoomPage.roleKeyButton.click();
+
+		await expect(
+			editDigitalSalesRoomPage.contributorRoleInputButton
+		).toBeVisible();
+
 		await editDigitalSalesRoomPage.contributorRoleInputButton.click();
 		await digitalSalesRoomUsersPage.inviteButton.click();
 
@@ -1078,7 +1258,7 @@ test(
 		).toBeVisible();
 
 		await digitalSalesRoomUsersPage.roleDropdown(email).click();
-		await editDigitalSalesRoomPage.contributorRoleButton.click();
+		await editDigitalSalesRoomPage.contributorRoleMenuItemButton.click();
 
 		await expect(
 			digitalSalesRoomUsersPage.roleText(email, 'Content Contributor')
@@ -1156,7 +1336,12 @@ test(
 		);
 		await digitalSalesRoomUsersPage.userEmailAddressesInput.press('Enter');
 		await editDigitalSalesRoomPage.roleKeyButton.click();
-		await editDigitalSalesRoomPage.contributorRoleButton.click();
+
+		await expect(
+			editDigitalSalesRoomPage.contributorRoleInputButton
+		).toBeVisible();
+
+		await editDigitalSalesRoomPage.contributorRoleInputButton.click();
 		await digitalSalesRoomUsersPage.inviteButton.click();
 
 		await waitForAlert(page, 'Success:User was invited successfully.');
@@ -1368,6 +1553,67 @@ test(
 );
 
 test(
+	'Duplicating an archived room creates an active room',
+	{tag: '@LPD-97749'},
+	async ({apiHelpers, digitalSalesRoomsPage, editDigitalSalesRoomPage}) => {
+		const account = await apiHelpers.headlessAdminUser.postAccount({
+			type: 'business',
+		});
+
+		const roomName = `A${getRandomInt()}`;
+
+		await test.step('Create and archive a room', async () => {
+			await digitalSalesRoomsPage.goToRoomsPage();
+
+			await expect(
+				digitalSalesRoomsPage.digitalSalesRoomsTable.searchInput
+			).toBeVisible();
+
+			await digitalSalesRoomsPage.digitalSalesRoomsTable.newButton.click();
+
+			await editDigitalSalesRoomPage.addDigitalSalesRoom({
+				accountName: account.name,
+				roomName,
+			});
+
+			await digitalSalesRoomsPage.goToRoomsPage();
+
+			await digitalSalesRoomsPage.archiveRoom(roomName);
+		});
+
+		await test.step('Duplicate the archived room', async () => {
+			await digitalSalesRoomsPage.showArchivedRooms();
+
+			await digitalSalesRoomsPage.clickRowActionsMenuItem(
+				roomName,
+				digitalSalesRoomsPage.duplicateMenuItem
+			);
+
+			await expect(
+				digitalSalesRoomsPage.duplicateModalHeading
+			).toBeVisible();
+
+			await digitalSalesRoomsPage.duplicateButton.click();
+
+			await expect(digitalSalesRoomsPage.duplicateModal).not.toBeVisible({
+				timeout: 30000,
+			});
+		});
+
+		await test.step('Verify the duplicated room is active', async () => {
+			await digitalSalesRoomsPage.goToRoomsPage();
+
+			const duplicatedRow =
+				digitalSalesRoomsPage.digitalSalesRoomsTable.table
+					.getByRole('row')
+					.filter({hasText: `${roomName} (Copy)`});
+
+			await expect(duplicatedRow).toContainText('Active');
+		});
+	}
+);
+
+test(
 	'The room collaborator can manage pages and documents, add room comments, and share the room',
 	{tag: '@LPD-92366'},
 	async ({
@@ -1465,7 +1711,12 @@ test(
 		).toBeVisible();
 
 		await digitalSalesRoomUsersPage.roleDropdown(member.name).click();
-		await editDigitalSalesRoomPage.contributorRoleButton.click();
+
+		await expect(
+			editDigitalSalesRoomPage.contributorRoleMenuItemButton
+		).toBeVisible();
+
+		await editDigitalSalesRoomPage.contributorRoleMenuItemButton.click();
 
 		await expect(
 			digitalSalesRoomUsersPage.roleText(

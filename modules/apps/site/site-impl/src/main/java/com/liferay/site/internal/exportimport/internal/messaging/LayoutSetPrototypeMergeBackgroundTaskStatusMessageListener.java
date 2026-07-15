@@ -24,10 +24,13 @@ import com.liferay.portal.kernel.messaging.MessageListenerException;
 import com.liferay.portal.kernel.model.LayoutSetPrototype;
 import com.liferay.portal.kernel.service.LayoutSetPrototypeLocalService;
 import com.liferay.portal.kernel.util.MapUtil;
+import com.liferay.portal.kernel.util.PropsValues;
+import com.liferay.portal.kernel.util.SystemProperties;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.uuid.PortalUUIDUtil;
 import com.liferay.site.internal.exportimport.internal.notifications.LayoutSetPrototypeNotificationUtil;
 
+import java.io.File;
 import java.io.Serializable;
 
 import java.util.Date;
@@ -164,6 +167,8 @@ public class LayoutSetPrototypeMergeBackgroundTaskStatusMessageListener
 					_markNotificationProcessed(completedBackgroundTask);
 				}
 			}
+
+			_deleteCacheFile(sessionId);
 		}
 		finally {
 			_lockManager.unlock(
@@ -208,6 +213,27 @@ public class LayoutSetPrototypeMergeBackgroundTaskStatusMessageListener
 				"Unable to delete background task " +
 					backgroundTask.getBackgroundTaskId(),
 				exception);
+		}
+	}
+
+	private void _deleteCacheFile(String sessionId) {
+		if (!PropsValues.LAYOUT_SET_PROTOTYPE_MERGE_DELETE_CACHE_FILE_ENABLED) {
+			return;
+		}
+
+		File file = new File(_TEMP_DIR + sessionId + ".lar");
+
+		if ((file != null) && file.exists()) {
+			try {
+				file.delete();
+			}
+			catch (Exception exception) {
+				if (_log.isWarnEnabled()) {
+					_log.warn(
+						"Unable to delete cache file " + file.getAbsolutePath(),
+						exception);
+				}
+			}
 		}
 	}
 
@@ -274,6 +300,10 @@ public class LayoutSetPrototypeMergeBackgroundTaskStatusMessageListener
 	}
 
 	private static final long _LOCK_EXPIRATION_TIME = 5 * 60 * 1000;
+
+	private static final String _TEMP_DIR =
+		SystemProperties.get(SystemProperties.TMP_DIR) +
+			"/liferay/layout_set_prototype/";
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		LayoutSetPrototypeMergeBackgroundTaskStatusMessageListener.class);

@@ -5,13 +5,13 @@ import EmptyState from '@clayui/empty-state';
 import React from 'react';
 import URLConstants from 'shared/util/url-constants';
 import {
-	ACTIVITY_KEY,
 	EVENT_KEY,
 	FunctionalOperators,
 	PropertyTypes,
 	RelationalOperators,
 	TimeSpans,
 } from '../utils/constants';
+import {getEventId, getSupportedApplicationIds} from '../utils/activity-keys';
 import {createCustomValueMap} from '../utils/custom-inputs';
 import {FieldOwnerTypes} from 'shared/util/constants';
 import {jsDatetoYYYYMMDD} from '../utils/utils';
@@ -136,14 +136,26 @@ export const getDefaultValue = (property: Property): any => {
 				{key: 'operator', value: RelationalOperators.GE},
 				{key: 'value', value: 1},
 			]);
-		case PropertyTypes.Behavior:
+		case PropertyTypes.Behavior: {
+			const applicationId = getSupportedApplicationIds(name)[0];
+
 			return createCustomValueMap([
 				{
 					key: 'criterionGroup',
 					value: [
 						{
 							operatorName: RelationalOperators.EQ,
-							propertyName: ACTIVITY_KEY,
+							propertyName: 'applicationId',
+							value: applicationId,
+						},
+						{
+							operatorName: RelationalOperators.EQ,
+							propertyName: 'eventId',
+							value: getEventId(applicationId, name),
+						},
+						{
+							operatorName: FunctionalOperators.Contains,
+							propertyName: 'attribute/',
 							value: '',
 						},
 						{
@@ -156,6 +168,7 @@ export const getDefaultValue = (property: Property): any => {
 				{key: 'operator', value: RelationalOperators.GE},
 				{key: 'value', value: 1},
 			]);
+		}
 		case PropertyTypes.Tag:
 		case PropertyTypes.Vocabulary:
 			return createCustomValueMap([
@@ -279,7 +292,7 @@ const CriteriaSidebarCollapse: React.FC<ICriteriaSidebarCollapseProps> = ({
 
 	if (propertyKey === FieldOwnerTypes.Account && !searchValue && noResults) {
 		return (
-			<div className="empty-message mt-10 text-center">
+			<div className="align-items-center d-flex empty-message h-100 justify-content-center">
 				<EmptyState
 					className="text-center"
 					description={Liferay.Language.get(

@@ -7,16 +7,18 @@ package com.liferay.jenkins.results.parser;
 
 import java.io.File;
 
-import java.net.URI;
-import java.net.URL;
+import java.net.InetAddress;
+import java.net.ServerSocket;
 
+import java.util.HashMap;
 import java.util.Properties;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import org.junit.After;
-import org.junit.Before;
+import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import org.mockito.Mockito;
@@ -27,23 +29,34 @@ import org.mockito.Mockito;
 public class JenkinsResultsParserUtilTest
 	extends com.liferay.jenkins.results.parser.Test {
 
-	@Before
-	@Override
-	public void setUp() throws Exception {
-		downloadSample(
-			"axis-integration-db2-1", "0,label_exp=!master", "129",
-			"test-portal-acceptance-pullrequest-batch(master)", "test-4-1");
-		downloadSample(
-			"axis-plugin-1", "9,label_exp=!master", "233",
-			"test-portal-acceptance-pullrequest-batch(ee-6.2.x)", "test-1-20");
-		downloadSample(
-			"job-1", null, "267",
-			"test-portal-acceptance-pullrequest-source(ee-6.2.x)", "test-1-1");
-	}
-
 	@After
 	public void tearDown() {
 		Environment.setInstance(new Environment());
+	}
+
+	@Test(timeout = 30000)
+	public void testExecuteJenkinsScriptReadTimeout() throws Exception {
+		try (ServerSocket serverSocket = _createServerSocket()) {
+			int port = serverSocket.getLocalPort();
+
+			long startTime = System.currentTimeMillis();
+
+			String result = JenkinsResultsParserUtil.executeJenkinsScript(
+				"localhost:" + port, "println 'hello'", true, 2000);
+
+			long duration = System.currentTimeMillis() - startTime;
+
+			testEquals(null, result);
+
+			if (duration < 1500) {
+				errorCollector.addError(
+					new Throwable(
+						JenkinsResultsParserUtil.combine(
+							"The read timeout was not reached after ",
+							JenkinsResultsParserUtil.toDurationString(
+								duration))));
+			}
+		}
 	}
 
 	@Test
@@ -108,27 +121,11 @@ public class JenkinsResultsParserUtilTest
 	}
 
 	@Test
-	public void testGetJobVariant() throws Exception {
-		TestSample testSample = testSamples.get("axis-integration-db2-1");
+	public void testGetJobVariant() {
+		String jobVariant = RandomTestUtil.randomString();
 
-		testEquals(
-			"integration-db2",
-			JenkinsResultsParserUtil.getJobVariant(
-				read(testSample.getSampleDir(), "/api/json")));
-
-		testSample = testSamples.get("axis-plugin-1");
-
-		testEquals(
-			"plugins",
-			JenkinsResultsParserUtil.getJobVariant(
-				read(testSample.getSampleDir(), "/api/json")));
-
-		testSample = testSamples.get("job-1");
-
-		testEquals(
-			"",
-			JenkinsResultsParserUtil.getJobVariant(
-				read(testSample.getSampleDir(), "/api/json")));
+		_testGetJobVariant(jobVariant, "JOB_VARIANT", jobVariant);
+		_testGetJobVariant("", "JENKINS_GITHUB_BRANCH_NAME", jobVariant);
 	}
 
 	@Test
@@ -254,6 +251,67 @@ public class JenkinsResultsParserUtilTest
 	}
 
 	@Test
+	public void testGetPropertyNameWithWildcards() {
+		Properties properties = new Properties();
+
+		properties.setProperty("build.caching.enabled", "false");
+		properties.setProperty(
+			"build.caching.enabled[test-portal-acceptance-pullrequest(*)]",
+			"true");
+		properties.setProperty(
+			"build.caching.enabled[test-portal-acceptance-pullrequest(master)]",
+			"false");
+
+		_testGetPropertyName(
+			"build.caching.enabled", "false", properties,
+			"build.caching.enabled", "test-portal-source-format");
+		_testGetPropertyName(
+			"build.caching.enabled[test-portal-acceptance-pullrequest(*)]",
+			"true", properties, "build.caching.enabled",
+			"test-portal-acceptance-pullrequest(ee-7.4.x)");
+		_testGetPropertyName(
+			"build.caching.enabled[test-portal-acceptance-pullrequest(master)]",
+			"false", properties, "build.caching.enabled",
+			"test-portal-acceptance-pullrequest(master)");
+	}
+
+	@Test
+	public void testGetPropertyWithBuildAwsProperties() {
+		Properties properties = _getBuildAwsProperties();
+
+		_testGetProperty(
+			"false", properties, "binaries.cache.enabled",
+			"forward-pullrequest");
+		_testGetProperty(
+			"true", properties, "binaries.cache.enabled",
+			"test-portal-release");
+		_testGetProperty(
+			"false", properties, "binaries.cache.enabled",
+			"test-portal-source-format");
+		_testGetProperty(
+			"false", properties, "build.caching.enabled",
+			"forward-pullrequest");
+		_testGetProperty(
+			"true", properties, "build.caching.enabled",
+			"test-portal-fixpack-release");
+		_testGetProperty(
+			"true", properties, "build.caching.enabled",
+			"test-portal-hotfix-release");
+		_testGetProperty(
+			"true", properties, "build.caching.enabled", "test-portal-release");
+		_testGetProperty(
+			"false", properties, "build.caching.enabled",
+			"test-portal-source-format");
+		_testGetProperty(
+			"false", properties, "git.archive.enabled", "forward-pullrequest");
+		_testGetProperty(
+			"true", properties, "git.archive.enabled", "test-portal-release");
+		_testGetProperty(
+			"false", properties, "git.archive.enabled",
+			"test-portal-source-format");
+	}
+
+	@Test
 	public void testGetRemoteURL() {
 		testEquals(
 			"https://test-1-20.liferay.com/ABC?123=456&xyz=abc",
@@ -295,6 +353,92 @@ public class JenkinsResultsParserUtilTest
 			"https://releases.liferay.com/portal/",
 			JenkinsResultsParserUtil.getRemoteURL(
 				"https://releases.liferay.com/portal/"));
+	}
+
+	@Test(timeout = 30000)
+	public void testInvokeJenkinsBuildReadTimeout() throws Exception {
+		try (ServerSocket serverSocket = _createServerSocket()) {
+			JenkinsMaster jenkinsMaster = Mockito.mock(JenkinsMaster.class);
+
+			Mockito.when(
+				jenkinsMaster.getRemoteURL()
+			).thenReturn(
+				"http://localhost:" + serverSocket.getLocalPort() + "/"
+			);
+
+			long startTime = System.currentTimeMillis();
+
+			try {
+				JenkinsResultsParserUtil.invokeJenkinsBuild(
+					jenkinsMaster, "test-job", new HashMap<>(), 2000);
+
+				errorCollector.addError(
+					new Throwable("A RuntimeException was not thrown"));
+			}
+			catch (RuntimeException runtimeException) {
+			}
+
+			long duration = System.currentTimeMillis() - startTime;
+
+			if (duration < 1500) {
+				errorCollector.addError(
+					new Throwable(
+						JenkinsResultsParserUtil.combine(
+							"The read timeout was not reached after ",
+							JenkinsResultsParserUtil.toDurationString(
+								duration))));
+			}
+		}
+	}
+
+	@Test
+	public void testIsBuildCachingEnabledCloudCINode() {
+		Environment environment = mockEnvironment();
+
+		JenkinsResultsParserUtil.clearCache();
+
+		Mockito.when(
+			environment.doGet("BUILD_CACHING_ENABLED")
+		).thenReturn(
+			"true"
+		);
+
+		Mockito.when(
+			environment.doGet("MASTER_NETWORK_NAME")
+		).thenReturn(
+			"aws-network"
+		);
+
+		Assert.assertTrue(
+			JenkinsResultsParserUtil.isBuildCachingEnabled(
+				"test-portal-release", "default"));
+
+		Mockito.when(
+			environment.doGet("BUILD_CACHING_ENABLED")
+		).thenReturn(
+			"false"
+		);
+
+		Assert.assertFalse(
+			JenkinsResultsParserUtil.isBuildCachingEnabled(
+				"test-portal-release", "default"));
+	}
+
+	@Test
+	public void testIsBuildCachingEnabledNonCINode() {
+		Environment environment = mockEnvironment();
+
+		JenkinsResultsParserUtil.clearCache();
+
+		Mockito.when(
+			environment.doGet("BUILD_CACHING_ENABLED")
+		).thenReturn(
+			"true"
+		);
+
+		Assert.assertFalse(
+			JenkinsResultsParserUtil.isBuildCachingEnabled(
+				"test-portal-release", "default"));
 	}
 
 	@Test
@@ -439,27 +583,6 @@ public class JenkinsResultsParserUtilTest
 		}
 	}
 
-	@Test
-	public void testToJSONObject() throws Exception {
-		for (TestSample testSample : testSamples.values()) {
-			testToJSONObject(new File(testSample.getSampleDir(), "api/json"));
-		}
-	}
-
-	@Test
-	public void testToString() throws Exception {
-		for (TestSample testSample : testSamples.values()) {
-			testToString(new File(testSample.getSampleDir(), "api/json"));
-		}
-	}
-
-	@Override
-	protected void downloadSample(TestSample testSample, URL url)
-		throws Exception {
-
-		downloadSampleURL(testSample.getSampleDir(), url, "/api/json");
-	}
-
 	protected Environment mockEnvironment() {
 		Environment environment = Mockito.mock(Environment.class);
 
@@ -468,36 +591,57 @@ public class JenkinsResultsParserUtilTest
 		return environment;
 	}
 
-	protected void testToJSONObject(File file) throws Exception {
-		JSONObject expectedJSONObject = new JSONObject(read(file));
-		JSONObject actualJSONObject = JenkinsResultsParserUtil.toJSONObject(
-			JenkinsResultsParserUtil.getLocalURL(toURLString(file)));
-
-		testEquals(expectedJSONObject.toString(), actualJSONObject.toString());
-	}
-
-	protected void testToString(File file) throws Exception {
-		String expectedJSON = read(file);
-		String actualJSON = JenkinsResultsParserUtil.toString(
-			JenkinsResultsParserUtil.getLocalURL(toURLString(file)));
-
-		testEquals(
-			expectedJSON.replace("\n", ""), actualJSON.replace("\n", ""));
-	}
-
-	@Override
-	protected String toURLString(File file) throws Exception {
-		URI uri = file.toURI();
-
-		URL url = uri.toURL();
-
-		return url.toString();
+	private ServerSocket _createServerSocket() throws Exception {
+		return new ServerSocket(0, 1, InetAddress.getByName("localhost"));
 	}
 
 	private String _fixURLMultipleTimes(String urlString) {
 		return JenkinsResultsParserUtil.fixURL(
 			JenkinsResultsParserUtil.fixURL(
 				JenkinsResultsParserUtil.fixURL(urlString)));
+	}
+
+	private Properties _getBuildAwsProperties() {
+		File jenkinsRepositoryDir =
+			JenkinsResultsParserUtil.getJenkinsRepositoryDir();
+
+		File buildAwsPropertiesFile = new File(
+			jenkinsRepositoryDir, "commands/build-aws.properties");
+
+		Assume.assumeTrue(
+			JenkinsResultsParserUtil.getCanonicalPath(buildAwsPropertiesFile) +
+				" does not exist",
+			buildAwsPropertiesFile.exists());
+
+		return JenkinsResultsParserUtil.getProperties(buildAwsPropertiesFile);
+	}
+
+	private void _testGetJobVariant(
+		String expectedJobVariant, String name, String value) {
+
+		testEquals(
+			expectedJobVariant,
+			JenkinsResultsParserUtil.getJobVariant(
+				new JSONObject(
+				).put(
+					"actions",
+					new JSONArray(
+					).put(
+						new JSONObject(
+						).put(
+							"parameters",
+							new JSONArray(
+							).put(
+								new JSONObject(
+								).put(
+									"name", name
+								).put(
+									"value", value
+								)
+							)
+						)
+					)
+				)));
 	}
 
 	private void _testGetProperty(

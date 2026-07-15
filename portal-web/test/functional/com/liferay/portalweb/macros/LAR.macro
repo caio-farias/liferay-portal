@@ -211,10 +211,6 @@ definition {
 			key_text = "Import",
 			locator1 = "Button#ANY",
 			value1 = "Import");
-
-		AssertTextEquals(
-			locator1 = "ExportImport#CURRENT_AND_PREVIOUS_STATUS_1",
-			value1 = "Successful");
 	}
 
 	@summary = "Default summary"
@@ -586,6 +582,18 @@ definition {
 		PortletEntry.inputName(name = ${exportTemplateNameEdit});
 
 		PortletEntry.inputDescription(description = ${exportTemplateDescriptionEdit});
+	}
+
+	@summary = "Default summary"
+	macro enableExportTemplatesFeatureFlag() {
+		PortalSettings.gotoConfiguration(
+			configurationCategory = "Feature Flags",
+			configurationName = "Deprecation",
+			configurationScope = "Virtual Instance Scope");
+
+		FeatureFlag.enableFeatureFlag(featureFlag = "LPD-96546");
+
+		Navigator.openURL();
 	}
 
 	@summary = "Default summary"

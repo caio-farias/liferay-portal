@@ -381,6 +381,10 @@ public class PropsValues {
 	public static String COMPANY_DEFAULT_WEB_ID = PropsUtil.get(
 		PropsKeys.COMPANY_DEFAULT_WEB_ID);
 
+	public static final long COMPANY_DELETE_IN_PROCESS_MAX_TIME =
+		GetterUtil.getLong(
+			PropsUtil.get(PropsKeys.COMPANY_DELETE_IN_PROCESS_MAX_TIME));
+
 	public static final boolean COMPANY_LOGIN_PREPOPULATE_DOMAIN =
 		GetterUtil.getBoolean(
 			PropsUtil.get(PropsKeys.COMPANY_LOGIN_PREPOPULATE_DOMAIN));
@@ -1133,6 +1137,13 @@ public class PropsValues {
 	public static final int LAYOUT_SCOPE_GROUP_FINDER_THRESHOLD =
 		GetterUtil.getInteger(
 			PropsUtil.get(PropsKeys.LAYOUT_SCOPE_GROUP_FINDER_THRESHOLD));
+
+	public static final boolean
+		LAYOUT_SET_PROTOTYPE_MERGE_DELETE_CACHE_FILE_ENABLED =
+			GetterUtil.getBoolean(
+				PropsUtil.get(
+					PropsKeys.
+						LAYOUT_SET_PROTOTYPE_MERGE_DELETE_CACHE_FILE_ENABLED));
 
 	public static final int LAYOUT_SET_PROTOTYPE_MERGE_FAIL_THRESHOLD =
 		GetterUtil.getInteger(

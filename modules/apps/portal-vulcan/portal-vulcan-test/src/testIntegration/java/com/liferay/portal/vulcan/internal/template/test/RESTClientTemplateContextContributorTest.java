@@ -17,6 +17,7 @@ import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.ZipFileTestUtil;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.Http;
+import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.zip.ZipWriterFactory;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
@@ -73,11 +74,20 @@ public class RESTClientTemplateContextContributorTest {
 				"friendlyUrlPath"
 			);
 
-			HTTPTestUtil.customize(
-			).withoutModulePath(
-			).apply(
-				() -> _test(friendlyUrlPath, TestPropsValues.getUser())
-			);
+			boolean termsOfUseRequired = PropsValues.TERMS_OF_USE_REQUIRED;
+
+			PropsValues.TERMS_OF_USE_REQUIRED = false;
+
+			try {
+				HTTPTestUtil.customize(
+				).withoutModulePath(
+				).apply(
+					() -> _test(friendlyUrlPath, TestPropsValues.getUser())
+				);
+			}
+			finally {
+				PropsValues.TERMS_OF_USE_REQUIRED = termsOfUseRequired;
+			}
 
 			HTTPTestUtil.customize(
 			).withoutModulePath(

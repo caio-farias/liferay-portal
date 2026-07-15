@@ -8,9 +8,17 @@ import ClayList from '@clayui/list';
 import React from 'react';
 
 import {ElementVariation} from './elementVariationsReducer';
+import {EditableElementOption} from './getEditableElementOptions';
+
+function hasValueInAnyLanguage(
+	localizedValue: Record<string, string>
+): boolean {
+	return Object.values(localizedValue).some(Boolean);
+}
 
 interface Props {
 	audiences: Array<{label: string; value: string}>;
+	editableElementOptions: EditableElementOption[];
 	elementVariations: ElementVariation[];
 	onDeleteElementVariation: (elementVariation: ElementVariation) => void;
 	onEditElementVariation: (key: string) => void;
@@ -18,6 +26,7 @@ interface Props {
 
 export default function ElementVariationsList({
 	audiences,
+	editableElementOptions,
 	elementVariations,
 	onDeleteElementVariation,
 	onEditElementVariation,
@@ -44,13 +53,18 @@ export default function ElementVariationsList({
 					<ClayList className="mx-3" key={targetElement}>
 						{[
 							<ClayList.Header className="text-none" key="header">
-								{targetElement}
+								{editableElementOptions.find(
+									(editableElementOption) =>
+										editableElementOption.value ===
+										targetElement
+								)?.label ?? targetElement}
 							</ClayList.Header>,
 							...targetElementVariations.map(
 								(elementVariation) => (
 									<ClayList.Item
 										flex
 										key={elementVariation.key}
+										tabIndex={0}
 									>
 										<ClayList.ItemField expand>
 											<ClayList.ItemTitle>
@@ -58,16 +72,24 @@ export default function ElementVariationsList({
 											</ClayList.ItemTitle>
 
 											<ClayList.ItemText>
-												{audiences.find(
-													(audience) =>
-														audience.value ===
-														elementVariation.audienceEntryERC
-												)?.label ?? ''}
+												{elementVariation.audienceEntryERCs
+													.map(
+														(audienceEntryERC) =>
+															audiences.find(
+																(audience) =>
+																	audience.value ===
+																	audienceEntryERC
+															)?.label
+													)
+													.filter(Boolean)
+													.join(', ')}
 											</ClayList.ItemText>
 
 											<ClayList.ItemText>
 												<div>
-													{elementVariation.html ? (
+													{hasValueInAnyLanguage(
+														elementVariation.html
+													) ? (
 														<ClayLabel
 															className="label-inverse-content-1"
 															displayType="unstyled"
@@ -79,7 +101,9 @@ export default function ElementVariationsList({
 														</ClayLabel>
 													) : null}
 
-													{elementVariation.js ? (
+													{hasValueInAnyLanguage(
+														elementVariation.js
+													) ? (
 														<ClayLabel
 															className="label-inverse-content-8"
 															displayType="unstyled"

@@ -19,15 +19,13 @@ export enum Applications {
 	Main = 'main',
 }
 
-export enum AssetNames {
-	BlogViewed = 'blogViewed',
-	CommentPosted = 'commentPosted',
-	DocumentDownloaded = 'documentDownloaded',
-	DocumentPreviewed = 'documentPreviewed',
-	FormSubmitted = 'formSubmitted',
-	FormViewed = 'formViewed',
-	PageViewed = 'pageViewed',
-	WebContentViewed = 'webContentViewed',
+export enum EventNames {
+	Click = 'click',
+	Comment = 'comment',
+	Download = 'download',
+	Impression = 'impression',
+	Submit = 'submit',
+	View = 'view',
 }
 
 export enum AssetTypes {
@@ -108,7 +106,8 @@ export enum DataSourceTypes {
 	Demandbase = 'DEMANDBASE',
 	Hubspot = 'HUBSPOT',
 	Liferay = 'LIFERAY',
-	Marketo = 'MARKETO',
+	MarketoCampaign = 'MARKETO_CAMPAIGN',
+	MarketoEventStream = 'MARKETO_EVENT_STREAM',
 	Salesforce = 'SALESFORCE',
 }
 

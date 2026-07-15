@@ -15,9 +15,10 @@ function buildElementVariation(
 	properties: Partial<ElementVariation> = {}
 ): ElementVariation {
 	return {
-		audienceEntryERC: '',
+		active: true,
+		audienceEntryERCs: [],
 		externalReferenceCode: '',
-		hide: {},
+		hide: false,
 		html: {},
 		js: {},
 		key: 'key-1',
@@ -32,7 +33,10 @@ function buildState(properties: Partial<State> = {}): State {
 	return {
 		defaultLanguageId: 'en_US',
 		draftElementVariation: null,
+		editableElementOptions: [],
 		elementVariations: [],
+		experienceKey: '',
+		highlightedTargetElement: null,
 		languageId: 'en_US',
 		...properties,
 	};
@@ -44,8 +48,9 @@ describe('elementVariationsReducer', () => {
 			const elementVariation = createElementVariation('experience-1');
 
 			expect(elementVariation.segmentsExperienceERC).toBe('experience-1');
+			expect(elementVariation.active).toBe(true);
 			expect(elementVariation.name).toBe('');
-			expect(elementVariation.hide).toEqual({});
+			expect(elementVariation.hide).toBe(false);
 			expect(elementVariation.key).toBeTruthy();
 
 			expect(createElementVariation('experience-1').key).not.toBe(
@@ -60,24 +65,30 @@ describe('elementVariationsReducer', () => {
 				createInitialState({
 					defaultLanguageId: 'en_US',
 					elementVariations: [],
+					experiences: [],
+					selectedSegmentsExperienceId: 0,
 				})
 			).toEqual({
 				defaultLanguageId: 'en_US',
 				draftElementVariation: null,
+				editableElementOptions: [],
 				elementVariations: [],
+				experienceKey: '',
+				highlightedTargetElement: null,
 				languageId: 'en_US',
 			});
 		});
 
-		it('assigns a key and parses the hide map to each loaded variation', () => {
+		it('assigns a key and derives the hide flag from the hide value', () => {
 			const {draftElementVariation, elementVariations} =
 				createInitialState({
 					defaultLanguageId: 'en_US',
 					elementVariations: [
 						{
-							audienceEntryERC: '',
+							active: true,
+							audienceEntryERCs: [],
 							externalReferenceCode: 'erc-1',
-							hide: {en_US: 'true'},
+							hide: 'true',
 							html: {},
 							js: {},
 							name: 'Variation 1',
@@ -85,13 +96,15 @@ describe('elementVariationsReducer', () => {
 							targetElement: '#main',
 						},
 					],
+					experiences: [],
+					selectedSegmentsExperienceId: 0,
 				});
 
 			expect(draftElementVariation).toBeNull();
 			expect(elementVariations).toHaveLength(1);
 			expect(elementVariations[0].name).toBe('Variation 1');
 			expect(elementVariations[0].key).toBeTruthy();
-			expect(elementVariations[0].hide).toEqual({en_US: true});
+			expect(elementVariations[0].hide).toBe(true);
 		});
 	});
 
@@ -111,13 +124,13 @@ describe('elementVariationsReducer', () => {
 			const state = reducer(
 				buildState({draftElementVariation: buildElementVariation()}),
 				{
-					properties: {hide: {en_US: true}, name: 'Renamed'},
+					properties: {hide: true, name: 'Renamed'},
 					type: 'UPDATE_ELEMENT_VARIATION_DRAFT',
 				}
 			);
 
 			expect(state.draftElementVariation?.name).toBe('Renamed');
-			expect(state.draftElementVariation?.hide).toEqual({en_US: true});
+			expect(state.draftElementVariation?.hide).toBe(true);
 		});
 
 		it('sets the language on SET_LANGUAGE_ID', () => {
@@ -127,6 +140,37 @@ describe('elementVariationsReducer', () => {
 			});
 
 			expect(state.languageId).toBe('es_ES');
+		});
+
+		it('sets the editable element options on SET_EDITABLE_ELEMENT_OPTIONS', () => {
+			const editableElementOptions = [
+				{label: 'Heading (element-text)', value: '.selector'},
+			];
+
+			const state = reducer(buildState(), {
+				editableElementOptions,
+				type: 'SET_EDITABLE_ELEMENT_OPTIONS',
+			});
+
+			expect(state.editableElementOptions).toBe(editableElementOptions);
+		});
+
+		it('sets the experience key on SET_EXPERIENCE_KEY', () => {
+			const state = reducer(buildState(), {
+				experienceKey: 'experience-2',
+				type: 'SET_EXPERIENCE_KEY',
+			});
+
+			expect(state.experienceKey).toBe('experience-2');
+		});
+
+		it('sets the highlighted target element on SET_HIGHLIGHTED_TARGET_ELEMENT', () => {
+			const state = reducer(buildState(), {
+				highlightedTargetElement: '.selector',
+				type: 'SET_HIGHLIGHTED_TARGET_ELEMENT',
+			});
+
+			expect(state.highlightedTargetElement).toBe('.selector');
 		});
 
 		it('appends a new draft and clears it on SAVE_ELEMENT_VARIATION_DRAFT', () => {

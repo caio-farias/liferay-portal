@@ -483,6 +483,9 @@ public interface PropsKeys {
 	public static final String COMPANY_DEFAULT_WEB_ID =
 		"company.default.web.id";
 
+	public static final String COMPANY_DELETE_IN_PROCESS_MAX_TIME =
+		"company.delete.in.process.max.time";
+
 	public static final String COMPANY_ENCRYPTION_ALGORITHM =
 		"company.encryption.algorithm";
 
@@ -1413,6 +1416,10 @@ public interface PropsKeys {
 
 	public static final String LAYOUT_SET_FORM_UPDATE =
 		"layout.set.form.update";
+
+	public static final String
+		LAYOUT_SET_PROTOTYPE_MERGE_DELETE_CACHE_FILE_ENABLED =
+			"layout.set.prototype.merge.delete.cache.file.enabled";
 
 	public static final String LAYOUT_SET_PROTOTYPE_MERGE_FAIL_THRESHOLD =
 		"layout.set.prototype.merge.fail.threshold";

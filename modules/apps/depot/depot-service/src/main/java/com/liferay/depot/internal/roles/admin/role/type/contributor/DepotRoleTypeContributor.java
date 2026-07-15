@@ -53,7 +53,13 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 
 	@Override
 	public String[] getSubtypes() {
-		List<String> subtypes = new ArrayList<>(2);
+		List<String> subtypes = new ArrayList<>(3);
+
+		if (FeatureFlagManagerUtil.isEnabled(
+				CompanyThreadLocal.getCompanyId(), "LPD-57283")) {
+
+			subtypes.add(DepotRolesConstants.SUBTYPE_DESIGN_LIBRARY);
+		}
 
 		if (FeatureFlagManagerUtil.isEnabled(
 				CompanyThreadLocal.getCompanyId(), "LPD-58677")) {
@@ -114,7 +120,14 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 				role.getName(),
 				DepotRolesConstants.ASSET_LIBRARY_CONNECTED_SITE_MEMBER) ||
 			Objects.equals(
-				role.getName(), DepotRolesConstants.ASSET_LIBRARY_OWNER)) {
+				role.getName(), DepotRolesConstants.ASSET_LIBRARY_OWNER) ||
+			Objects.equals(
+				role.getName(),
+				DepotRolesConstants.DESIGN_LIBRARY_ADMINISTRATOR) ||
+			Objects.equals(
+				role.getName(), DepotRolesConstants.DESIGN_LIBRARY_MEMBER) ||
+			Objects.equals(
+				role.getName(), DepotRolesConstants.DESIGN_LIBRARY_OWNER)) {
 
 			return false;
 		}
@@ -128,7 +141,9 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 				role.getName(), DepotRolesConstants.ASSET_LIBRARY_MEMBER) ||
 			Objects.equals(
 				role.getName(),
-				DepotRolesConstants.ASSET_LIBRARY_CONNECTED_SITE_MEMBER)) {
+				DepotRolesConstants.ASSET_LIBRARY_CONNECTED_SITE_MEMBER) ||
+			Objects.equals(
+				role.getName(), DepotRolesConstants.DESIGN_LIBRARY_MEMBER)) {
 
 			return true;
 		}
@@ -137,7 +152,8 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 	}
 
 	private static final String[] _EXCLUDED_ROLE_NAMES = {
-		DepotRolesConstants.ASSET_LIBRARY_OWNER
+		DepotRolesConstants.ASSET_LIBRARY_OWNER,
+		DepotRolesConstants.DESIGN_LIBRARY_OWNER
 	};
 
 	@Reference

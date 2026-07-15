@@ -5,6 +5,7 @@
 
 import {FrameLocator, Locator, Page, expect} from '@playwright/test';
 
+import {clickAndExpectToBeVisible} from '../../utils/clickAndExpectToBeVisible';
 import {getRandomInt} from '../../utils/getRandomInt';
 import {waitForAlert} from '../../utils/waitForAlert';
 
@@ -17,8 +18,8 @@ export class EditDigitalSalesRoomPage {
 	readonly commentSaveButton;
 	readonly commentsButton: Locator;
 	readonly commentTextarea: Locator;
-	readonly contributorRoleButton: Locator;
 	readonly contributorRoleInputButton: Locator;
+	readonly contributorRoleMenuItemButton: Locator;
 	readonly documentCard: (documentName: string) => Locator;
 	readonly documentGalleryCard: Locator;
 	readonly documentGalleryCardBadge: Locator;
@@ -68,11 +69,11 @@ export class EditDigitalSalesRoomPage {
 		this.commentTextarea = page.getByRole('textbox', {
 			name: 'Add comment.',
 		});
-		this.contributorRoleButton = page.getByRole('menuitem', {
-			name: 'Content Contributor',
-		});
 		this.contributorRoleInputButton = page.locator(
 			'[data-testid="roleKeyItem_Content Contributor"]'
+		);
+		this.contributorRoleMenuItemButton = page.locator(
+			'[data-testid="memberRoleKeyItem_Content Contributor"]'
 		);
 		this.documentCard = (documentName: string) =>
 			page.locator('.card-title', {hasText: documentName});
@@ -140,11 +141,21 @@ export class EditDigitalSalesRoomPage {
 	}
 
 	async uploadDocument(filePath: string) {
+		await clickAndExpectToBeVisible({
+			target: this.newButton,
+			trigger: this.documentsMenuItem,
+		});
+		await clickAndExpectToBeVisible({
+			target: this.fileUploadButton,
+			trigger: this.newButton,
+		});
+		await clickAndExpectToBeVisible({
+			target: this.selectFileButton,
+			trigger: this.fileUploadButton,
+		});
+
 		const fileChooserPromise = this.page.waitForEvent('filechooser');
 
-		await this.documentsMenuItem.click();
-		await this.newButton.click();
-		await this.fileUploadButton.click();
 		await this.selectFileButton.click();
 
 		const fileChooser = await fileChooserPromise;

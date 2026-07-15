@@ -6,7 +6,10 @@ import React from 'react';
 import {cleanup, render, screen} from '@testing-library/react';
 import {DndProvider} from 'react-dnd';
 import {FieldOwnerTypes} from 'shared/util/constants';
-import {getIndexFromPropertyName} from '../../utils/custom-inputs';
+import {
+	getIndexFromPropertyName,
+	getIndexFromPropertyNamePrefix
+} from '../../utils/custom-inputs';
 import {HTML5Backend} from 'react-dnd-html5-backend';
 import {List} from 'immutable';
 import {Property, PropertyGroup, PropertySubgroup} from 'shared/util/records';
@@ -309,19 +312,50 @@ describe('getDefaultValue', () => {
 		).toBe('true');
 	});
 
-	it('should return CustomValueMap with activityKey, day, operator and value for PropertyTypes.Behavior', () => {
+	it('should return a single-type CustomValueMap (applicationId, eventId, day, operator and value) for PropertyTypes.Behavior', () => {
 		const result = getDefaultValue(
-			new Property({name: 'myBehavior', type: PropertyTypes.Behavior})
+			new Property({name: 'download', type: PropertyTypes.Behavior})
 		);
 
+		// A behavior requires a type; it starts on the first the event supports
+		// (Download -> Document): applicationId eq 'Document' and eventId eq
+		// 'documentDownloaded'.
+
+		const applicationIdIdx = getIndexFromPropertyName(
+			result,
+			'applicationId'
+		);
+
+		expect(applicationIdIdx).toBeGreaterThanOrEqual(0);
 		expect(
-			getIndexFromPropertyName(result, 'activityKey')
-		).toBeGreaterThanOrEqual(0);
+			result.getIn(['criterionGroup', 'items', applicationIdIdx, 'value'])
+		).toBe('Document');
+
+		const eventIdIdx = getIndexFromPropertyName(result, 'eventId');
+
+		expect(eventIdIdx).toBeGreaterThanOrEqual(0);
+		expect(
+			result.getIn(['criterionGroup', 'items', eventIdIdx, 'value'])
+		).toBe('documentDownloaded');
+
 		expect(getIndexFromPropertyName(result, 'day')).toBeGreaterThanOrEqual(
 			0
 		);
 		expect(result.get('operator')).toBeTruthy();
 		expect(result.get('value')).toBe(1);
+
+		const attributeIdx = getIndexFromPropertyNamePrefix(
+			result,
+			'attribute/'
+		);
+
+		expect(attributeIdx).toBeGreaterThanOrEqual(0);
+		expect(
+			result.getIn(['criterionGroup', 'items', attributeIdx, 'propertyName'])
+		).toBe('attribute/');
+		expect(
+			result.getIn(['criterionGroup', 'items', attributeIdx, 'value'])
+		).toBe('');
 	});
 
 	it('should return CustomValueMap with eventId set to property name for PropertyTypes.Event', () => {

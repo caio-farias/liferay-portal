@@ -6,8 +6,15 @@
 package com.liferay.layout.content.page.editor.web.internal.display.context;
 
 import com.liferay.audiences.service.AudiencesEntryService;
+import com.liferay.fragment.model.FragmentEntry;
+import com.liferay.fragment.model.FragmentEntryLink;
+import com.liferay.fragment.service.FragmentEntryLinkLocalService;
 import com.liferay.layout.content.page.editor.constants.ContentPageEditorPortletKeys;
+import com.liferay.layout.content.page.editor.web.internal.util.layout.structure.LayoutStructureUtil;
 import com.liferay.layout.page.template.service.LayoutPageTemplateStructureRelElementVariationService;
+import com.liferay.layout.util.structure.FragmentStyledLayoutStructureItem;
+import com.liferay.layout.util.structure.LayoutStructure;
+import com.liferay.layout.util.structure.LayoutStructureItem;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
@@ -32,6 +39,8 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
+import com.liferay.segments.model.SegmentsExperienceAudienceEntryRel;
+import com.liferay.segments.service.SegmentsExperienceAudienceEntryRelLocalService;
 import com.liferay.segments.service.SegmentsExperienceService;
 
 import jakarta.portlet.PortletResponse;
@@ -40,6 +49,7 @@ import jakarta.portlet.WindowState;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -51,18 +61,25 @@ public class EditElementVariationsDisplayContext {
 
 	public EditElementVariationsDisplayContext(
 		AudiencesEntryService audiencesEntryService,
+		FragmentEntryLinkLocalService fragmentEntryLinkLocalService,
 		HttpServletRequest httpServletRequest,
 		LayoutLocalService layoutLocalService,
 		LayoutPageTemplateStructureRelElementVariationService
 			layoutPageTemplateStructureRelElementVariationService,
-		Portal portal, SegmentsExperienceService segmentsExperienceService) {
+		Portal portal,
+		SegmentsExperienceAudienceEntryRelLocalService
+			segmentsExperienceAudienceEntryRelLocalService,
+		SegmentsExperienceService segmentsExperienceService) {
 
 		_audiencesEntryService = audiencesEntryService;
+		_fragmentEntryLinkLocalService = fragmentEntryLinkLocalService;
 		_httpServletRequest = httpServletRequest;
 		_layoutLocalService = layoutLocalService;
 		_layoutPageTemplateStructureRelElementVariationService =
 			layoutPageTemplateStructureRelElementVariationService;
 		_portal = portal;
+		_segmentsExperienceAudienceEntryRelLocalService =
+			segmentsExperienceAudienceEntryRelLocalService;
 		_segmentsExperienceService = segmentsExperienceService;
 
 		_themeDisplay = (ThemeDisplay)httpServletRequest.getAttribute(
@@ -93,6 +110,8 @@ public class EditElementVariationsDisplayContext {
 		).put(
 			"experiences", _getSegmentsExperiences()
 		).put(
+			"itemNames", _getLayoutStructureItemNamesMap()
+		).put(
 			"locales", _getAvailableLocalesJSONArray()
 		).put(
 			"plid", _getPlid()
@@ -106,6 +125,11 @@ public class EditElementVariationsDisplayContext {
 			"redirect", getRedirect()
 		).put(
 			"selectedSegmentsExperienceId", _getSegmentsExperienceId()
+		).put(
+			"updateAudiencesPriorityURL",
+			_getActionURL(
+				"/layout_content_page_editor" +
+					"/update_segments_experience_audience_entry_rels")
 		).build();
 	}
 
@@ -184,18 +208,20 @@ public class EditElementVariationsDisplayContext {
 						_getPlid()),
 				layoutPageTemplateStructureRelElementVariation ->
 					HashMapBuilder.<String, Object>put(
-						"audienceEntryERC",
+						"active",
 						layoutPageTemplateStructureRelElementVariation.
-							getAudienceEntryERC()
+							isActive()
+					).put(
+						"audienceEntryERCs",
+						layoutPageTemplateStructureRelElementVariation.
+							getAudienceEntryERCs()
 					).put(
 						"externalReferenceCode",
 						layoutPageTemplateStructureRelElementVariation.
 							getExternalReferenceCode()
 					).put(
 						"hide",
-						LocalizedMapUtil.getLanguageIdMap(
-							layoutPageTemplateStructureRelElementVariation.
-								getHideMap())
+						layoutPageTemplateStructureRelElementVariation.getHide()
 					).put(
 						"html",
 						LocalizedMapUtil.getLanguageIdMap(
@@ -223,6 +249,59 @@ public class EditElementVariationsDisplayContext {
 			_log.error(exception);
 
 			return Collections.emptyList();
+		}
+	}
+
+	private Map<String, String> _getLayoutStructureItemNamesMap() {
+		try {
+			Map<String, String> layoutStructureItemNamesMap = new HashMap<>();
+
+			LayoutStructure layoutStructure =
+				LayoutStructureUtil.getLayoutStructure(
+					_themeDisplay.getScopeGroupId(), _getPlid(),
+					_getSegmentsExperienceId());
+
+			Map<Long, LayoutStructureItem> fragmentLayoutStructureItems =
+				layoutStructure.getFragmentLayoutStructureItems();
+
+			for (LayoutStructureItem layoutStructureItem :
+					fragmentLayoutStructureItems.values()) {
+
+				FragmentStyledLayoutStructureItem
+					fragmentStyledLayoutStructureItem =
+						(FragmentStyledLayoutStructureItem)layoutStructureItem;
+
+				String name = fragmentStyledLayoutStructureItem.getName();
+
+				if (Validator.isNull(name)) {
+					FragmentEntryLink fragmentEntryLink =
+						_fragmentEntryLinkLocalService.fetchFragmentEntryLink(
+							fragmentStyledLayoutStructureItem.
+								getFragmentEntryLinkId());
+
+					if (fragmentEntryLink != null) {
+						FragmentEntry fragmentEntry =
+							LayoutStructureUtil.getFragmentEntry(
+								fragmentEntryLink);
+
+						if (fragmentEntry != null) {
+							name = fragmentEntry.getName();
+						}
+					}
+				}
+
+				if (Validator.isNotNull(name)) {
+					layoutStructureItemNamesMap.put(
+						fragmentStyledLayoutStructureItem.getItemId(), name);
+				}
+			}
+
+			return layoutStructureItemNamesMap;
+		}
+		catch (Exception exception) {
+			_log.error(exception);
+
+			return Collections.emptyMap();
 		}
 	}
 
@@ -282,6 +361,14 @@ public class EditElementVariationsDisplayContext {
 				_segmentsExperienceService.getSegmentsExperiences(
 					_themeDisplay.getScopeGroupId(), _getPlid(), true),
 				segmentsExperience -> HashMapBuilder.<String, Object>put(
+					"audienceEntryERCs",
+					TransformUtil.transform(
+						_segmentsExperienceAudienceEntryRelLocalService.
+							getSegmentsExperienceAudienceEntryRels(
+								_themeDisplay.getScopeGroupId(),
+								segmentsExperience.getExternalReferenceCode()),
+						SegmentsExperienceAudienceEntryRel::getAudienceEntryERC)
+				).put(
 					"label",
 					segmentsExperience.getName(_themeDisplay.getLocale())
 				).put(
@@ -303,6 +390,7 @@ public class EditElementVariationsDisplayContext {
 		EditElementVariationsDisplayContext.class);
 
 	private final AudiencesEntryService _audiencesEntryService;
+	private final FragmentEntryLinkLocalService _fragmentEntryLinkLocalService;
 	private final HttpServletRequest _httpServletRequest;
 	private final LayoutLocalService _layoutLocalService;
 	private final LayoutPageTemplateStructureRelElementVariationService
@@ -310,6 +398,8 @@ public class EditElementVariationsDisplayContext {
 	private Long _plid;
 	private final Portal _portal;
 	private String _redirect;
+	private final SegmentsExperienceAudienceEntryRelLocalService
+		_segmentsExperienceAudienceEntryRelLocalService;
 	private Long _segmentsExperienceId;
 	private final SegmentsExperienceService _segmentsExperienceService;
 	private final ThemeDisplay _themeDisplay;

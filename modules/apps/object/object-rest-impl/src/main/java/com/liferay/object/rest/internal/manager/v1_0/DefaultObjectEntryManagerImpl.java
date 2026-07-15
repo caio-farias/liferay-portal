@@ -10,7 +10,8 @@ import com.liferay.depot.constants.DepotConstants;
 import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.model.DepotEntryModel;
 import com.liferay.depot.service.DepotEntryLocalService;
-import com.liferay.document.library.kernel.service.DLAppLocalService;
+import com.liferay.document.library.kernel.exception.NoSuchFileEntryException;
+import com.liferay.document.library.kernel.service.DLAppService;
 import com.liferay.exportimport.attachment.ExportImportAttachmentManager;
 import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.object.action.engine.ObjectActionEngine;
@@ -1916,8 +1917,10 @@ public class DefaultObjectEntryManagerImpl
 							serviceBuilderObjectEntry.getPrimaryKey(),
 							nestedObjectEntry.getId(),
 							ServiceContextUtil.createServiceContext(
-								objectDefinition.getCompanyId(), groupId,
-								nestedObjectEntry,
+								objectDefinition.getCompanyId(),
+								relatedObjectDefinition.
+									isEnableCategorization(),
+								groupId, nestedObjectEntry,
 								dtoConverterContext.getUserId()));
 					}
 
@@ -2142,6 +2145,7 @@ public class DefaultObjectEntryManagerImpl
 
 		return ServiceContextUtil.createServiceContext(
 			objectDefinition.getCompanyId(),
+			objectDefinition.isEnableCategorization(),
 			getGroupId(objectDefinition, scopeKey),
 			dtoConverterContext.getLocale(), modelPermissions, objectEntry,
 			objectEntryComments, dtoConverterContext.getUserId());
@@ -2310,6 +2314,36 @@ public class DefaultObjectEntryManagerImpl
 				}
 			),
 			dtoConverterContext.getUserId());
+	}
+
+	private com.liferay.portal.kernel.repository.model.FileEntry
+			_fetchServiceBuilderFileEntry(
+				FileEntry fileEntry, ObjectDefinition objectDefinition,
+				String scopeKey)
+		throws Exception {
+
+		try {
+			if (Validator.isNotNull(fileEntry.getExternalReferenceCode())) {
+				return _dlAppService.getFileEntryByExternalReferenceCode(
+					fileEntry.getExternalReferenceCode(),
+					_getFileEntryGroupId(
+						_getGroupExternalReferenceCode(fileEntry),
+						objectDefinition, scopeKey));
+			}
+
+			if (fileEntry.getId() != null) {
+				return _dlAppService.getFileEntry(fileEntry.getId());
+			}
+
+			return null;
+		}
+		catch (NoSuchFileEntryException noSuchFileEntryException) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(noSuchFileEntryException);
+			}
+
+			return null;
+		}
 	}
 
 	private String _getDateString(Date date) {
@@ -3163,7 +3197,7 @@ public class DefaultObjectEntryManagerImpl
 		if ((fileEntry == null) ||
 			((fileEntry.getExternalReferenceCode() == null) &&
 			 (fileEntry.getFileBase64() == null) &&
-			 (fileEntry.getFileURL() == null))) {
+			 (fileEntry.getFileURL() == null) && (fileEntry.getId() == null))) {
 
 			return 0;
 		}
@@ -3179,21 +3213,15 @@ public class DefaultObjectEntryManagerImpl
 				"File source " + fileSource + " is not supported");
 		}
 
-		if (Validator.isNotNull(fileEntry.getExternalReferenceCode())) {
-			com.liferay.portal.kernel.repository.model.FileEntry
-				serviceBuilderFileEntry =
-					_dlAppLocalService.fetchFileEntryByExternalReferenceCode(
-						_getFileEntryGroupId(
-							_getGroupExternalReferenceCode(fileEntry),
-							objectDefinition, scopeKey),
-						fileEntry.getExternalReferenceCode());
+		com.liferay.portal.kernel.repository.model.FileEntry
+			serviceBuilderFileEntry = _fetchServiceBuilderFileEntry(
+				fileEntry, objectDefinition, scopeKey);
 
-			if ((serviceBuilderFileEntry != null) &&
-				(objectField.getCompanyId() ==
-					serviceBuilderFileEntry.getCompanyId())) {
+		if ((serviceBuilderFileEntry != null) &&
+			(objectField.getCompanyId() ==
+				serviceBuilderFileEntry.getCompanyId())) {
 
-				return serviceBuilderFileEntry.getFileEntryId();
-			}
+			return serviceBuilderFileEntry.getFileEntryId();
 		}
 
 		byte[] fileContent = {};
@@ -3246,9 +3274,6 @@ public class DefaultObjectEntryManagerImpl
 
 			throw new IllegalArgumentException("File content is empty");
 		}
-
-		com.liferay.portal.kernel.repository.model.FileEntry
-			serviceBuilderFileEntry = null;
 
 		String groupExternalReferenceCode = _getGroupExternalReferenceCode(
 			fileEntry);
@@ -4115,7 +4140,7 @@ public class DefaultObjectEntryManagerImpl
 	private DepotEntryLocalService _depotEntryLocalService;
 
 	@Reference
-	private DLAppLocalService _dlAppLocalService;
+	private DLAppService _dlAppService;
 
 	@Reference
 	private DTOConverterRegistry _dtoConverterRegistry;

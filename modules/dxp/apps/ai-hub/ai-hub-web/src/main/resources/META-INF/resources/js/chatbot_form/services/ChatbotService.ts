@@ -30,8 +30,14 @@ async function disassociateChatbotFromAgentDefinition(
 	);
 }
 
-async function getChatbots() {
-	const response = await fetch(CHATBOT_BASE_URI, {
+async function getChatbotDefinitions(params?: Record<string, string>) {
+	const queryString = params ? new URLSearchParams(params).toString() : '';
+
+	const url = queryString
+		? `${CHATBOT_BASE_URI}?${queryString}`
+		: CHATBOT_BASE_URI;
+
+	const response = await fetch(url, {
 		headers: HEADERS,
 		method: 'GET',
 	});
@@ -43,7 +49,7 @@ async function getChatbots() {
 	return response.json();
 }
 
-async function getChatbot(externalReferenceCode: string) {
+async function getChatbotDefinition(externalReferenceCode: string) {
 	const response = await fetch(
 		`${CHATBOT_BY_ERC_URI}${externalReferenceCode}?nestedFields=agentDefinitionsToChatbots`,
 		{
@@ -59,7 +65,7 @@ async function getChatbot(externalReferenceCode: string) {
 	return response.json();
 }
 
-async function postChatbot(chatbot: Chatbot) {
+async function postChatbotDefinition(chatbot: Chatbot) {
 	const response = await fetch(CHATBOT_BASE_URI, {
 		body: JSON.stringify(chatbot),
 		headers: HEADERS,
@@ -75,7 +81,7 @@ async function postChatbot(chatbot: Chatbot) {
 	return response.json();
 }
 
-async function putChatbot(
+async function putChatbotDefinition(
 	existingExternalReferenceCode: string,
 	chatbot: Chatbot
 ) {
@@ -112,9 +118,9 @@ async function putChatbotAgentDefinitionRelationship(
 
 export {
 	disassociateChatbotFromAgentDefinition,
-	getChatbot,
-	getChatbots,
-	postChatbot,
-	putChatbot,
+	getChatbotDefinition,
+	getChatbotDefinitions,
+	postChatbotDefinition,
 	putChatbotAgentDefinitionRelationship,
+	putChatbotDefinition,
 };

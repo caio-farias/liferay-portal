@@ -10,6 +10,7 @@ import com.liferay.account.model.AccountEntry;
 import com.liferay.account.service.AccountEntryLocalService;
 import com.liferay.account.service.AccountEntryUserRelLocalService;
 import com.liferay.ai.hub.cell.configuration.AIHubCellConfiguration;
+import com.liferay.ai.hub.configuration.VertexAIConfiguration;
 import com.liferay.ai.hub.rest.dto.v1_0.Guardrail;
 import com.liferay.ai.hub.rest.manager.v1_0.GuardrailManager;
 import com.liferay.ai.hub.rest.resource.v1_0.test.util.SseEventSourceTestUtil;
@@ -25,6 +26,7 @@ import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
 import com.liferay.object.test.util.ObjectRelationshipTestUtil;
+import com.liferay.portal.configuration.test.util.CompanyConfigurationTemporarySwapper;
 import com.liferay.portal.configuration.test.util.ConfigurationTestUtil;
 import com.liferay.portal.kernel.encryptor.EncryptorUtil;
 import com.liferay.portal.kernel.json.JSONFactory;
@@ -50,6 +52,7 @@ import com.liferay.portal.kernel.test.util.HTTPTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.RoleTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
+import com.liferay.portal.kernel.test.util.TestPropsUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -244,6 +247,10 @@ public class AgentInstanceResourceTest
 			"ai-decision-node-with-tool-workflow-definition.json",
 			"AI Decision Node With Tool Workflow Definition");
 		_addAgentDefinitionObjectEntry(
+			"L_HTTP_REQUEST_NODE_WITH_LLM_NODE_WORKFLOW_DEFINITION", "text",
+			"http-request-node-with-llm-node-workflow-definition.json",
+			"HTTP Request Node With LLM Node Workflow Definition");
+		_addAgentDefinitionObjectEntry(
 			"L_LLM_NODE_WITH_RAG_WORKFLOW_DEFINITION", "userMessage",
 			"llm-node-with-rag-workflow-definition.json",
 			"LLM Node With RAG Workflow Definition");
@@ -293,19 +300,37 @@ public class AgentInstanceResourceTest
 	@Override
 	@Test
 	public void testPostAgentInstance() throws Exception {
-		_testPostAgentInstance();
-		_testPostAgentInstanceWithTypeAIDecisionNodeWithToolWorkflowDefinition();
-		_testPostAgentInstanceWithTypeAIDecisionNodeWorkflowDefinition();
-		_testPostAgentInstanceWithTypeAutoCategorize();
-		_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction();
-		_testPostAgentInstanceWithTypeGenerateTags();
-		_testPostAgentInstanceWithTypeLLMNodeWithRAGWorkflowDefinition();
-		_testPostAgentInstanceWithTypeLLMNodeWithRAGWorkflowDefinitionWithRestrictedUser();
-		_testPostAgentInstanceWithTypeLLMNodeWithToolWorkflowDefinition();
-		_testPostAgentInstanceWithTypeMakeShorter();
-		_testPostAgentInstanceWithTypeMakeShorterAndExhaustedQuota();
-		_testPostAgentInstanceWithTypeMakeShorterWithGuardrail();
-		_testPostAgentInstanceWithTypePageBuilder();
+		try (CompanyConfigurationTemporarySwapper
+				companyConfigurationTemporarySwapper =
+					new CompanyConfigurationTemporarySwapper(
+						TestPropsValues.getCompanyId(),
+						VertexAIConfiguration.class.getName(),
+						HashMapDictionaryBuilder.<String, Object>put(
+							"location", TestPropsUtil.get("vertex.ai.location")
+						).put(
+							"modelName",
+							TestPropsUtil.get("vertex.ai.model.name")
+						).put(
+							"projectId",
+							TestPropsUtil.get("vertex.ai.project.id")
+						).build())) {
+
+			_testPostAgentInstance();
+			_testPostAgentInstanceWithTypeAIDecisionNodeWithToolWorkflowDefinition();
+			_testPostAgentInstanceWithTypeAIDecisionNodeWorkflowDefinition();
+			_testPostAgentInstanceWithTypeAutoCategorize();
+			_testPostAgentInstanceWithTypeFixSpellingAndGrammarWithInstruction();
+			_testPostAgentInstanceWithTypeGenerateContent();
+			_testPostAgentInstanceWithTypeGenerateTags();
+			_testPostAgentInstanceWithTypeHTTPRequestNodeWithLLMNodeWorkflowDefinition();
+			_testPostAgentInstanceWithTypeLLMNodeWithRAGWorkflowDefinition();
+			_testPostAgentInstanceWithTypeLLMNodeWithRAGWorkflowDefinitionWithRestrictedUser();
+			_testPostAgentInstanceWithTypeLLMNodeWithToolWorkflowDefinition();
+			_testPostAgentInstanceWithTypeMakeShorter();
+			_testPostAgentInstanceWithTypeMakeShorterAndExhaustedQuota();
+			_testPostAgentInstanceWithTypeMakeShorterWithGuardrail();
+			_testPostAgentInstanceWithTypePageBuilder();
+		}
 	}
 
 	private static void _addAgentDefinitionObjectEntry(
@@ -349,7 +374,9 @@ public class AgentInstanceResourceTest
 	}
 
 	private static byte[] _getContentBytes(String fileName) throws Exception {
-		String content = _read(fileName);
+		String content = StringUtil.replace(
+			_read(fileName), "${portal.port}",
+			String.valueOf(PortalUtil.getPortalServerPort(false)));
 
 		return content.getBytes();
 	}
@@ -793,6 +820,42 @@ public class AgentInstanceResourceTest
 		SseUtil.closeAll();
 	}
 
+	private void _testPostAgentInstanceWithTypeGenerateContent()
+		throws Exception {
+
+		String data = _postAndAwaitAgentInstance(
+			"L_GENERATE_CONTENT",
+			JSONUtil.put(
+				"brief", "Liferay DXP"
+			).put(
+				"count", "1"
+			).put(
+				"objectDefinitionName", _objectDefinition.getName()
+			).put(
+				"objectFields",
+				JSONUtil.putAll(
+					JSONUtil.put(
+						"businessType", "LongText"
+					).put(
+						"name", "description"
+					).put(
+						"readOnly", "false"
+					),
+					JSONUtil.put(
+						"businessType", "Text"
+					).put(
+						"name", "name"
+					).put(
+						"readOnly", "false"
+					)
+				).toString()
+			).put(
+				"spaceId", String.valueOf(TestPropsValues.getGroupId())
+			));
+
+		_assertContains(data, "AI-generated", "L_CONTENTS", "Liferay");
+	}
+
 	private void _testPostAgentInstanceWithTypeGenerateTags() throws Exception {
 
 		// Propose new tags
@@ -848,6 +911,29 @@ public class AgentInstanceResourceTest
 		Assert.assertTrue(data, lowerCaseData.contains("neural networks"));
 
 		Assert.assertTrue(data, StringUtil.count(data, "confidence") <= 5);
+	}
+
+	private void _testPostAgentInstanceWithTypeHTTPRequestNodeWithLLMNodeWorkflowDefinition()
+		throws Exception {
+
+		CountDownLatch countDownLatch = new CountDownLatch(4);
+		List<String> lines = new ArrayList<>();
+
+		String sseEventSinkKey = SseEventSourceTestUtil.open(
+			List.of(countDownLatch), lines, "agent-instances/subscribe");
+
+		_postAgentInstance(
+			"L_HTTP_REQUEST_NODE_WITH_LLM_NODE_WORKFLOW_DEFINITION",
+			RandomTestUtil.randomString(), "text", sseEventSinkKey);
+
+		Assert.assertTrue(countDownLatch.await(60, TimeUnit.SECONDS));
+
+		Assert.assertEquals(lines.toString(), 4, lines.size());
+
+		_assertContains(
+			StringUtil.toLowerCase(lines.get(3)), "\"nodename\":\"llm\"");
+
+		SseUtil.closeAll();
 	}
 
 	private void _testPostAgentInstanceWithTypeLLMNodeWithRAGWorkflowDefinition()

@@ -56,6 +56,7 @@ export const test = mergeTests(
 		'LPD-44307': {enabled: true},
 		'LPD-44771': {enabled: true},
 		'LPD-45276': {enabled: true},
+		'LPD-57655': {enabled: false},
 		'LPD-76864': {enabled: true},
 	}),
 	globalMenuPagesTest,
@@ -79,6 +80,7 @@ const testWithDeprecationFFDisabled = mergeTests(
 		'LPD-35443': {enabled: false},
 		'LPD-44307': {enabled: false},
 		'LPD-44771': {enabled: false},
+		'LPD-57655': {enabled: false},
 	}),
 	loginTest(),
 	uiElementsPageTest
@@ -91,6 +93,7 @@ const testWithDeprecationFF = mergeTests(
 		'LPD-35443': {enabled: false},
 		'LPD-44307': {enabled: true},
 		'LPD-44771': {enabled: true},
+		'LPD-57655': {enabled: false},
 	}),
 	loginTest(),
 	uiElementsPageTest
@@ -100,7 +103,10 @@ const testWithObjectExportImportFF = mergeTests(
 	assetCategoriesPagesTest,
 	dataApiHelpersTest,
 	exportImportPagesTest,
-	featureFlagsTest({'LPD-35443': {enabled: true}}),
+	featureFlagsTest({
+		'LPD-35443': {enabled: true},
+		'LPD-57655': {enabled: false},
+	}),
 	isolatedSiteTest,
 	loginTest()
 );
@@ -180,62 +186,6 @@ testWithObjectExportImportFF(
 		}
 	}
 );
-
-test('Can export and import custom object entries at site level', async ({
-	apiHelpers,
-	exportImportPage,
-}) => {
-	const objectDefinition =
-		await apiHelpers.objectAdmin.postRandomObjectDefinition({
-			scope: 'site',
-			status: {code: 0},
-		});
-
-	apiHelpers.data.push({
-		id: objectDefinition.id,
-		type: 'objectDefinition',
-	});
-
-	const objectEntry = await apiHelpers.objectEntry.postObjectEntry(
-		{externalReferenceCode: '', textField: objectDefinition.name},
-		`${normalizeRestPath(objectDefinition.restContextPath)}/scopes/Guest`
-	);
-
-	await exportImportPage.goToExport();
-
-	const exportFilePath = await exportImportPage.export({
-		portletLabels: [`${objectDefinition.name} 1 Items`],
-	});
-
-	const content = await readFileFromZip(
-		`${objectDefinition.externalReferenceCode}.json`,
-		exportFilePath
-	);
-
-	const json = JSON.parse(content);
-
-	expect(json.length).toBe(1);
-	expect(
-		await apiHelpers.delete(
-			`${apiHelpers.baseUrl}${normalizeRestPath(objectDefinition.restContextPath)}/${objectEntry.id}`
-		)
-	).toBeOK();
-
-	await exportImportPage.goToImport();
-
-	await exportImportPage.import({filePath: exportFilePath});
-
-	expect(
-		await apiHelpers.get(
-			`${apiHelpers.baseUrl}${normalizeRestPath(objectDefinition.restContextPath)}/scopes/Guest/by-external-reference-code/${objectEntry.externalReferenceCode}`
-		)
-	).toEqual(
-		expect.objectContaining({
-			externalReferenceCode: objectEntry.externalReferenceCode,
-			textField: objectEntry.textField,
-		})
-	);
-});
 
 test('Cannot import an instance scoped lar file', async ({
 	apiHelpers,

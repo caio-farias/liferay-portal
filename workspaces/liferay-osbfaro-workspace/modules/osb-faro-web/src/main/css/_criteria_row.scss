@@ -57,6 +57,12 @@
 				}
 			}
 
+			.attribute-filter-box {
+				border: 1px solid $mainLighten65;
+				border-left-width: 3px;
+				border-radius: 4px;
+			}
+
 			.conjunction,
 			.entity-name,
 			.operator,
@@ -95,6 +101,10 @@
 				&:last-child {
 					margin-bottom: 0;
 				}
+			}
+
+			.form-group.page-asset-criteria {
+				flex-wrap: wrap;
 			}
 
 			.select-entity-group {

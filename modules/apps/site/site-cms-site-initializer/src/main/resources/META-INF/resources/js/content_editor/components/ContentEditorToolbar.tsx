@@ -198,7 +198,7 @@ export default function ContentEditorToolbar({
 
 		sessionStorage.removeItem(SUCCESS_MESSAGE_SESSION_KEY);
 
-		if (getForm()?.querySelector('.form-group.has-error')) {
+		if (getForm()?.querySelector('.alert-danger, .form-group.has-error')) {
 			return;
 		}
 
@@ -216,20 +216,13 @@ export default function ContentEditorToolbar({
 				<>
 					<Toolbar.Item>
 						<AIAssistantChat
-							getContext={() => ({})}
+							hideTriggerLabel
 							instructionDefinitionScope="cms"
+							triggerRound
 						/>
 					</Toolbar.Item>
 
-					<div
-						className="align-self-center"
-						style={{
-							borderColor: '#A7A9BC',
-							borderStyle: 'solid',
-							borderWidth: 1,
-							height: 16,
-						}}
-					/>
+					<div className="ai-assistant__separator" />
 				</>
 			)}
 

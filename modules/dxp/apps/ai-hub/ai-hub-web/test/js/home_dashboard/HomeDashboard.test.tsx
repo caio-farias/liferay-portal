@@ -11,7 +11,7 @@ import '@testing-library/jest-dom';
 import HomeDashboard from '../../../src/main/resources/META-INF/resources/js/home_dashboard/HomeDashboard';
 
 const mockGetAgentDefinitions = jest.fn();
-const mockGetChatbots = jest.fn();
+const mockGetChatbotDefinitions = jest.fn();
 
 jest.mock(
 	'../../../src/main/resources/META-INF/resources/js/agent_definition_form/services/AgentDefinitionService',
@@ -24,7 +24,8 @@ jest.mock(
 jest.mock(
 	'../../../src/main/resources/META-INF/resources/js/chatbot_form/services/ChatbotService',
 	() => ({
-		getChatbots: (...args: any[]) => mockGetChatbots(...args),
+		getChatbotDefinitions: (...args: any[]) =>
+			mockGetChatbotDefinitions(...args),
 	})
 );
 
@@ -42,6 +43,14 @@ const defaultProps = {
 	chatbotURL: 'http://localhost:8080/web/ai-hub/chatbot',
 	chatbotsURL: 'http://localhost:8080/web/ai-hub/chatbots',
 };
+
+function buildItems(prefix: string, count: number) {
+	return Array.from({length: count}, (_, index) => ({
+		active: true,
+		externalReferenceCode: `${prefix}_${index}`,
+		title: `${prefix} ${index}`,
+	}));
+}
 
 function getCardHref(title: string): string {
 	const link = screen.getByText(title).closest('a');
@@ -67,7 +76,7 @@ describe('HomeDashboard', () => {
 				},
 			],
 		});
-		mockGetChatbots.mockResolvedValue({items: []});
+		mockGetChatbotDefinitions.mockResolvedValue({items: []});
 
 		render(<HomeDashboard {...defaultProps} />);
 
@@ -89,7 +98,7 @@ describe('HomeDashboard', () => {
 				},
 			],
 		});
-		mockGetChatbots.mockResolvedValue({items: []});
+		mockGetChatbotDefinitions.mockResolvedValue({items: []});
 
 		render(<HomeDashboard {...defaultProps} />);
 
@@ -103,7 +112,7 @@ describe('HomeDashboard', () => {
 
 	it('never adds the workflow definition name to chatbot links', async () => {
 		mockGetAgentDefinitions.mockResolvedValue({items: []});
-		mockGetChatbots.mockResolvedValue({
+		mockGetChatbotDefinitions.mockResolvedValue({
 			items: [
 				{
 					active: true,
@@ -121,5 +130,58 @@ describe('HomeDashboard', () => {
 
 		expect(href).toContain('externalReferenceCode=L_SUPPORT_BOT');
 		expect(href).not.toContain('workflowDefinitionName');
+	});
+
+	it('requests the latest agents and chatbots sorted by modification date', async () => {
+		mockGetAgentDefinitions.mockResolvedValue({items: []});
+		mockGetChatbotDefinitions.mockResolvedValue({items: []});
+
+		render(<HomeDashboard {...defaultProps} />);
+
+		await waitFor(() => {
+			expect(mockGetAgentDefinitions).toHaveBeenCalledWith({
+				pageSize: '4',
+				sort: 'dateModified:desc',
+			});
+		});
+
+		expect(mockGetChatbotDefinitions).toHaveBeenCalledWith({
+			pageSize: '4',
+			sort: 'dateModified:desc',
+		});
+	});
+
+	it('renders up to four chatbots in the order returned by the server', async () => {
+		mockGetAgentDefinitions.mockResolvedValue({items: []});
+		mockGetChatbotDefinitions.mockResolvedValue({
+			items: buildItems('Chatbot', 5),
+		});
+
+		render(<HomeDashboard {...defaultProps} />);
+
+		await waitFor(() => {
+			expect(screen.getByText('Chatbot 0')).toBeInTheDocument();
+		});
+
+		expect(screen.getByText('Chatbot 1')).toBeInTheDocument();
+		expect(screen.getByText('Chatbot 2')).toBeInTheDocument();
+		expect(screen.getByText('Chatbot 3')).toBeInTheDocument();
+		expect(screen.queryByText('Chatbot 4')).not.toBeInTheDocument();
+	});
+
+	it('renders up to four agents', async () => {
+		mockGetAgentDefinitions.mockResolvedValue({
+			items: buildItems('Agent', 5),
+		});
+		mockGetChatbotDefinitions.mockResolvedValue({items: []});
+
+		render(<HomeDashboard {...defaultProps} />);
+
+		await waitFor(() => {
+			expect(screen.getByText('Agent 0')).toBeInTheDocument();
+		});
+
+		expect(screen.getByText('Agent 3')).toBeInTheDocument();
+		expect(screen.queryByText('Agent 4')).not.toBeInTheDocument();
 	});
 });

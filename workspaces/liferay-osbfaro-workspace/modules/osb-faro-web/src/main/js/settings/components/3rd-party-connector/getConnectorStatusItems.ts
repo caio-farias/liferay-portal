@@ -59,20 +59,11 @@ export function getInitialLogEntries(
 	entityCount: number
 ): ConnectorStatusItem[] {
 	if (status === ConnectorStatus.Disconnected) {
-		return [
-			DATA_SOURCE_DISCONNECTED,
-			INACTIVE_DATA_FLOW,
-			DATA_FLOW_ACTIVE,
-			LISTENING,
-		];
+		return [DATA_SOURCE_DISCONNECTED];
 	}
 
-	if (status === ConnectorStatus.Active) {
-		if (entityCount > 0) {
-			return [DATA_FLOW_ACTIVE, LISTENING, TOKEN_GENERATED];
-		}
-
-		return [LISTENING, TOKEN_GENERATED];
+	if (status === ConnectorStatus.Active && entityCount > 0) {
+		return [DATA_FLOW_ACTIVE, LISTENING, TOKEN_GENERATED];
 	}
 
 	if (entityCount > 0) {

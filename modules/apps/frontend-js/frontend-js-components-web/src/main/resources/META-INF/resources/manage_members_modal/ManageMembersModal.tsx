@@ -6,7 +6,7 @@
 import ClayModal from '@clayui/modal';
 import React from 'react';
 
-import {MembersList} from './MembersList';
+import {ManageMembersList} from './ManageMembersList';
 import {AddMembersInputApi, MembersConfig} from './types';
 
 import '../css/components/ManageMembersModal.scss';
@@ -33,7 +33,7 @@ export default function ManageMembersModal({
 	renderAddMembersInput,
 }: ManageMembersModalProps) {
 	return (
-		<div className="manage-member-modal">
+		<div>
 			<ClayModal.Header
 				closeButtonAriaLabel={Liferay.Language.get('close')}
 			>
@@ -41,7 +41,7 @@ export default function ManageMembersModal({
 			</ClayModal.Header>
 
 			<ClayModal.Body>
-				<MembersList
+				<ManageMembersList
 					config={config}
 					emptyStateDescription={emptyStateDescription}
 					externalReferenceCode={externalReferenceCode}

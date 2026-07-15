@@ -9,7 +9,7 @@ import {Property} from 'shared/util/records';
 import {PropertyTypes} from '../utils/constants';
 
 const TYPE_ICON_MAP = {
-	[PropertyTypes.Behavior]: 'web-content',
+	[PropertyTypes.Behavior]: 'ac_event_analysis',
 	[PropertyTypes.Boolean]: 'check',
 	[PropertyTypes.AccountDate]: 'date',
 	[PropertyTypes.AccountNumber]: 'integer',
@@ -40,7 +40,7 @@ const TYPE_ICON_MAP = {
  * @param {Object} props Component's current props
  * @returns {Object} The props to be passed to the drop target.
  */
-const beginDrag = ({
+export const beginDrag = ({
 	defaultValue,
 	name,
 	property,
@@ -59,17 +59,11 @@ const beginDrag = ({
 
 	if (type === PropertyTypes.Behavior) {
 		touched = {asset: false, dateFilter: false, occurenceCount: false};
-		valid = {asset: false, dateFilter: true, occurenceCount: true};
+		valid = {asset: true, dateFilter: true, occurenceCount: true};
 	}
 	else if (type === PropertyTypes.Event) {
-		touched = {
-			attributeValue: false,
-			occurenceCount: false,
-		};
-		valid = {
-			attributeValue: false,
-			occurenceCount: true,
-		};
+		touched = {occurenceCount: false};
+		valid = {occurenceCount: true};
 	}
 	else if (type === PropertyTypes.SessionGeolocation) {
 		touched = {country: false, dateFilter: false};
@@ -152,7 +146,7 @@ export class CriteriaSidebarItem extends React.Component<ICriteriaSidebarItemPro
 					</span>
 				</span>
 
-				{label}
+				<span className="criteria-sidebar-item-label">{label}</span>
 			</li>
 		);
 	}

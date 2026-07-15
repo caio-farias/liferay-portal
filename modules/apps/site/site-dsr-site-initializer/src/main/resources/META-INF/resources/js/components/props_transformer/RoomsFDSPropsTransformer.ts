@@ -141,13 +141,7 @@ export default function RoomsFDSPropsTransformer({
 		itemsActions: itemsActions.map((action) => {
 			const id = action?.data?.id;
 
-			if (
-				id === 'archive' ||
-				id === 'duplicate' ||
-				id === 'edit' ||
-				id === 'settings' ||
-				id === 'share'
-			) {
+			if (id === 'archive' || id === 'edit' || id === 'settings') {
 				return {
 					...action,
 					isVisible: (item: IRoomObjectEntry) =>
@@ -159,8 +153,6 @@ export default function RoomsFDSPropsTransformer({
 				return {
 					...action,
 					className: 'text-danger',
-					isVisible: (item: IRoomObjectEntry) =>
-						item?.roomStatus === ROOM_STATUS.INACTIVE,
 				};
 			}
 
@@ -169,6 +161,18 @@ export default function RoomsFDSPropsTransformer({
 					...action,
 					isVisible: (item: IRoomObjectEntry) =>
 						item?.roomStatus === ROOM_STATUS.INACTIVE,
+				};
+			}
+
+			if (id === 'view') {
+				return {
+					...action,
+					isVisible: (item: IRoomObjectEntry) =>
+						item?.roomStatus === ROOM_STATUS.ACTIVE ||
+						additionalProps.companyAdmin ||
+						additionalProps.ownedSiteIds?.includes(
+							String(item?.siteId)
+						),
 				};
 			}
 
@@ -295,6 +299,9 @@ export default function RoomsFDSPropsTransformer({
 					}) =>
 						RoomShare({
 							closeModal,
+							readOnly:
+								itemData.roomStatus === ROOM_STATUS.INACTIVE &&
+								!additionalProps.companyAdmin,
 							roomId: itemData.id,
 						}),
 					size: 'lg',

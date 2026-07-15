@@ -76,6 +76,7 @@ import com.liferay.portal.kernel.model.LayoutSetPrototype;
 import com.liferay.portal.kernel.model.ModelHintsUtil;
 import com.liferay.portal.kernel.model.ModelListener;
 import com.liferay.portal.kernel.model.Organization;
+import com.liferay.portal.kernel.model.PersistedModel;
 import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.model.ResourceAction;
 import com.liferay.portal.kernel.model.ResourceConstants;
@@ -111,6 +112,7 @@ import com.liferay.portal.kernel.service.LayoutSetBranchLocalService;
 import com.liferay.portal.kernel.service.LayoutSetLocalService;
 import com.liferay.portal.kernel.service.MembershipRequestLocalService;
 import com.liferay.portal.kernel.service.OrganizationLocalService;
+import com.liferay.portal.kernel.service.PersistedModelLocalService;
 import com.liferay.portal.kernel.service.PortletLocalService;
 import com.liferay.portal.kernel.service.PortletPreferencesLocalService;
 import com.liferay.portal.kernel.service.ResourceActionLocalService;
@@ -135,7 +137,7 @@ import com.liferay.portal.kernel.service.persistence.RolePersistence;
 import com.liferay.portal.kernel.service.persistence.UserGroupPersistence;
 import com.liferay.portal.kernel.service.persistence.UserPersistence;
 import com.liferay.portal.kernel.transaction.Propagation;
-import com.liferay.portal.kernel.transaction.TransactionCommitCallbackUtil;
+import com.liferay.portal.kernel.transaction.TransactionCallbackUtil;
 import com.liferay.portal.kernel.transaction.Transactional;
 import com.liferay.portal.kernel.tree.TreeModelTasksAdapter;
 import com.liferay.portal.kernel.tree.TreePathUtil;
@@ -170,6 +172,7 @@ import com.liferay.portal.kernel.util.comparator.GroupNameComparator;
 import com.liferay.portal.model.impl.GroupModelImpl;
 import com.liferay.portal.model.impl.LayoutImpl;
 import com.liferay.portal.security.permission.PermissionCacheUtil;
+import com.liferay.portal.service.PersistedModelLocalServiceRegistryUtil;
 import com.liferay.portal.service.base.GroupLocalServiceBaseImpl;
 import com.liferay.portal.service.http.ClassNameServiceHttp;
 import com.liferay.portal.service.http.GroupServiceHttp;
@@ -1202,6 +1205,27 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 				for (ResourcePermission resourcePermission :
 						resourcePermissions) {
 
+					String name = resourcePermission.getName();
+
+					if ((resourcePermission.getScope() ==
+							ResourceConstants.SCOPE_INDIVIDUAL) &&
+						!name.equals(Group.class.getName())) {
+
+						PersistedModelLocalService persistedModelLocalService =
+							PersistedModelLocalServiceRegistryUtil.
+								getPersistedModelLocalService(name);
+
+						if (persistedModelLocalService != null) {
+							PersistedModel persistedModel =
+								persistedModelLocalService.fetchPersistedModel(
+									group.getGroupId());
+
+							if (persistedModel != null) {
+								continue;
+							}
+						}
+					}
+
 					_resourcePermissionLocalService.deleteResourcePermission(
 						resourcePermission);
 				}
@@ -1212,7 +1236,7 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 				long[] userIds = getUserPrimaryKeys(group.getGroupId());
 
 				if (ArrayUtil.isNotEmpty(userIds)) {
-					TransactionCommitCallbackUtil.registerCallback(
+					TransactionCallbackUtil.registerCommitCallback(
 						() -> {
 							reindex(companyId, userIds);
 
@@ -1595,10 +1619,16 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 	public Group fetchUserPersonalSiteGroup(long companyId)
 		throws PortalException {
 
+		User user = _userLocalService.fetchGuestUser(companyId);
+
+		if (user == null) {
+			return null;
+		}
+
 		return groupPersistence.fetchByC_C_C(
 			companyId,
 			_classNameLocalService.getClassNameId(UserPersonalSite.class),
-			_userLocalService.getGuestUserId(companyId));
+			user.getUserId());
 	}
 
 	@Override
@@ -3973,7 +4003,7 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 
 			long companyId = group.getCompanyId();
 
-			TransactionCommitCallbackUtil.registerCallback(
+			TransactionCallbackUtil.registerCommitCallback(
 				() -> {
 					reindex(companyId, getUserPrimaryKeys(groupId));
 
@@ -4918,7 +4948,7 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 		if (ArrayUtil.isNotEmpty(userIds)) {
 			long companyId = organization.getCompanyId();
 
-			TransactionCommitCallbackUtil.registerCallback(
+			TransactionCallbackUtil.registerCommitCallback(
 				() -> {
 					reindex(companyId, userIds);
 
@@ -4938,7 +4968,7 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 		if (ArrayUtil.isNotEmpty(userIds)) {
 			long companyId = userGroup.getCompanyId();
 
-			TransactionCommitCallbackUtil.registerCallback(
+			TransactionCallbackUtil.registerCommitCallback(
 				() -> {
 					reindex(companyId, userIds);
 					reindexUserGroup(userGroupId);
@@ -5468,7 +5498,7 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 			return;
 		}
 
-		TransactionCommitCallbackUtil.registerCallback(
+		TransactionCallbackUtil.registerCommitCallback(
 			() -> {
 				ClusterRequest clusterRequest =
 					ClusterRequest.createMulticastRequest(

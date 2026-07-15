@@ -6,6 +6,7 @@
 package com.liferay.ai.hub.internal.workflow.kaleo.runtime.node;
 
 import com.liferay.ai.hub.internal.workflow.kaleo.runtime.node.util.KaleoNodeSettingUtil;
+import com.liferay.ai.hub.internal.workflow.kaleo.runtime.node.util.OAuth2ApplicationHomePageURLResolverUtil;
 import com.liferay.ai.hub.internal.workflow.kaleo.runtime.node.util.VariablesUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.encryptor.EncryptorUtil;
@@ -16,6 +17,7 @@ import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.Http;
+import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.workflow.kaleo.definition.NodeType;
 import com.liferay.portal.workflow.kaleo.model.KaleoInstanceToken;
@@ -66,6 +68,11 @@ public class HTTPRequestNodeExecutor extends BaseNodeExecutor {
 		Map<String, Serializable> workflowContext =
 			executionContext.getWorkflowContext();
 
+		workflowContext.put(
+			"aiHubCellLiferayDXPURL",
+			OAuth2ApplicationHomePageURLResolverUtil.resolve(
+				MapUtil.getLong(workflowContext, "oAuth2ApplicationId")));
+
 		try {
 			KaleoInstanceToken kaleoInstanceToken =
 				executionContext.getKaleoInstanceToken();
@@ -75,11 +82,11 @@ public class HTTPRequestNodeExecutor extends BaseNodeExecutor {
 			Company company = _companyLocalService.getCompany(
 				kaleoInstanceToken.getCompanyId());
 
-			options.addHeader(
-				HttpHeaders.AUTHORIZATION,
-				EncryptorUtil.decrypt(
-					company.getKeyObj(),
-					GetterUtil.getString(workflowContext.get("userToken"))));
+			String userToken = EncryptorUtil.decrypt(
+				company.getKeyObj(),
+				GetterUtil.getString(workflowContext.get("userToken")));
+
+			options.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + userToken);
 
 			String requestBody = VariablesUtil.applyInputVariables(
 				executionContext, "requestBody", kaleoNodeSettingValues);
@@ -126,31 +133,22 @@ public class HTTPRequestNodeExecutor extends BaseNodeExecutor {
 
 			throw new PortalException(exception);
 		}
+
+		KaleoTransition kaleoTransition =
+			currentKaleoNode.getDefaultKaleoTransition();
+
+		remainingPathElements.add(
+			new PathElement(
+				currentKaleoNode, kaleoTransition.getTargetKaleoNode(),
+				new ExecutionContext(
+					executionContext.getKaleoInstanceToken(), workflowContext,
+					executionContext.getServiceContext())));
 	}
 
 	@Override
 	protected void doExit(
-			KaleoNode currentKaleoNode, ExecutionContext executionContext,
-			List<PathElement> remainingPathElements)
-		throws PortalException {
-
-		KaleoTransition kaleoTransition = null;
-
-		if (Validator.isNull(executionContext.getTransitionName())) {
-			kaleoTransition = currentKaleoNode.getDefaultKaleoTransition();
-		}
-		else {
-			kaleoTransition = currentKaleoNode.getKaleoTransition(
-				executionContext.getTransitionName());
-		}
-
-		remainingPathElements.add(
-			new PathElement(
-				null, kaleoTransition.getTargetKaleoNode(),
-				new ExecutionContext(
-					executionContext.getKaleoInstanceToken(),
-					executionContext.getWorkflowContext(),
-					executionContext.getServiceContext())));
+		KaleoNode currentKaleoNode, ExecutionContext executionContext,
+		List<PathElement> remainingPathElements) {
 	}
 
 	@Reference

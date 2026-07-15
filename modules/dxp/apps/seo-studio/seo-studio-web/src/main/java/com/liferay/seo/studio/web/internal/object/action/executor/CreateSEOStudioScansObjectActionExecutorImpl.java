@@ -9,14 +9,17 @@ import com.liferay.object.action.executor.BaseObjectActionExecutor;
 import com.liferay.object.action.executor.ObjectActionExecutor;
 import com.liferay.object.constants.ObjectEntryFolderConstants;
 import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.scope.ObjectDefinitionScoped;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectEntryLocalService;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -74,45 +77,79 @@ public class CreateSEOStudioScansObjectActionExecutorImpl
 			return;
 		}
 
-		ObjectDefinition objectDefinition =
+		List<String> enabledEngineKeys = TransformUtil.transform(
+			enginesJSONObject.keySet(),
+			engineKey -> {
+				JSONObject engineJSONObject = enginesJSONObject.getJSONObject(
+					engineKey);
+
+				if ((engineJSONObject != null) &&
+					engineJSONObject.getBoolean("enabled")) {
+
+					return engineKey;
+				}
+
+				return null;
+			});
+
+		if (ListUtil.isEmpty(enabledEngineKeys)) {
+			return;
+		}
+
+		long accountEntryId = GetterUtil.getLong(
+			values.get("r_accountToSEOStudioDomains_accountEntryId"));
+		ObjectDefinition seoStudioScanRunObjectDefinition =
 			_objectDefinitionLocalService.
 				getObjectDefinitionByExternalReferenceCode(
-					"L_SEO_STUDIO_SCAN", companyId);
+					"L_SEO_STUDIO_SCAN_RUN", companyId);
 
 		ServiceContext serviceContext = new ServiceContext();
 
 		serviceContext.setCompanyId(companyId);
 		serviceContext.setUserId(userId);
 
-		for (String engineKey : enginesJSONObject.keySet()) {
+		ObjectEntry objectEntry = _objectEntryLocalService.addObjectEntry(
+			0, userId, seoStudioScanRunObjectDefinition.getObjectDefinitionId(),
+			ObjectEntryFolderConstants.PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
+			null,
+			HashMapBuilder.<String, Serializable>put(
+				"name", GetterUtil.getString(values.get("hostname"))
+			).put(
+				"r_accountToSEOStudioScanRuns_accountEntryId", accountEntryId
+			).put(
+				"r_seoStudioDomainToSEOStudioScanRuns_seoStudioDomainId",
+				seoStudioDomainId
+			).put(
+				"requestDate", new Date()
+			).put(
+				"state", "running"
+			).put(
+				"triggeredBy", "manual"
+			).put(
+				"triggeringUserId", userId
+			).build(),
+			serviceContext);
+
+		ObjectDefinition seoStudioScanObjectDefinition =
+			_objectDefinitionLocalService.
+				getObjectDefinitionByExternalReferenceCode(
+					"L_SEO_STUDIO_SCAN", companyId);
+
+		for (String engineKey : enabledEngineKeys) {
 			JSONObject engineJSONObject = enginesJSONObject.getJSONObject(
 				engineKey);
 
-			if ((engineJSONObject == null) ||
-				!engineJSONObject.getBoolean("enabled")) {
-
-				continue;
-			}
-
 			_objectEntryLocalService.addObjectEntry(
-				0, userId, objectDefinition.getObjectDefinitionId(),
+				0, userId,
+				seoStudioScanObjectDefinition.getObjectDefinitionId(),
 				ObjectEntryFolderConstants.
 					PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
 				null,
 				HashMapBuilder.<String, Serializable>put(
-					"name",
-					engineKey + " - " +
-						GetterUtil.getString(values.get("hostname"))
+					"r_accountToSEOStudioScans_accountEntryId", accountEntryId
 				).put(
-					"r_accountToSEOStudioScans_accountEntryId",
-					GetterUtil.getLong(
-						values.get(
-							"r_accountToSEOStudioDomains_accountEntryId"))
-				).put(
-					"r_seoStudioDomainToSEOStudioScans_seoStudioDomainId",
-					seoStudioDomainId
-				).put(
-					"requestDate", new Date()
+					"r_seoStudioScanRunToSEOStudioScans_seoStudioScanRunId",
+					objectEntry.getObjectEntryId()
 				).put(
 					"scanRange", "full"
 				).put(
@@ -130,10 +167,6 @@ public class CreateSEOStudioScansObjectActionExecutorImpl
 
 						return scopeConfigJSONObject.toString();
 					}
-				).put(
-					"triggeredBy", "manual"
-				).put(
-					"triggeringUserId", userId
 				).build(),
 				serviceContext);
 		}

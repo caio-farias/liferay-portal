@@ -21,10 +21,10 @@ import {getAgentDefinitions} from '../agent_definition_form/services/AgentDefini
 import Toolbar from '../components/ToolBar';
 import {
 	disassociateChatbotFromAgentDefinition,
-	getChatbot,
-	postChatbot,
-	putChatbot,
+	getChatbotDefinition,
+	postChatbotDefinition,
 	putChatbotAgentDefinitionRelationship,
+	putChatbotDefinition,
 } from './services/ChatbotService';
 import {Chatbot} from './types/Chatbot';
 
@@ -135,7 +135,6 @@ export default function ChatbotForm({
 		originalSelectedAgentDefinitions,
 		setOriginalSelectedAgentDefinitions,
 	] = useState<AgentDefinitionOption[]>([]);
-	const [avatarChanged, setAvatarChanged] = useState(false);
 	const [avatarLoading, setAvatarLoading] = useState(false);
 	const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -214,8 +213,6 @@ export default function ChatbotForm({
 				},
 				avatarFileName: file.name,
 			}));
-
-			setAvatarChanged(true);
 		}
 		catch (error) {
 			openToast({
@@ -238,8 +235,6 @@ export default function ChatbotForm({
 			avatar: null,
 			avatarFileName: undefined,
 		}));
-
-		setAvatarChanged(true);
 	};
 
 	const handleCopyEmbedCode = () => {
@@ -258,27 +253,27 @@ export default function ChatbotForm({
 
 	const handleSubmit = async () => {
 		try {
-			const {avatar, ...rest} = formData;
-
 			const payload = {
-				...rest,
+				...formData,
 				r_accountToAIHubChatbots_accountEntryERC:
 					accountEntryExternalReferenceCode,
 				title:
 					formData.title_i18n?.['en_US'] ||
 					Object.values(formData.title_i18n ?? {})[0] ||
 					'',
-				...(avatarChanged && {avatar}),
 			};
 
 			let chatbotExternalReferenceCode =
 				existingChatbotExternalReferenceCode;
 
 			if (existingChatbotExternalReferenceCode) {
-				await putChatbot(existingChatbotExternalReferenceCode, payload);
+				await putChatbotDefinition(
+					existingChatbotExternalReferenceCode,
+					payload
+				);
 			}
 			else {
-				const created = await postChatbot(payload);
+				const created = await postChatbotDefinition(payload);
 
 				chatbotExternalReferenceCode = created.externalReferenceCode;
 
@@ -325,8 +320,6 @@ export default function ChatbotForm({
 
 			setOriginalSelectedAgentDefinitions(selectedAgentDefinitions);
 
-			setAvatarChanged(false);
-
 			openToast({
 				message: Liferay.Language.get('chatbot-was-saved-successfully'),
 				type: 'success',
@@ -361,38 +354,47 @@ export default function ChatbotForm({
 
 				setSelectedAgentDefinitions([]);
 				setOriginalSelectedAgentDefinitions([]);
-				setAvatarChanged(false);
 
 				return;
 			}
 
 			try {
-				const chatbot = await getChatbot(externalReferenceCode);
+				const chatbotDefinition = await getChatbotDefinition(
+					externalReferenceCode
+				);
 
 				const avatarAttachment =
-					chatbot.avatar && typeof chatbot.avatar === 'object'
-						? chatbot.avatar
+					chatbotDefinition.avatar &&
+					typeof chatbotDefinition.avatar === 'object'
+						? chatbotDefinition.avatar
 						: null;
 
 				setFormData({
-					active: chatbot.active ?? false,
+					active: chatbotDefinition.active ?? false,
 					avatar: avatarAttachment
-						? avatarAttachment.id
-						: chatbot.avatar,
+						? {
+								externalReferenceCode:
+									avatarAttachment.externalReferenceCode,
+							}
+						: chatbotDefinition.avatar,
 					avatarFileName: avatarAttachment?.name,
-					description: chatbot.description,
-					disclaimerMessage_i18n: chatbot.disclaimerMessage_i18n,
-					externalReferenceCode: chatbot.externalReferenceCode,
-					introMessage_i18n: chatbot.introMessage_i18n,
-					notificationMessage_i18n: chatbot.notificationMessage_i18n,
-					placeholderMessage_i18n: chatbot.placeholderMessage_i18n,
+					description: chatbotDefinition.description,
+					disclaimerMessage_i18n:
+						chatbotDefinition.disclaimerMessage_i18n,
+					externalReferenceCode:
+						chatbotDefinition.externalReferenceCode,
+					introMessage_i18n: chatbotDefinition.introMessage_i18n,
+					notificationMessage_i18n:
+						chatbotDefinition.notificationMessage_i18n,
+					placeholderMessage_i18n:
+						chatbotDefinition.placeholderMessage_i18n,
 					r_accountToAIHubChatbots_accountEntryERC:
-						chatbot.r_accountToAIHubChatbots_accountEntryERC,
-					title_i18n: chatbot.title_i18n,
+						chatbotDefinition.r_accountToAIHubChatbots_accountEntryERC,
+					title_i18n: chatbotDefinition.title_i18n,
 				});
 
 				const agentDefinitions = (
-					chatbot.agentDefinitionsToChatbots ?? []
+					chatbotDefinition.agentDefinitionsToChatbots ?? []
 				).map((a: {externalReferenceCode: string; title: string}) => ({
 					externalReferenceCode: a.externalReferenceCode,
 					title: a.title,
@@ -400,7 +402,6 @@ export default function ChatbotForm({
 
 				setSelectedAgentDefinitions(agentDefinitions);
 				setOriginalSelectedAgentDefinitions(agentDefinitions);
-				setAvatarChanged(false);
 			}
 			catch (error) {
 				openToast({

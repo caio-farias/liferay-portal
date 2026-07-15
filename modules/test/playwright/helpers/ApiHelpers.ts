@@ -77,6 +77,7 @@ import {JSONWebServicesMBApiHelper} from './json-web-services/JSONWebServicesMBA
 import {JSONWebServicesOSBAsahApiHelper} from './json-web-services/JSONWebServicesOSBAsahApiHelper';
 import {JSONWebServicesOSBFaroApiHelper} from './json-web-services/JSONWebServicesOSBFaroApiHelper';
 import {JSONWebServicesResourcePermissionApiHelper} from './json-web-services/JSONWebServicesResourcePermissionApiHelper';
+import {JSONWebServicesRoleApiHelper} from './json-web-services/JSONWebServicesRoleApiHelper';
 import {JSONWebServicesSegmentsEntryApiHelper} from './json-web-services/JSONWebServicesSegmentsEntryApiHelper';
 import {JSONWebServicesSiteNavigationMenuApiHelper} from './json-web-services/JSONWebServicesSiteNavigationMenuApiHelper';
 import {JSONWebServicesStagingApiHelper} from './json-web-services/JSONWebServicesStagingApiHelper';
@@ -87,6 +88,7 @@ import {JSONWebServicesUserGroupApiHelper} from './json-web-services/JSONWebServ
 type ContentType = 'application/json' | 'application/x-www-form-urlencoded';
 
 type TDataApiHelpersData = {
+	applicationName?: string;
 	id: any;
 	type: string;
 };
@@ -177,6 +179,7 @@ export class ApiHelpers {
 	readonly jsonWebServicesOSBAsah: JSONWebServicesOSBAsahApiHelper;
 	readonly jsonWebServicesOSBFaro: JSONWebServicesOSBFaroApiHelper;
 	readonly jsonWebServicesResourcePermissionApiHelper: JSONWebServicesResourcePermissionApiHelper;
+	readonly jsonWebServicesRole: JSONWebServicesRoleApiHelper;
 	readonly jsonWebServicesSegmentsEntry: JSONWebServicesSegmentsEntryApiHelper;
 	readonly jsonWebServicesSiteNavigationMenu: JSONWebServicesSiteNavigationMenuApiHelper;
 	readonly jsonWebServicesStaging: JSONWebServicesStagingApiHelper;
@@ -290,6 +293,7 @@ export class ApiHelpers {
 		this.jsonWebServicesOSBAsah = new JSONWebServicesOSBAsahApiHelper(this);
 		this.jsonWebServicesResourcePermissionApiHelper =
 			new JSONWebServicesResourcePermissionApiHelper(this);
+		this.jsonWebServicesRole = new JSONWebServicesRoleApiHelper(this);
 		this.jsonWebServicesSegmentsEntry =
 			new JSONWebServicesSegmentsEntryApiHelper(this);
 		this.jsonWebServicesSiteNavigationMenu =
@@ -561,38 +565,13 @@ export class DataApiHelpers extends ApiHelpers {
 				await objectActionAPIClient.deleteObjectAction(item.id);
 			}
 			else if (item.type === 'objectDefinition') {
-				const objectDefinitionAPIClient =
-					await this.buildRestClient(ObjectDefinitionAPI);
-
-				const {body: objectDefinition} =
-					await objectDefinitionAPIClient.getObjectDefinition(
-						item.id
-					);
-
-				const objectRelationshipRESTClient = await this.buildRestClient(
-					ObjectRelationshipAPI
+				await this.deleteObjectDefinition(item.id);
+			}
+			else if (item.type === 'objectEntry') {
+				await this.objectEntry.deleteObjectEntry(
+					item.applicationName!,
+					item.id
 				);
-
-				// Check if there are edge relationship and update them before removing the definition
-
-				const {body: objectRelationships} =
-					await objectRelationshipRESTClient.getObjectDefinitionByExternalReferenceCodeObjectRelationshipsPage(
-						objectDefinition.externalReferenceCode
-					);
-
-				for (const objectRelationship of objectRelationships.items) {
-					if (objectRelationship.edge) {
-						await objectRelationshipRESTClient.putObjectRelationship(
-							objectRelationship.id,
-							{
-								...objectRelationship,
-								edge: false,
-							}
-						);
-					}
-				}
-
-				await objectDefinitionAPIClient.deleteObjectDefinition(item.id);
 			}
 			else if (item.type === 'objectFolder') {
 				const objectFolderRESTClient =
@@ -772,6 +751,94 @@ export class DataApiHelpers extends ApiHelpers {
 					item.id
 				);
 			}
+		}
+	}
+
+	async collectObjectDefinitionIds(
+		objectDefinitionId: number,
+		objectDefinitionIds: number[],
+		visitedObjectDefinitionIds: Set<number>
+	) {
+		if (visitedObjectDefinitionIds.has(objectDefinitionId)) {
+			return;
+		}
+
+		visitedObjectDefinitionIds.add(objectDefinitionId);
+
+		const objectDefinitionAPIClient =
+			await this.buildRestClient(ObjectDefinitionAPI);
+
+		const {body: objectDefinition} =
+			await objectDefinitionAPIClient.getObjectDefinition(
+				objectDefinitionId
+			);
+
+		const objectRelationshipAPIClient = await this.buildRestClient(
+			ObjectRelationshipAPI
+		);
+
+		const {body: objectRelationships} =
+			await objectRelationshipAPIClient.getObjectDefinitionByExternalReferenceCodeObjectRelationshipsPage(
+				objectDefinition.externalReferenceCode
+			);
+
+		const isCMSObjectDefinition =
+			objectDefinition.objectFolderExternalReferenceCode?.startsWith(
+				'L_CMS'
+			);
+
+		for (const objectRelationship of objectRelationships.items) {
+			if (!objectRelationship.edge) {
+				continue;
+			}
+
+			if (
+				isCMSObjectDefinition &&
+				objectRelationship.objectDefinitionId2
+			) {
+				const {body: relatedObjectDefinition} =
+					await objectDefinitionAPIClient.getObjectDefinition(
+						objectRelationship.objectDefinitionId2
+					);
+
+				if (
+					relatedObjectDefinition.objectFolderExternalReferenceCode ===
+					'L_CMS_STRUCTURE_REPEATABLE_GROUPS'
+				) {
+					await this.collectObjectDefinitionIds(
+						objectRelationship.objectDefinitionId2,
+						objectDefinitionIds,
+						visitedObjectDefinitionIds
+					);
+				}
+			}
+
+			await objectRelationshipAPIClient.putObjectRelationship(
+				objectRelationship.id,
+				{
+					...objectRelationship,
+					edge: false,
+				}
+			);
+		}
+
+		objectDefinitionIds.push(objectDefinitionId);
+	}
+
+	async deleteObjectDefinition(objectDefinitionId: number) {
+		const objectDefinitionAPIClient =
+			await this.buildRestClient(ObjectDefinitionAPI);
+
+		const objectDefinitionIds: number[] = [];
+
+		await this.collectObjectDefinitionIds(
+			objectDefinitionId,
+			objectDefinitionIds,
+			new Set()
+		);
+
+		for (const id of objectDefinitionIds) {
+			await objectDefinitionAPIClient.deleteObjectDefinition(id);
 		}
 	}
 

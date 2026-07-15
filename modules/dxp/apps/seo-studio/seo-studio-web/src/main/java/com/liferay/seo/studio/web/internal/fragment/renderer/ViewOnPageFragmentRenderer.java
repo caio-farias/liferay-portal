@@ -8,6 +8,7 @@ package com.liferay.seo.studio.web.internal.fragment.renderer;
 import com.liferay.fragment.renderer.FragmentRenderer;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.rest.dto.v1_0.ObjectEntry;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -19,6 +20,8 @@ import com.liferay.seo.studio.web.internal.display.context.ViewOnPageDisplayCont
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 import org.osgi.service.component.annotations.Component;
@@ -44,15 +47,15 @@ public class ViewOnPageFragmentRenderer
 	protected ViewOnPageDisplayContext getDisplayContext(
 		HttpServletRequest httpServletRequest) {
 
-		ObjectEntry objectEntry = _fetchObjectEntry(httpServletRequest);
-
 		JSONArray filtersJSONArray = fdsSerializer.serializeFilters(
 			SEOStudioFDSNames.INSIGHT_TYPE_SECTION, httpServletRequest);
+		ObjectEntry objectEntry = _fetchObjectEntry(httpServletRequest);
 		JSONArray viewsJSONArray = fdsSerializer.serializeViews(
 			SEOStudioFDSNames.INSIGHT_TYPE_SECTION, httpServletRequest);
 
 		return new ViewOnPageDisplayContext(
 			filtersJSONArray, httpServletRequest, language, objectEntry,
+			_getSEOStudioScanIds(httpServletRequest, objectEntry),
 			viewsJSONArray);
 	}
 
@@ -70,7 +73,7 @@ public class ViewOnPageFragmentRenderer
 			ObjectDefinition objectDefinition =
 				objectDefinitionLocalService.
 					fetchObjectDefinitionByExternalReferenceCode(
-						"L_SEO_STUDIO_SCAN", companyId);
+						"L_SEO_STUDIO_SCAN_RUN", companyId);
 
 			if (objectDefinition == null) {
 				return null;
@@ -82,13 +85,11 @@ public class ViewOnPageFragmentRenderer
 				"state eq 'completed'", Pagination.of(1, 1), null,
 				new Sort[] {new Sort("requestDate", true)});
 
-			if (page != null) {
-				for (ObjectEntry objectEntry : page.getItems()) {
-					return objectEntry;
-				}
+			if (page == null) {
+				return null;
 			}
 
-			return null;
+			return page.fetchFirstItem();
 		}
 		catch (Exception exception) {
 			if (_log.isWarnEnabled()) {
@@ -96,6 +97,47 @@ public class ViewOnPageFragmentRenderer
 			}
 
 			return null;
+		}
+	}
+
+	private List<Long> _getSEOStudioScanIds(
+		HttpServletRequest httpServletRequest, ObjectEntry objectEntry) {
+
+		if (objectEntry == null) {
+			return Collections.emptyList();
+		}
+
+		try {
+			long companyId = portal.getCompanyId(httpServletRequest);
+
+			ObjectDefinition objectDefinition =
+				objectDefinitionLocalService.
+					fetchObjectDefinitionByExternalReferenceCode(
+						"L_SEO_STUDIO_SCAN", companyId);
+
+			if (objectDefinition == null) {
+				return Collections.emptyList();
+			}
+
+			Page<ObjectEntry> page = objectEntryManager.getObjectEntries(
+				companyId, objectDefinition, null, null,
+				getDTOConverterContext(objectDefinition),
+				"r_seoStudioScanRunToSEOStudioScans_seoStudioScanRunId eq '" +
+					objectEntry.getId() + "'",
+				Pagination.of(1, 100), null, null);
+
+			if (page == null) {
+				return Collections.emptyList();
+			}
+
+			return TransformUtil.transform(page.getItems(), ObjectEntry::getId);
+		}
+		catch (Exception exception) {
+			if (_log.isWarnEnabled()) {
+				_log.warn(exception);
+			}
+
+			return Collections.emptyList();
 		}
 	}
 
