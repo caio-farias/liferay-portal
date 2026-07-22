@@ -10,7 +10,15 @@
 <%
 ConfigurationProvider<LDAPAuthConfiguration> ldapAuthConfigurationProvider = ConfigurationProviderUtil.getLDAPAuthConfigurationProvider();
 
-LDAPAuthConfiguration ldapAuthConfiguration = ldapAuthConfigurationProvider.getConfiguration(themeDisplay.getCompanyId());
+long companyId = 0L;
+
+String portletId = PortalUtil.getPortletId(request);
+
+if (portletId.equals(ConfigurationAdminPortletKeys.INSTANCE_SETTINGS)) {
+	companyId = themeDisplay.getCompanyId();
+}
+
+LDAPAuthConfiguration ldapAuthConfiguration = ldapAuthConfigurationProvider.getConfiguration(companyId);
 %>
 
 <aui:fieldset>
