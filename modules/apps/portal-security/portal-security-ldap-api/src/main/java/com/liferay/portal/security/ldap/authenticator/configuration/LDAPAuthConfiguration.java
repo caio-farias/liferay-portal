@@ -42,8 +42,8 @@ public interface LDAPAuthConfiguration extends CompanyScopedConfiguration {
 		deflt = "NONE", description = "password-encryption-algorithm-help",
 		name = "password-encryption-algorithm",
 		optionValues = {
-			"BCRYPT", "MD2", "MD5", "NONE", "SHA", "SHA-256", "SHA-384", "SSHA",
-			"UFC-CRYPT"
+			"BCRYPT", "MD2", "MD5", "NONE", "PBKDF2WithHmacSHA256", "SHA",
+			"SHA-256", "SHA-384", "SHA-512", "SSHA", "UFC-CRYPT"
 		},
 		required = false
 	)
