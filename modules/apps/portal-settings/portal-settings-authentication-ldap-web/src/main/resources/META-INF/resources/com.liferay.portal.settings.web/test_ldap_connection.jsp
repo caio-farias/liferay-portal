@@ -23,12 +23,19 @@ if (credentials.equals(Portal.TEMP_OBFUSCATION_VALUE)) {
 	credentials = ldapServerConfiguration.securityCredential();
 }
 
-SafePortalLDAP safePortalLDAP = SafePortalLDAPUtil.getSafePortalLDAP();
+SafeLdapContext safeLdapContext = null;
 
-SafeLdapContext safeLdapContext = safePortalLDAP.getSafeLdapContext(companyId, baseProviderURL, principal, credentials);
+if (!PropsValues.FIPS_ENABLED || !FIPSModeValidator.isNotAllowedProtocol(baseProviderURL)) {
+	SafePortalLDAP safePortalLDAP = SafePortalLDAPUtil.getSafePortalLDAP();
+
+	safeLdapContext = safePortalLDAP.getSafeLdapContext(companyId, baseProviderURL, principal, credentials);
+}
 %>
 
 <c:choose>
+	<c:when test="<%= PropsValues.FIPS_ENABLED && FIPSModeValidator.isNotAllowedProtocol(baseProviderURL) %>">
+		<liferay-ui:message key="fips-mode-requires-the-ldaps-scheme-for-ldap-connections" />
+	</c:when>
 	<c:when test="<%= safeLdapContext != null %>">
 		<liferay-ui:message key="liferay-has-successfully-connected-to-the-ldap-server" />
 	</c:when>
