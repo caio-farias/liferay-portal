@@ -17,7 +17,17 @@ long ldapServerId = ParamUtil.getLong(request, "ldapServerId");
 LDAPServerConfiguration ldapServerConfiguration = ldapServerConfigurationProvider.getConfiguration(ActionUtil.getCompanyId(request), ldapServerId);
 
 String ldapServerName = ldapServerConfiguration.serverName();
-String ldapBaseProviderUrl = ldapServerConfiguration.baseProviderURL();
+
+String ldapBaseProviderURL = ldapServerConfiguration.baseProviderURL();
+
+if (PropsValues.FIPS_ENABLED) {
+	ldapBaseProviderURL = StringUtil.replace(ldapBaseProviderURL, "ldap://", "ldaps://");
+
+	if (ldapServerId == 0) {
+		ldapBaseProviderURL = ldapBaseProviderURL.replaceFirst(":[0-9]+(/|$)", ":636$1");
+	}
+}
+
 String ldapBaseDN = ldapServerConfiguration.baseDN();
 String ldapSecurityPrincipal = ldapServerConfiguration.securityPrincipal();
 
@@ -136,8 +146,6 @@ renderResponse.setTitle((ldapServerId == 0) ? LanguageUtil.get(resourceBundle, "
 
 <aui:form action="<%= editLDAPServerURL %>" cssClass="container-fluid container-fluid-max-xl" method="post" name="fm" onSubmit='<%= "event.preventDefault(); " + liferayPortletResponse.getNamespace() + "saveEntry(false);" %>'>
 	<liferay-ui:error exception="<%= DuplicateLDAPServerNameException.class %>" message="please-enter-a-unique-ldap-server-name" />
-	<liferay-ui:error exception="<%= LDAPFilterException.class %>" message="please-enter-a-valid-ldap-search-filter" />
-	<liferay-ui:error exception="<%= LDAPServerNameException.class %>" message="please-enter-a-valid-ldap-server-name" />
 
 	<liferay-ui:error exception="<%= LDAPConfigurationModelListenerException.class %>">
 
@@ -147,6 +155,9 @@ renderResponse.setTitle((ldapServerId == 0) ? LanguageUtil.get(resourceBundle, "
 
 		<liferay-ui:message arguments="<%= ldapConfigurationModelListenerException.getMessageArguments() %>" key="<%= ldapConfigurationModelListenerException.getMessageKey() %>" translateArguments="<%= false %>" />
 	</liferay-ui:error>
+
+	<liferay-ui:error exception="<%= LDAPFilterException.class %>" message="please-enter-a-valid-ldap-search-filter" />
+	<liferay-ui:error exception="<%= LDAPServerNameException.class %>" message="please-enter-a-valid-ldap-server-name" />
 
 	<aui:input name="<%= Constants.CMD %>" type="hidden" />
 	<aui:input name="redirect" type="hidden" value="<%= redirect %>" />
@@ -178,7 +189,7 @@ renderResponse.setTitle((ldapServerId == 0) ? LanguageUtil.get(resourceBundle, "
 			<aui:fieldset>
 				<h3><liferay-ui:message key="connection" /></h3>
 
-				<aui:input cssClass="lfr-input-text-container" helpMessage="the-ldap-url-format-is" label="base-provider-url" name='<%= "ldap--" + LDAPConstants.BASE_PROVIDER_URL + "--" %>' type="text" value="<%= ldapBaseProviderUrl %>" />
+				<aui:input cssClass="lfr-input-text-container" helpMessage="the-ldap-url-format-is" label="base-provider-url" name='<%= "ldap--" + LDAPConstants.BASE_PROVIDER_URL + "--" %>' type="text" value="<%= ldapBaseProviderURL %>" />
 
 				<aui:input cssClass="lfr-input-text-container" helpMessage="the-ldap-url-format-is" label="base-dn" name='<%= "ldap--" + LDAPConstants.BASE_DN + "--" %>' type="text" value="<%= ldapBaseDN %>" />
 
@@ -358,6 +369,22 @@ renderResponse.setTitle((ldapServerId == 0) ? LanguageUtil.get(resourceBundle, "
 			groupMappingFieldValues
 		);
 
+		<c:if test="<%= PropsValues.FIPS_ENABLED %>">
+			var baseProviderURL = Liferay.Util.getFormElement(
+				form,
+				'ldap--<%= LDAPConstants.BASE_PROVIDER_URL %>--'
+			).value;
+
+			if (!baseProviderURL.startsWith('ldaps://')) {
+				Liferay.Util.openAlertModal({
+					message:
+						'<liferay-ui:message arguments="ldaps://" key="the-base-provider-url-must-use-the-x-scheme-in-fips-mode" translateArguments="<%= false %>" />',
+				});
+
+				return;
+			}
+		</c:if>
+
 		Liferay.Util.postForm(form, {
 			data: {
 				'<%= Constants.CMD %>':
@@ -479,6 +506,11 @@ renderResponse.setTitle((ldapServerId == 0) ? LanguageUtil.get(resourceBundle, "
 			userMappingPassword = 'userPassword';
 			userMappingScreenName = 'cn';
 		}
+
+		<c:if test="<%= PropsValues.FIPS_ENABLED %>">
+			baseProviderURL = baseProviderURL.replace('ldap://', 'ldaps://');
+			baseProviderURL = baseProviderURL.replace(/:\d+(\/|$)/, ':636$1');
+		</c:if>
 
 		Liferay.Util.setFormValues(document.<portlet:namespace />fm, {
 			'ldap--<%= LDAPConstants.BASE_PROVIDER_URL %>--': baseProviderURL,
