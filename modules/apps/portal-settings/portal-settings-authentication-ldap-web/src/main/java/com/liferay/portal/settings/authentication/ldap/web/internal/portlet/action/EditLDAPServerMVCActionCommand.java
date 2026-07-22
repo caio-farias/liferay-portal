@@ -22,6 +22,7 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.security.ldap.DuplicateLDAPServerNameException;
+import com.liferay.portal.security.ldap.LDAPConfigurationModelListenerException;
 import com.liferay.portal.security.ldap.LDAPServerNameException;
 import com.liferay.portal.security.ldap.configuration.ConfigurationProvider;
 import com.liferay.portal.security.ldap.configuration.LDAPServerConfiguration;
@@ -75,11 +76,33 @@ public class EditLDAPServerMVCActionCommand extends BaseMVCActionCommand {
 			sendRedirect(actionRequest, actionResponse);
 		}
 		catch (Exception exception) {
-			if (exception instanceof DuplicateLDAPServerNameException ||
-				exception instanceof LDAPFilterException ||
-				exception instanceof LDAPServerNameException) {
+			Throwable throwable = exception.getCause();
 
-				SessionErrors.add(actionRequest, exception.getClass());
+			if (exception instanceof DuplicateLDAPServerNameException ||
+				exception instanceof LDAPConfigurationModelListenerException ||
+				exception instanceof LDAPFilterException ||
+				exception instanceof LDAPServerNameException ||
+				throwable instanceof LDAPConfigurationModelListenerException) {
+
+				if (exception instanceof
+						LDAPConfigurationModelListenerException) {
+
+					SessionErrors.add(
+						actionRequest,
+						LDAPConfigurationModelListenerException.class,
+						exception);
+				}
+				else if (throwable instanceof
+							LDAPConfigurationModelListenerException) {
+
+					SessionErrors.add(
+						actionRequest,
+						LDAPConfigurationModelListenerException.class,
+						throwable);
+				}
+				else {
+					SessionErrors.add(actionRequest, exception.getClass());
+				}
 
 				PortletURL portletURL = PortletURLBuilder.create(
 					PortletURLFactoryUtil.create(
