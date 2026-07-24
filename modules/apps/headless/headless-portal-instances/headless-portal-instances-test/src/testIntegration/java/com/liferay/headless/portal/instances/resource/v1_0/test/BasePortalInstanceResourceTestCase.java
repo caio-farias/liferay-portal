@@ -331,6 +331,26 @@ public abstract class BasePortalInstanceResourceTestCase {
 	}
 
 	@Test
+	public void testPostPortalInstanceImport() throws Exception {
+		PortalInstance randomPortalInstance = randomPortalInstance();
+
+		PortalInstance postPortalInstance =
+			testPostPortalInstanceImport_addPortalInstance(
+				randomPortalInstance);
+
+		assertEquals(randomPortalInstance, postPortalInstance);
+		assertValid(postPortalInstance);
+	}
+
+	protected PortalInstance testPostPortalInstanceImport_addPortalInstance(
+			PortalInstance portalInstance)
+		throws Exception {
+
+		throw new UnsupportedOperationException(
+			"This method needs to be implemented");
+	}
+
+	@Test
 	public void testPutPortalInstanceActivate() throws Exception {
 		@SuppressWarnings("PMD.UnusedLocalVariable")
 		PortalInstance portalInstance =
@@ -596,10 +616,8 @@ public abstract class BasePortalInstanceResourceTestCase {
 				continue;
 			}
 
-			if (Objects.equals(
-					"sourcePartitionName", additionalAssertFieldName)) {
-
-				if (portalInstanceExport.getSourcePartitionName() == null) {
+			if (Objects.equals("sourceCompanyId", additionalAssertFieldName)) {
+				if (portalInstanceExport.getSourceCompanyId() == null) {
 					valid = false;
 				}
 
@@ -825,12 +843,10 @@ public abstract class BasePortalInstanceResourceTestCase {
 				continue;
 			}
 
-			if (Objects.equals(
-					"sourcePartitionName", additionalAssertFieldName)) {
-
+			if (Objects.equals("sourceCompanyId", additionalAssertFieldName)) {
 				if (!Objects.deepEquals(
-						portalInstanceExport1.getSourcePartitionName(),
-						portalInstanceExport2.getSourcePartitionName())) {
+						portalInstanceExport1.getSourceCompanyId(),
+						portalInstanceExport2.getSourceCompanyId())) {
 
 					return false;
 				}
@@ -1195,7 +1211,7 @@ public abstract class BasePortalInstanceResourceTestCase {
 		return new PortalInstanceExport() {
 			{
 				exportedPartitionName = RandomTestUtil.randomString();
-				sourcePartitionName = RandomTestUtil.randomString();
+				sourceCompanyId = RandomTestUtil.randomLong();
 			}
 		};
 	}
@@ -1411,4 +1427,4 @@ public abstract class BasePortalInstanceResourceTestCase {
 			PortalInstanceResource _portalInstanceResource;
 
 }
-// LIFERAY-REST-BUILDER-HASH:697646819
+// LIFERAY-REST-BUILDER-HASH:-2057292312

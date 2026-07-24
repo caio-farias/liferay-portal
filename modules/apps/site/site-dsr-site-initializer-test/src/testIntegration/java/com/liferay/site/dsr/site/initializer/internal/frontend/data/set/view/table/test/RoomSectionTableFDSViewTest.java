@@ -39,14 +39,9 @@ public class RoomSectionTableFDSViewTest
 			null, "dateTime", "last-modified", "dateModified");
 		assertFDSTableSchemaField(null, null, "owner", "creator.name");
 		assertFDSTableSchemaField(
-			null, "roomStatusTableCellRenderer", "status", "status");
-		assertFDSTableSchemaField(
 			null, "roomTrendTableCellRenderer", "trend", "trend");
 		assertFDSTableSchemaField(
-			null, "roomStatusFieldTableCellRenderer", "room-status",
-			"roomStatus");
-		assertFDSTableSchemaField(
-			null, "dateTime", "archive-date", "archiveDate");
+			null, "roomStatusFieldTableCellRenderer", "status", "roomStatus");
 	}
 
 	@Override

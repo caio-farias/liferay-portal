@@ -16,7 +16,6 @@ import java.util.Properties;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -28,11 +27,6 @@ import org.mockito.Mockito;
  */
 public class JenkinsResultsParserUtilTest
 	extends com.liferay.jenkins.results.parser.Test {
-
-	@After
-	public void tearDown() {
-		Environment.setInstance(new Environment());
-	}
 
 	@Test(timeout = 30000)
 	public void testExecuteJenkinsScriptReadTimeout() throws Exception {
@@ -118,6 +112,29 @@ public class JenkinsResultsParserUtilTest
 		);
 
 		testEquals("test-1", JenkinsResultsParserUtil.getCohortName());
+	}
+
+	@Test
+	public void testGetJenkinsBuildQueueId() {
+		testEquals(
+			"0",
+			String.valueOf(
+				JenkinsResultsParserUtil.getJenkinsBuildQueueId(
+					"https://test-1-1.liferay.com/job/test-job")));
+		testEquals(
+			"0",
+			String.valueOf(
+				JenkinsResultsParserUtil.getJenkinsBuildQueueId(null)));
+		testEquals(
+			"12345",
+			String.valueOf(
+				JenkinsResultsParserUtil.getJenkinsBuildQueueId(
+					"https://test-1-1.liferay.com/queue/item/12345")));
+		testEquals(
+			"678",
+			String.valueOf(
+				JenkinsResultsParserUtil.getJenkinsBuildQueueId(
+					"http://test-1-1/queue/item/678/")));
 	}
 
 	@Test
@@ -355,6 +372,53 @@ public class JenkinsResultsParserUtilTest
 				"https://releases.liferay.com/portal/"));
 	}
 
+	@Test
+	public void testInvokeJenkinsBuild() throws Exception {
+		Environment environment = mockEnvironment();
+
+		Mockito.when(
+			environment.doGet("MASTER_NETWORK_NAME")
+		).thenReturn(
+			"aws-network"
+		);
+
+		Properties buildProperties = new Properties();
+
+		buildProperties.setProperty(
+			"jenkins.admin.user.name", RandomTestUtil.randomString());
+		buildProperties.setProperty(
+			"jenkins.admin.user.token", RandomTestUtil.randomString());
+		buildProperties.setProperty(
+			"jenkins.authentication.token", RandomTestUtil.randomString());
+
+		JenkinsResultsParserUtil.setBuildProperties(buildProperties);
+
+		UrlReader urlReader = mockUrlReader();
+
+		Mockito.doReturn(
+			"https://test-1-1.liferay.com/queue/item/12345"
+		).when(
+			urlReader
+		).doGetResponseHeader(
+			Mockito.eq("Location"), Mockito.any(), Mockito.any(), Mockito.any(),
+			Mockito.anyInt(), Mockito.anyString()
+		);
+
+		JenkinsMaster jenkinsMaster = Mockito.mock(JenkinsMaster.class);
+
+		Mockito.when(
+			jenkinsMaster.getRemoteURL()
+		).thenReturn(
+			RandomTestUtil.randomString()
+		);
+
+		testEquals(
+			"12345",
+			String.valueOf(
+				JenkinsResultsParserUtil.invokeJenkinsBuild(
+					jenkinsMaster, "test-job", new HashMap<>())));
+	}
+
 	@Test(timeout = 30000)
 	public void testInvokeJenkinsBuildReadTimeout() throws Exception {
 		try (ServerSocket serverSocket = _createServerSocket()) {
@@ -439,6 +503,14 @@ public class JenkinsResultsParserUtilTest
 		Assert.assertFalse(
 			JenkinsResultsParserUtil.isBuildCachingEnabled(
 				"test-portal-release", "default"));
+	}
+
+	@Test
+	public void testIsCINode() {
+		_testIsCINode("https://test-1-1.liferay.com/", "test-network", true);
+		_testIsCINode("https://test-1-1.liferay.com/", null, true);
+		_testIsCINode(null, "test-network", true);
+		_testIsCINode(null, null, false);
 	}
 
 	@Test
@@ -668,6 +740,33 @@ public class JenkinsResultsParserUtilTest
 			expectedPropertyValue,
 			JenkinsResultsParserUtil.getProperty(
 				properties, actualPropertyName));
+	}
+
+	private void _testIsCINode(
+		String jenkinsURL, String masterNetworkName, boolean expected) {
+
+		Environment environment = mockEnvironment();
+
+		Mockito.when(
+			environment.doGet("JENKINS_URL")
+		).thenReturn(
+			jenkinsURL
+		);
+
+		Mockito.when(
+			environment.doGet("MASTER_NETWORK_NAME")
+		).thenReturn(
+			masterNetworkName
+		);
+
+		ReflectionTestUtil.setFieldValue(
+			JenkinsResultsParserUtil.class, "_ciNode", null);
+
+		Assert.assertEquals(
+			JenkinsResultsParserUtil.combine(
+				"Unexpected isCINode() value for JENKINS_URL=", jenkinsURL,
+				" and MASTER_NETWORK_NAME=", masterNetworkName),
+			expected, JenkinsResultsParserUtil.isCINode());
 	}
 
 }

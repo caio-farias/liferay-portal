@@ -1279,7 +1279,6 @@ public class ObjectEntryResourceTest {
 			new HashSet<>(nestedFieldsContext.getNestedFields()));
 	}
 
-	@FeatureFlag("LPD-34594")
 	@Test
 	public void testCustomizeNestedFieldsContextWithRootModelHierarchy()
 		throws Exception {
@@ -6198,6 +6197,61 @@ public class ObjectEntryResourceTest {
 	}
 
 	@Test
+	public void testGetObjectEntriesPageWithFilterOnManyToManyRelatedLocalizedObjectField()
+		throws Exception {
+
+		ObjectDefinition objectDefinition1 = _publishLocalizedObjectDefinition(
+			_OBJECT_FIELD_NAME_TEXT);
+		String objectEntryValue1 = RandomTestUtil.randomString();
+
+		ObjectEntry objectEntry1 = ObjectEntryTestUtil.addObjectEntry(
+			objectDefinition1,
+			HashMapBuilder.<String, Serializable>put(
+				_OBJECT_FIELD_NAME_TEXT, objectEntryValue1
+			).put(
+				_OBJECT_FIELD_NAME_TEXT + "_i18n",
+				HashMapBuilder.<String, Serializable>put(
+					"en_US", objectEntryValue1
+				).build()
+			).build());
+
+		ObjectDefinition objectDefinition2 = _publishLocalizedObjectDefinition(
+			_OBJECT_FIELD_NAME_TEXT);
+		String objectEntryValue2 = RandomTestUtil.randomString();
+
+		ObjectEntry objectEntry2 = ObjectEntryTestUtil.addObjectEntry(
+			objectDefinition2,
+			HashMapBuilder.<String, Serializable>put(
+				_OBJECT_FIELD_NAME_TEXT, objectEntryValue2
+			).put(
+				_OBJECT_FIELD_NAME_TEXT + "_i18n",
+				HashMapBuilder.<String, Serializable>put(
+					"en_US", objectEntryValue2
+				).build()
+			).build());
+
+		ObjectRelationship objectRelationship =
+			_addObjectRelationshipAndRelateObjectEntries(
+				objectDefinition1, objectDefinition2,
+				objectEntry1.getObjectEntryId(),
+				objectEntry2.getObjectEntryId(),
+				ObjectRelationshipConstants.TYPE_MANY_TO_MANY);
+
+		_assertObjectEntriesPageWithFilterOnRelatedLocalizedObjectField(
+			objectEntryValue1, objectDefinition1, objectRelationship,
+			objectEntryValue2);
+		_assertObjectEntriesPageWithFilterOnRelatedLocalizedObjectField(
+			objectEntryValue2, objectDefinition2, objectRelationship,
+			objectEntryValue1);
+
+		_objectRelationshipLocalService.deleteObjectRelationship(
+			objectRelationship);
+
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition1);
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition2);
+	}
+
+	@Test
 	public void testGetObjectEntriesPageWithLocalizedObjectField()
 		throws Exception {
 
@@ -7119,12 +7173,23 @@ public class ObjectEntryResourceTest {
 	public void testGetObjectEntryFilteredByTaxonomyCategories()
 		throws Exception {
 
+		Company company = _companyLocalService.getCompany(
+			TestPropsValues.getCompanyId());
+
+		AssetVocabulary assetVocabulary =
+			_assetVocabularyLocalService.addVocabulary(
+				TestPropsValues.getUserId(), company.getGroupId(),
+				RandomTestUtil.randomString(), new ServiceContext());
+
 		TaxonomyCategory taxonomyCategory1 =
-			_postTaxonomyVocabularyTaxonomyCategory();
+			_postTaxonomyVocabularyTaxonomyCategory(
+				company.getGroupId(), assetVocabulary.getVocabularyId());
 		TaxonomyCategory taxonomyCategory2 =
-			_postTaxonomyVocabularyTaxonomyCategory();
+			_postTaxonomyVocabularyTaxonomyCategory(
+				company.getGroupId(), assetVocabulary.getVocabularyId());
 		TaxonomyCategory taxonomyCategory3 =
-			_postTaxonomyVocabularyTaxonomyCategory();
+			_postTaxonomyVocabularyTaxonomyCategory(
+				company.getGroupId(), assetVocabulary.getVocabularyId());
 
 		_postObjectEntryWithTaxonomyCategories();
 		_postObjectEntryWithTaxonomyCategories(taxonomyCategory1);
@@ -8567,7 +8632,6 @@ public class ObjectEntryResourceTest {
 			JSONCompareMode.LENIENT);
 	}
 
-	@FeatureFlag("LPD-34594")
 	@Test
 	public void testGetObjectEntryWithRootModelHierarchy() throws Exception {
 		try {
@@ -10114,7 +10178,7 @@ public class ObjectEntryResourceTest {
 						Http.Method.POST);
 
 					Assert.assertEquals(
-						"BAD_REQUEST", jsonObject.getString("status"));
+						"FORBIDDEN", jsonObject.getString("status"));
 				}
 			);
 		}
@@ -16283,6 +16347,43 @@ public class ObjectEntryResourceTest {
 		Assert.assertNull(jsonObject.get("title"));
 	}
 
+	private void
+			_assertObjectEntriesPageWithFilterOnRelatedLocalizedObjectField(
+				String expectedObjectFieldValue,
+				ObjectDefinition objectDefinition,
+				ObjectRelationship objectRelationship,
+				String relatedObjectFieldValue)
+		throws Exception {
+
+		String filterString = StringBundler.concat(
+			objectRelationship.getName(), "/", _OBJECT_FIELD_NAME_TEXT, " eq '",
+			relatedObjectFieldValue, "'");
+
+		JSONObject jsonObject = HTTPTestUtil.invokeToJSONObject(
+			null,
+			StringBundler.concat(
+				objectDefinition.getRESTContextPath(), "?filter=",
+				URLCodec.encodeURL(filterString), "&nestedFields=",
+				objectRelationship.getName()),
+			Http.Method.GET);
+
+		JSONArray itemsJSONArray = jsonObject.getJSONArray("items");
+
+		Assert.assertEquals(
+			itemsJSONArray.toString(), 1, itemsJSONArray.length());
+
+		JSONObject itemJSONObject = itemsJSONArray.getJSONObject(0);
+
+		Assert.assertEquals(
+			expectedObjectFieldValue,
+			itemJSONObject.getString(_OBJECT_FIELD_NAME_TEXT));
+		Assert.assertEquals(
+			relatedObjectFieldValue,
+			JSONUtil.getValueAsString(
+				itemJSONObject, "JSONArray/" + objectRelationship.getName(),
+				"Object/0", "Object/" + _OBJECT_FIELD_NAME_TEXT));
+	}
+
 	private void _assertObjectEntryField(
 		JSONObject objectEntryJSONObject, String objectFieldName,
 		String objectFieldValue) {
@@ -18748,8 +18849,7 @@ public class ObjectEntryResourceTest {
 			fileEntry -> JSONUtil.put(
 				_OBJECT_FIELD_NAME_ATTACHMENT_CMS_BASIC_DOCUMENT_SOURCE,
 				_getFileEntryJSONObject(
-					_getDLFolder(depotEntry.getGroupId(), objectDefinition),
-					fileEntry, objectDefinition,
+					null, fileEntry, objectDefinition,
 					_OBJECT_FIELD_NAME_ATTACHMENT_CMS_BASIC_DOCUMENT_SOURCE)),
 			_toFileEntry(
 				Base64::encode, DLTestUtil.randomTextFileBytes(),
@@ -19719,8 +19819,7 @@ public class ObjectEntryResourceTest {
 			fileEntry -> JSONUtil.put(
 				_OBJECT_FIELD_NAME_ATTACHMENT_CMS_BASIC_DOCUMENT_SOURCE,
 				_getFileEntryJSONObject(
-					_getDLFolder(depotEntry.getGroupId(), objectDefinition),
-					fileEntry, objectDefinition,
+					null, fileEntry, objectDefinition,
 					_OBJECT_FIELD_NAME_ATTACHMENT_CMS_BASIC_DOCUMENT_SOURCE)),
 			_toFileEntry(
 				Base64::encode, DLTestUtil.randomTextFileBytes(),

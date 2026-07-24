@@ -5,6 +5,30 @@
 
 import {TrendClassification} from '@liferay/analytics-reports-js-components-web';
 
+import type {AdditionalProps} from '../../props_transformer/AssetsFDSPropsTransformer';
+
+export type DashboardAdditionalProps = Pick<
+	AdditionalProps,
+	| 'autocompleteURL'
+	| 'breadcrumbProps'
+	| 'candidateAssetLibraries'
+	| 'cmsGroupId'
+	| 'collaboratorURLs'
+	| 'contentViewURL'
+	| 'fileMimeTypeCssClasses'
+	| 'fileMimeTypeIcons'
+	| 'objectDefinitionCssClasses'
+	| 'objectDefinitionIcons'
+> & {
+	commentsProps: {
+		addCommentURL: string;
+		deleteCommentURL: string;
+		editCommentURL: string;
+		editorConfig: unknown;
+		getCommentsURL: string;
+	};
+};
+
 export type MetricType =
 	| 'downloadsMetric'
 	| 'impressionsMetric'
@@ -36,9 +60,27 @@ export type MetricItem = {
 	valueKey: string;
 };
 
+export type ConnectionInfo = {
+	admin: boolean;
+	connectedToAnalyticsCloud: boolean;
+	connectedToSpace: boolean;
+	siteSyncedToAnalyticsCloud: boolean;
+};
+
 export type PerformanceMetric = {
 	metricType: MetricType;
 	metrics: MetricItem[];
+};
+
+export type Histogram = {
+	metricName: string;
+	metrics: Array<MetricItem & {previousValueKey: string}>;
+	total: number;
+	totalValue: number;
+};
+
+export type HistogramMetric = {
+	histograms: Histogram[];
 };
 
 export type AssetConsumptionItem = {
@@ -54,19 +96,22 @@ export type AssetConsumption = {
 };
 
 export type TopAssetItem = {
+	className: string;
 	downloads: number;
+	embedded?: unknown;
 	engagement: number;
+	externalReferenceCode: string;
 	impressions: number;
-	mimeType: string;
 	title: string;
 	trend: Trend;
+	type: string;
 	views: number;
 };
 
 export type TopAssets = {
+	items: TopAssetItem[];
 	lastPage: number;
 	page: number;
 	pageSize: number;
-	performanceTopAssetItems: TopAssetItem[];
 	totalCount: number;
 };

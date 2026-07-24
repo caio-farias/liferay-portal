@@ -10,7 +10,7 @@
  */
 
 module.exports = {
-	hash: 'cb972f3ea909b4ec7bd68d5532d04b60d06ff1572cd13ae5080da6270937522a',
+	hash: 'e63d387db0f2e94f8b50c6ecf8ffd08efb924ee3133eb60f47c9948a086b5e41',
 	imports: {
 		'@liferay/accessibility-menu-web': [],
 		'@liferay/accessibility-settings-state-web': [],
@@ -236,6 +236,7 @@ module.exports = {
 		'@liferay/map-openstreetmap': [],
 		'@liferay/marketplace-js-components-web': [],
 		'@liferay/marketplace-settings-web': [],
+		'@liferay/mcp-server-web': [],
 		'@liferay/microblogs-web': [],
 		'@liferay/monitoring-web': [],
 		'@liferay/multi-factor-authentication-fido2-web': [],
@@ -275,6 +276,7 @@ module.exports = {
 		'@liferay/site-navigation-menu-item-display-page': [],
 		'@liferay/site-navigation-menu-item-vocabulary': [],
 		'@liferay/site-navigation-taglib': [],
+		'@liferay/site-pim-site-initializer': [],
 		'@liferay/site-sitemap-web': [],
 		'@liferay/social-activities-taglib': [],
 		'@liferay/social-bookmark-facebook': [],
@@ -407,6 +409,7 @@ module.exports = {
 			'@ckeditor/ckeditor5-watchdog/dist/index.js',
 			'@ckeditor/ckeditor5-widget/dist/index.js',
 			'@ckeditor/ckeditor5-word-count/dist/index.js',
+			'frontend-editor-ckeditor-web/plugins/DocumentLinkSelector',
 			'ckeditor5/ckeditor5.css',
 			'ckeditor5-premium-features/ckeditor5-premium-features.css',
 			'eventsource',
@@ -567,6 +570,9 @@ module.exports = {
 		'cropperjs': ['*', 'default'],
 		'dagre': ['*', 'default'],
 		'date-fns': ['*'],
+		'frontend-editor-ckeditor-web/plugins/DocumentLinkSelector': [
+			'default',
+		],
 		'fuzzy': ['*', 'default'],
 		'graphql-hooks-memcache': ['*', 'default'],
 		'highlight.js': ['*', 'default'],

@@ -37,6 +37,7 @@ import com.liferay.osb.faro.engine.client.model.AssetSummaryType;
 import com.liferay.osb.faro.engine.client.model.AssetSummaryVocabulary;
 import com.liferay.osb.faro.engine.client.model.Author;
 import com.liferay.osb.faro.engine.client.model.BlockedKeyword;
+import com.liferay.osb.faro.engine.client.model.CatalogField;
 import com.liferay.osb.faro.engine.client.model.Channel;
 import com.liferay.osb.faro.engine.client.model.ChannelDataSource;
 import com.liferay.osb.faro.engine.client.model.Credentials;
@@ -45,6 +46,7 @@ import com.liferay.osb.faro.engine.client.model.DXPOrganization;
 import com.liferay.osb.faro.engine.client.model.DXPUserGroup;
 import com.liferay.osb.faro.engine.client.model.DataSource;
 import com.liferay.osb.faro.engine.client.model.DataSourceField;
+import com.liferay.osb.faro.engine.client.model.DataSourceFieldCatalogEntry;
 import com.liferay.osb.faro.engine.client.model.DataSourceProgress;
 import com.liferay.osb.faro.engine.client.model.Distribution;
 import com.liferay.osb.faro.engine.client.model.EntityModelPagedModel;
@@ -106,6 +108,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import org.osgi.service.component.annotations.Component;
@@ -130,18 +133,16 @@ public class ContactsEngineClientImpl
 
 	@Override
 	public AccountLifecycle addAccountLifecycle(
-		FaroProject faroProject, String description, String name,
-		String segmentId) {
+		FaroProject faroProject, AccountLifecycle accountLifecycle,
+		String channelId) {
 
-		AccountLifecycle accountLifecycle = new AccountLifecycle();
+		Map<String, Object> uriVariables = getUriVariables(faroProject);
 
-		accountLifecycle.setDescription(description);
-		accountLifecycle.setName(name);
-		accountLifecycle.setSegmentId(segmentId);
+		uriVariables.put("channelId", channelId);
 
 		return post(
 			faroProject, Rels.ACCOUNT_LIFECYCLES, accountLifecycle,
-			AccountLifecycle.class);
+			AccountLifecycle.class, uriVariables);
 	}
 
 	@Override
@@ -571,6 +572,21 @@ public class ContactsEngineClientImpl
 
 		post(
 			faroProject, Rels.DATA_SOURCE_DISCONNECT_ALL, null, Void.class,
+			getUriVariables(faroProject));
+	}
+
+	@Override
+	public Map<String, List<DataSourceFieldCatalogEntry>>
+		discoverDataSourceFieldCatalogEntries(
+			FaroProject faroProject, DataSource dataSource) {
+
+		dataSource.setWorkspaceURL(getWorkspaceURL(faroProject.getGroupId()));
+
+		return post(
+			faroProject, Rels.DATA_SOURCES_FIELDS, dataSource,
+			new ParameterizedTypeReference
+				<Map<String, List<DataSourceFieldCatalogEntry>>>() {
+			},
 			getUriVariables(faroProject));
 	}
 
@@ -1163,7 +1179,7 @@ public class ContactsEngineClientImpl
 
 	@Override
 	public Results<ApiUsageMetric> getApiUsageMetrics(
-		FaroProject faroProject, Date usageDate) {
+		FaroProject faroProject, String endDateString, String startDateString) {
 
 		PagedModel<?, ApiUsageMetric> pagedModel = get(
 			faroProject, Rels.API_USAGE_METRICS,
@@ -1171,7 +1187,9 @@ public class ContactsEngineClientImpl
 				<EntityModelPagedModel<ApiUsageMetric>>() {
 			},
 			HashMapBuilder.<String, Object>put(
-				"usageDate", usageDate
+				"endDate", endDateString
+			).put(
+				"startDate", startDateString
 			).build());
 
 		return pagedModel.getResults();
@@ -1231,8 +1249,9 @@ public class ContactsEngineClientImpl
 	@Override
 	public Results<AssetSummary> getAssetSummaries(
 		FaroProject faroProject, long channelId, String filterString,
-		String keywords, String objectType, int rangeKey, String selectedMetric,
-		int cur, int delta, String sortString) {
+		String keywords, String objectType, String rangeEnd, int rangeKey,
+		String rangeStart, String selectedMetric, int cur, int delta,
+		String sortString) {
 
 		Map<String, Object> uriVariables = getUriVariables(
 			faroProject, cur, delta, null);
@@ -1249,7 +1268,13 @@ public class ContactsEngineClientImpl
 			uriVariables.put("objectType", objectType);
 		}
 
-		uriVariables.put("rangeKey", rangeKey);
+		if ((rangeEnd != null) && (rangeStart != null)) {
+			uriVariables.put("rangeEnd", rangeEnd);
+			uriVariables.put("rangeStart", rangeStart);
+		}
+		else {
+			uriVariables.put("rangeKey", rangeKey);
+		}
 
 		if (Validator.isNotNull(selectedMetric)) {
 			uriVariables.put("selectedMetric", selectedMetric);
@@ -1530,6 +1555,39 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
+	public Results<CatalogField> getCatalogFields(
+			FaroProject faroProject, String query, String tableName, int cur,
+			int delta, String sortString)
+		throws FaroEngineClientException {
+
+		Map<String, Object> uriVariables = getUriVariables(
+			faroProject, cur, delta, null);
+
+		if (Validator.isNotNull(query)) {
+			uriVariables.put("query", query);
+		}
+
+		uriVariables.put("tableName", tableName);
+
+		if (Validator.isNotNull(sortString)) {
+			uriVariables.put(
+				"sort",
+				Arrays.asList(
+					StringUtil.replace(
+						sortString, CharPool.COLON, CharPool.COMMA)));
+		}
+
+		PagedModel<?, CatalogField> pagedModel = get(
+			faroProject, Rels.CATALOG_FIELDS,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<CatalogField>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
+	}
+
+	@Override
 	public Channel getChannel(FaroProject faroProject, String id)
 		throws FaroEngineClientException {
 
@@ -1742,6 +1800,63 @@ public class ContactsEngineClientImpl
 			faroProject, Rels.DATA_SOURCE_DXP_USER_GROUPS,
 			new ParameterizedTypeReference
 				<EntityModelPagedModel<DXPUserGroup>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
+	}
+
+	@Override
+	public Map<String, List<DataSourceFieldCatalogEntry>>
+		getDataSourceFieldCatalogEntries(
+			FaroProject faroProject, String id, boolean refresh) {
+
+		Map<String, Object> uriVariables = getUriVariables(faroProject, id);
+
+		uriVariables.put("refresh", refresh);
+
+		return get(
+			faroProject, Rels.DATA_SOURCE_FIELDS,
+			new ParameterizedTypeReference
+				<Map<String, List<DataSourceFieldCatalogEntry>>>() {
+			},
+			uriVariables);
+	}
+
+	@Override
+	public Results<DataSourceFieldCatalogEntry>
+			getDataSourceFieldCatalogEntries(
+				FaroProject faroProject, String entityType, String filterString,
+				String id, String search, int cur, int delta, String sortString)
+		throws FaroEngineClientException {
+
+		Map<String, Object> uriVariables = getUriVariables(
+			faroProject, cur, delta, null);
+
+		uriVariables.put("entityType", entityType);
+
+		if (Validator.isNotNull(filterString)) {
+			uriVariables.put("filter", filterString);
+		}
+
+		uriVariables.put("id", id);
+
+		if (Validator.isNotNull(search)) {
+			uriVariables.put("search", search);
+		}
+
+		if (Validator.isNotNull(sortString)) {
+			uriVariables.put(
+				"sort",
+				Arrays.asList(
+					StringUtil.replace(
+						sortString, CharPool.COLON, CharPool.COMMA)));
+		}
+
+		PagedModel<?, DataSourceFieldCatalogEntry> pagedModel = get(
+			faroProject, Rels.DATA_SOURCE_FIELDS,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<DataSourceFieldCatalogEntry>>() {
 			},
 			uriVariables);
 
@@ -3475,6 +3590,16 @@ public class ContactsEngineClientImpl
 		return put(
 			faroProject, Rels.DATA_SOURCE, dataSource, DataSource.class,
 			getUriVariables(faroProject, id));
+	}
+
+	@Override
+	public void updateDataSourceFieldSelection(
+		FaroProject faroProject, String id,
+		Map<String, Set<String>> selectedFieldNames) {
+
+		patch(
+			faroProject, Rels.DATA_SOURCE_FIELDS, id, selectedFieldNames,
+			Void.class);
 	}
 
 	@Override

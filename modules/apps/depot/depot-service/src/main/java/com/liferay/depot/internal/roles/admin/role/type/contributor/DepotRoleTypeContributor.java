@@ -45,7 +45,7 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 		if (FeatureFlagManagerUtil.isEnabled(
 				CompanyThreadLocal.getCompanyId(), "LPD-17564")) {
 
-			return "space";
+			return "depot";
 		}
 
 		return "asset-library";
@@ -81,7 +81,7 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 		if (FeatureFlagManagerUtil.isEnabled(
 				CompanyThreadLocal.getCompanyId(), "LPD-17564")) {
 
-			return _language.get(locale, "space-roles");
+			return _language.get(locale, "depot-roles");
 		}
 
 		return _language.get(locale, "asset-library-roles");
@@ -92,7 +92,7 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 		if (FeatureFlagManagerUtil.isEnabled(
 				CompanyThreadLocal.getCompanyId(), "LPD-17564")) {
 
-			return _language.get(locale, "space-role");
+			return _language.get(locale, "depot-role");
 		}
 
 		return _language.get(locale, "asset-library-role");
@@ -127,7 +127,11 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 			Objects.equals(
 				role.getName(), DepotRolesConstants.DESIGN_LIBRARY_MEMBER) ||
 			Objects.equals(
-				role.getName(), DepotRolesConstants.DESIGN_LIBRARY_OWNER)) {
+				role.getName(), DepotRolesConstants.DESIGN_LIBRARY_OWNER) ||
+			Objects.equals(
+				role.getName(), DepotRolesConstants.PROJECT_MANAGER) ||
+			Objects.equals(
+				role.getName(), DepotRolesConstants.PROJECT_MEMBER)) {
 
 			return false;
 		}

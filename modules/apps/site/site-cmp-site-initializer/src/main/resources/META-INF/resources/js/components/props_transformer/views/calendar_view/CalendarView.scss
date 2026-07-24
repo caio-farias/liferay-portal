@@ -4,6 +4,7 @@
 	--fc-border-color: #{$border-color};
 	--fc-event-bg-color: transparent;
 	--fc-event-border-color: transparent;
+	--fc-highlight-color: #{$info-l2};
 	--fc-today-bg-color: transparent;
 
 	margin-top: -1rem;
@@ -24,7 +25,7 @@
 		text-decoration: none !important;
 	}
 
-	.fc-day-today .fc-daygrid-day-number {
+	.fc-day-today .lfr__calendar-view-day-number {
 		align-items: center;
 		background-color: $primary;
 		border-radius: 50%;
@@ -33,7 +34,6 @@
 		height: 1.75rem;
 		justify-content: center;
 		line-height: 1;
-		margin: 0.25rem 0.5rem;
 		padding: 0;
 		width: 1.75rem;
 	}
@@ -106,6 +106,10 @@
 		margin-left: 0.25rem;
 	}
 
+	.fc-highlight {
+		border: 1px solid $primary-l0;
+	}
+
 	.fc-theme-standard .fc-scrollgrid {
 		border-left-width: 0;
 		border-right-width: 0;
@@ -148,6 +152,11 @@
 			display: flex;
 			gap: 0.5rem;
 			justify-content: flex-end;
+
+			.btn-group {
+				flex-shrink: 0;
+				flex-wrap: nowrap;
+			}
 		}
 
 		&-start {
@@ -155,5 +164,16 @@
 			display: flex;
 			gap: 0.5rem;
 		}
+	}
+}
+
+// Show the grabbing cursor everywhere while a task is dragged, including
+// over the task pills, which set their own cursor.
+
+body.lfr__cmp-task-dragging {
+	cursor: grabbing;
+
+	.fc-event {
+		cursor: grabbing;
 	}
 }

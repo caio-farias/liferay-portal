@@ -5,6 +5,7 @@
 
 package com.liferay.layout.content.page.editor.web.internal.display.context;
 
+import com.liferay.audiences.constants.AudiencesPortletKeys;
 import com.liferay.audiences.service.AudiencesEntryService;
 import com.liferay.fragment.model.FragmentEntry;
 import com.liferay.fragment.model.FragmentEntryLink;
@@ -43,7 +44,9 @@ import com.liferay.segments.model.SegmentsExperienceAudienceEntryRel;
 import com.liferay.segments.service.SegmentsExperienceAudienceEntryRelLocalService;
 import com.liferay.segments.service.SegmentsExperienceService;
 
+import jakarta.portlet.PortletRequest;
 import jakarta.portlet.PortletResponse;
+import jakarta.portlet.PortletURL;
 import jakarta.portlet.WindowState;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -96,6 +99,8 @@ public class EditElementVariationsDisplayContext {
 		).put(
 			"audiences", _getAudiencesEntries()
 		).put(
+			"createAudienceURL", _getCreateAudienceURL()
+		).put(
 			"defaultLanguageId",
 			LocaleUtil.toLanguageId(_themeDisplay.getSiteDefaultLocale())
 		).put(
@@ -130,7 +135,23 @@ public class EditElementVariationsDisplayContext {
 			_getActionURL(
 				"/layout_content_page_editor" +
 					"/update_segments_experience_audience_entry_rels")
+		).put(
+			"updateElementVariationURL",
+			_getActionURL(
+				"/layout_content_page_editor" +
+					"/update_layout_page_template_structure_rel_element" +
+						"_variation")
 		).build();
+	}
+
+	public String getLayoutName() {
+		Layout layout = _layoutLocalService.fetchLayout(_getPlid());
+
+		if (layout == null) {
+			return StringPool.BLANK;
+		}
+
+		return layout.getName(_themeDisplay.getLocale());
 	}
 
 	public String getRedirect() {
@@ -196,6 +217,14 @@ public class EditElementVariationsDisplayContext {
 		}
 
 		return availableLocalesJSONArray;
+	}
+
+	private String _getCreateAudienceURL() {
+		PortletURL portletURL = _portal.getControlPanelPortletURL(
+			_httpServletRequest, AudiencesPortletKeys.AUDIENCES,
+			PortletRequest.RENDER_PHASE);
+
+		return portletURL.toString();
 	}
 
 	private List<Map<String, Object>>

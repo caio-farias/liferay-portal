@@ -7,6 +7,7 @@ import {
 	clear,
 	clearHandlers,
 	get,
+	getPriority,
 	on,
 	runDetection,
 	runHandlers,
@@ -47,6 +48,7 @@ export type Attribute =
 	| 'browser_version'
 	| 'cookies'
 	| `custom:${string}`
+	| 'device_type'
 	| 'hostname'
 	| 'language'
 	| 'local_date'
@@ -54,7 +56,7 @@ export type Attribute =
 	| 'pathname'
 	| 'referrer'
 	| `request_parameters`
-	| 'segments'
+	| 'segment'
 	| 'timezone'
 	| 'url'
 	| 'user_agent';
@@ -84,6 +86,7 @@ export interface AudiencesAPI {
 	clear(): void;
 	clearHandlers(): void;
 	get(): Set<AudienceId>;
+	getPriority(audienceId: AudienceId): number;
 	on(audienceId: AudienceId, handler: Handler): void;
 	runDetection(audiencesDefinitionURL: string): Promise<void>;
 	runHandlers(): Promise<void>;
@@ -94,6 +97,7 @@ export const audiences: AudiencesAPI = {
 	clear,
 	clearHandlers,
 	get,
+	getPriority,
 	on,
 	runDetection,
 	runHandlers,

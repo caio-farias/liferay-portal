@@ -59,12 +59,14 @@ public class DatabaseSchemaExportResourceTest
 				databaseSchemaExportResource.postDatabaseSchemaExport(
 					new DatabaseSchemaExport() {
 						{
-							exportFilesPath = directory.getAbsolutePath();
+							exportFilesPath =
+								directory.getAbsolutePath() + File.separator +
+									".";
 						}
 					});
 
 			Assert.assertEquals(
-				directory.getAbsolutePath(),
+				directory.getCanonicalPath(),
 				databaseSchemaExport.getExportFilesPath());
 
 			List<String> fileNames = Arrays.asList(
@@ -123,11 +125,7 @@ public class DatabaseSchemaExportResourceTest
 				LocaleUtil.getDefault()
 			).build();
 
-		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
-				"com.liferay.portal.vulcan.internal.jaxrs.exception.mapper." +
-					"WebApplicationExceptionMapper",
-				LoggerTestUtil.ERROR)) {
-
+		try {
 			userDatabaseSchemaExportResource.postDatabaseSchemaExport(
 				new DatabaseSchemaExport() {
 					{
@@ -141,7 +139,7 @@ public class DatabaseSchemaExportResourceTest
 		catch (Problem.ProblemException problemException) {
 			Problem problem = problemException.getProblem();
 
-			Assert.assertEquals("UNAUTHORIZED", problem.getStatus());
+			Assert.assertEquals("FORBIDDEN", problem.getStatus());
 		}
 	}
 

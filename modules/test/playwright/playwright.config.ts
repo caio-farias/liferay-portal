@@ -20,6 +20,7 @@ import {config as analyticsWebConfig} from './tests/analytics-web/main/config';
 import {config as announcementsWebConfig} from './tests/announcements-web/main/config';
 import {config as applicationListTaglibConfig} from './tests/application-list-taglib/main/config';
 import {config as assetCategoriesAdminWebConfig} from './tests/asset-categories-admin-web/main/config';
+import {config as assetListWebConfig} from './tests/asset-list-web/main/config';
 import {config as assetPublisherWebConfig} from './tests/asset-publisher-web/main/config';
 import {config as assetPublisherWebRelatedAssetsConfig} from './tests/asset-publisher-web/related-assets/config';
 import {config as assetTagsAdminWebConfig} from './tests/asset-tags-admin-web/main/config';
@@ -121,6 +122,7 @@ import {config as loginWebConfig} from './tests/login-web/main/config';
 import {config as loginWebSetupAdminConfig} from './tests/login-web/setup-admin/config';
 import {config as mapsConfig} from './tests/maps/main/config';
 import {config as marketplaceAppManagerWebConfig} from './tests/marketplace-app-manager-web/main/config';
+import {config as mcpServerWebConfig} from './tests/mcp-server-web/main/config';
 import {config as messageBoardsWebConfig} from './tests/message-boards-web/main/config';
 import {config as messageBoardsWebPaginationConfig} from './tests/message-boards-web/pagination/config';
 import {config as multifactorAuthenticationEmailOTPConfig} from './tests/multi-factor-authentication-email-otp-web/main/config';
@@ -208,6 +210,7 @@ import {config as siteCmpSiteInitializerConfig} from './tests/site-cmp-site-init
 import {config as siteCmsSiteInitializerConfig} from './tests/site-cms-site-initializer/main/config';
 import {config as siteCmsSiteInitializerPermissionsConfig} from './tests/site-cms-site-initializer/permissions/config';
 import {config as siteCmsSiteInitializerStructureBuilderConfig} from './tests/site-cms-site-initializer/structure-builder/config';
+import {config as siteCmsStandaloneSiteInitializerConfig} from './tests/site-cms-standalone-site-initializer/main/config';
 import {config as siteDsrSiteInitializerConfig} from './tests/site-dsr-site-initializer/main/config';
 import {config as siteMySitesWebConfig} from './tests/site-my-sites-web/main/config';
 import {config as siteNavigationAdminWebConfig} from './tests/site-navigation-admin-web/main/config';
@@ -232,7 +235,6 @@ import {config as utilTaglibConfig} from './tests/util-taglib/main/config';
 import {config as wikiWebConfig} from './tests/wiki-web/main/config';
 import {config as customerConfig} from './tests/workspaces/liferay-customer-workspace/main/config';
 import {config as commerceWorkspaceConfig} from './tests/workspaces/liferay-workspace-commerce/main/config';
-import {config as jethr0Config} from './tests/workspaces/liferay-workspace-jethr0/main/config';
 import {config as marketplaceConfig} from './tests/workspaces/liferay-workspace-marketplace/main/config';
 
 const setupProjects = [
@@ -265,6 +267,7 @@ export default defineConfig({
 		announcementsWebConfig,
 		applicationListTaglibConfig,
 		assetCategoriesAdminWebConfig,
+		assetListWebConfig,
 		assetPublisherWebConfig,
 		assetPublisherWebRelatedAssetsConfig,
 		assetTagsAdminWebConfig,
@@ -352,7 +355,6 @@ export default defineConfig({
 		headlessDiscoveryWebConfig,
 		iframeWebConfig,
 		itemSelectorTaglibConfig,
-		jethr0Config,
 		journalWebConfig,
 		knowledgeBaseWebConfig,
 		layoutAdminWebConfig,
@@ -369,6 +371,7 @@ export default defineConfig({
 		mapsConfig,
 		marketplaceAppManagerWebConfig,
 		marketplaceConfig,
+		mcpServerWebConfig,
 		messageBoardsWebConfig,
 		messageBoardsWebPaginationConfig,
 		multifactorAuthenticationConfig,
@@ -451,6 +454,7 @@ export default defineConfig({
 		siteCmsSiteInitializerConfig,
 		siteCmsSiteInitializerPermissionsConfig,
 		siteCmsSiteInitializerStructureBuilderConfig,
+		siteCmsStandaloneSiteInitializerConfig,
 		siteDsrSiteInitializerConfig,
 		siteMySitesWebConfig,
 		siteNavigationAdminWebConfig,

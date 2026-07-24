@@ -59,6 +59,7 @@ import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.search.document.Document;
 import com.liferay.portal.search.hits.SearchHits;
 import com.liferay.portal.search.searcher.SearchRequest;
@@ -158,6 +159,7 @@ public class CommerceCurrencyLocalServiceImpl
 		commerceCurrency.setPrimary(primary);
 		commerceCurrency.setPriority(priority);
 		commerceCurrency.setActive(active);
+		commerceCurrency.setStatus(WorkflowConstants.STATUS_APPROVED);
 
 		return commerceCurrencyPersistence.update(commerceCurrency);
 	}
@@ -485,8 +487,9 @@ public class CommerceCurrencyLocalServiceImpl
 			commerceCurrencyPersistence.findByPrimaryKey(commerceCurrencyId);
 
 		CommerceCurrency primaryCommerceCurrency =
-			commerceCurrencyLocalService.fetchPrimaryCommerceCurrency(
-				commerceCurrency.getCompanyId());
+			commerceCurrencyPersistence.fetchByC_P_A_First(
+				commerceCurrency.getCompanyId(), true, true,
+				CommerceCurrencyPriorityComparator.getInstance(false));
 
 		if (primaryCommerceCurrency == null) {
 			return;

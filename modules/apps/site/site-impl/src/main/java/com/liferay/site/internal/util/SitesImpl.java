@@ -25,6 +25,7 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.change.tracking.CTTransactionException;
 import com.liferay.portal.kernel.dao.orm.EntityCacheUtil;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.lock.Lock;
 import com.liferay.portal.kernel.lock.LockManagerUtil;
 import com.liferay.portal.kernel.log.Log;
@@ -42,6 +43,7 @@ import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.portal.kernel.module.service.Snapshot;
 import com.liferay.portal.kernel.portlet.PortletIdCodec;
 import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
 import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
@@ -253,10 +255,8 @@ public class SitesImpl implements Sites {
 		UnicodeProperties prototypeTypeSettingsUnicodeProperties =
 			layoutPrototypeLayout.getTypeSettingsProperties();
 
-		if (prototypeTypeSettingsUnicodeProperties.containsKey(
-				MERGE_FAIL_COUNT)) {
-
-			prototypeTypeSettingsUnicodeProperties.remove(MERGE_FAIL_COUNT);
+		if (prototypeTypeSettingsUnicodeProperties.remove(MERGE_FAIL_COUNT) !=
+				null) {
 
 			_layoutLocalService.updateLayout(layoutPrototypeLayout);
 		}
@@ -572,6 +572,13 @@ public class SitesImpl implements Sites {
 			LayoutSetPrototype layoutSetPrototype, long userId)
 		throws Exception {
 
+		if (!FeatureFlagManagerUtil.isEnabled(
+				layoutSetPrototype.getCompanyId(), "LPD-82107")) {
+
+			throw new UnsupportedOperationException(
+				"The site template merge is not available");
+		}
+
 		if (ExportImportThreadLocal.isExportInProcess() ||
 			ExportImportThreadLocal.isImportInProcess() ||
 			ExportImportThreadLocal.isStagingInProcess()) {
@@ -581,7 +588,11 @@ public class SitesImpl implements Sites {
 					"import, or staging process is in progress");
 		}
 
-		if (_ctSettingsConfigurationHelper.isEnabled(
+		CTSettingsConfigurationHelper ctSettingsConfigurationHelper =
+			_ctSettingsConfigurationHelperSnapshot.get();
+
+		if ((ctSettingsConfigurationHelper != null) &&
+			ctSettingsConfigurationHelper.isEnabled(
 				layoutSetPrototype.getCompanyId())) {
 
 			throw new IllegalStateException(
@@ -1155,11 +1166,12 @@ public class SitesImpl implements Sites {
 
 	private static final Log _log = LogFactoryUtil.getLog(SitesImpl.class);
 
-	@Reference
-	private AssetEntryLocalService _assetEntryLocalService;
+	private static final Snapshot<CTSettingsConfigurationHelper>
+		_ctSettingsConfigurationHelperSnapshot = new Snapshot<>(
+			SitesImpl.class, CTSettingsConfigurationHelper.class);
 
 	@Reference
-	private CTSettingsConfigurationHelper _ctSettingsConfigurationHelper;
+	private AssetEntryLocalService _assetEntryLocalService;
 
 	@Reference
 	private ExportImportConfigurationLocalService

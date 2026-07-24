@@ -15,13 +15,18 @@ interface AddElementVariationParameters {
 interface DeleteElementVariationParameters {
 	deleteElementVariationURL: string;
 	externalReferenceCode: string;
-	plid: number;
 }
 
 interface UpdateAudiencesPriorityParameters {
 	audienceEntryERCs: string[];
 	segmentsExperienceERC: string;
 	updateAudiencesPriorityURL: string;
+}
+
+interface UpdateElementVariationParameters {
+	active: boolean;
+	externalReferenceCode: string;
+	updateElementVariationURL: string;
 }
 
 export default {
@@ -53,12 +58,10 @@ export default {
 	deleteElementVariation({
 		deleteElementVariationURL,
 		externalReferenceCode,
-		plid,
 	}: DeleteElementVariationParameters) {
 		return serviceFetch<void>(deleteElementVariationURL, {
 			body: {
 				externalReferenceCode,
-				plid: String(plid),
 			},
 		});
 	},
@@ -72,6 +75,19 @@ export default {
 			body: {
 				audienceEntryERCs: JSON.stringify(audienceEntryERCs),
 				segmentsExperienceERC,
+			},
+		});
+	},
+
+	updateElementVariation({
+		active,
+		externalReferenceCode,
+		updateElementVariationURL,
+	}: UpdateElementVariationParameters) {
+		return serviceFetch<void>(updateElementVariationURL, {
+			body: {
+				active: String(active),
+				externalReferenceCode,
 			},
 		});
 	},

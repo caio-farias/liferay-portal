@@ -155,6 +155,15 @@ public class LayoutPageTemplateStructureRelElementVariationLocalServiceWrapper
 				externalReferenceCode, groupId);
 	}
 
+	@Override
+	public void deleteLayoutPageTemplateStructureRelElementVariations(
+		long plid, String segmentsExperienceERC) {
+
+		_layoutPageTemplateStructureRelElementVariationLocalService.
+			deleteLayoutPageTemplateStructureRelElementVariations(
+				plid, segmentsExperienceERC);
+	}
+
 	/**
 	 * @throws PortalException
 	 */
@@ -529,6 +538,17 @@ public class LayoutPageTemplateStructureRelElementVariationLocalServiceWrapper
 	}
 
 	@Override
+	public LayoutPageTemplateStructureRelElementVariation
+			updateLayoutPageTemplateStructureRelElementVariation(
+				String externalReferenceCode, long groupId, boolean active)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _layoutPageTemplateStructureRelElementVariationLocalService.
+			updateLayoutPageTemplateStructureRelElementVariation(
+				externalReferenceCode, groupId, active);
+	}
+
+	@Override
 	public BasePersistence<?> getBasePersistence() {
 		return _layoutPageTemplateStructureRelElementVariationLocalService.
 			getBasePersistence();
@@ -581,4 +601,4 @@ public class LayoutPageTemplateStructureRelElementVariationLocalServiceWrapper
 		_layoutPageTemplateStructureRelElementVariationLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1148139206
+// LIFERAY-SERVICE-BUILDER-HASH:652939744

@@ -5,12 +5,14 @@
 
 package com.liferay.osb.faro.web.internal.servlet;
 
-import com.liferay.mail.kernel.model.MailMessage;
 import com.liferay.mail.kernel.service.MailService;
+import com.liferay.osb.faro.model.FaroProject;
 import com.liferay.osb.faro.model.FaroUser;
 import com.liferay.osb.faro.service.FaroEmailLocalService;
+import com.liferay.osb.faro.service.FaroProjectLocalService;
 import com.liferay.osb.faro.service.FaroUserLocalService;
 import com.liferay.osb.faro.util.EmailUtil;
+import com.liferay.osb.faro.util.FaroEmailSender;
 import com.liferay.osb.faro.util.FaroPropsValues;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
@@ -20,8 +22,6 @@ import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.DateUtil;
 import com.liferay.portal.kernel.util.HttpComponentsUtil;
 import com.liferay.portal.kernel.util.StringUtil;
-
-import jakarta.mail.internet.InternetAddress;
 
 import jakarta.servlet.Servlet;
 import jakarta.servlet.ServletException;
@@ -65,55 +65,32 @@ public class EmailServlet extends BaseAsahServlet {
 		}
 	}
 
-	private String _getDownloadURL(String batchId, long groupId) {
-		String url =
-			FaroPropsValues.FARO_URL + "/o/proxy/download/data-control-tasks";
+	private String _getBody(
+			FaroProject faroProject, FaroUser faroUser, JSONObject jsonObject,
+			ResourceBundle resourceBundle)
+		throws Exception {
 
-		url = HttpComponentsUtil.addParameter(url, "projectGroupId", groupId);
-
-		return HttpComponentsUtil.addParameter(url, "batchId", batchId);
-	}
-
-	private void _sendEmail(JSONObject jsonObject) throws Exception {
-		FaroUser faroUser = _faroUserLocalService.fetchFaroUser(
-			jsonObject.getLong("ownerId"));
-
-		if (faroUser == null) {
-			return;
-		}
-
-		InternetAddress from = new InternetAddress(
-			"ac@liferay.com", "Analytics Cloud");
-
-		User user = _userLocalService.getUser(faroUser.getLiveUserId());
-
-		InternetAddress to = new InternetAddress(
-			user.getEmailAddress(), user.getFullName());
-
-		ResourceBundle resourceBundle =
-			_faroEmailLocalService.getResourceBundle(user.getLocale());
-
-		String subject = _language.get(
-			resourceBundle, "your-request-is-complete");
-
-		String body = StringUtil.replace(
+		return StringUtil.replace(
 			_faroEmailLocalService.getTemplate(
 				"com/liferay/osb/faro/dependencies" +
 					"/data-control-task-complete.html"),
 			new String[] {
-				"[$BUTTON_TEXT$]", "[$BUTTON_URL$]", "[$DOWNLOAD_URL$]",
-				"[$EMAIL_HEADER_URL$]", "[$EMAIL_TITLE$]", "[$FOOTER_MENU_1$]",
-				"[$FOOTER_MENU_2$]", "[$FOOTER_MENU_3$]", "[$FOOTER_MSG_1$]",
-				"[$FOOTER_MSG_2$]", "[$FOOTER_MSG_3$]", "[$FOOTER_MSG_4$]",
-				"[$LIFERAY_LOGO_URL$]", "[$NOTIFICATION_MSG_1$]",
-				"[$NOTIFICATION_MSG_2$]", "[$TITLE_MSG$]", "[$YEAR$]"
+				"[$BUTTON_TEXT$]", "[$BUTTON_URL$]", "[$DOCUMENTATION_URL$]",
+				"[$DOWNLOAD_URL$]", "[$EMAIL_HEADER_URL$]", "[$EMAIL_TITLE$]",
+				"[$FOOTER_MENU_1$]", "[$FOOTER_MENU_2$]", "[$FOOTER_MENU_3$]",
+				"[$FOOTER_MSG_1$]", "[$FOOTER_MSG_2$]", "[$FOOTER_MSG_3$]",
+				"[$FOOTER_MSG_4$]", "[$LIFERAY_LOGO_URL$]",
+				"[$NOTIFICATION_MSG_1$]", "[$NOTIFICATION_MSG_2$]",
+				"[$TITLE_MSG$]", "[$YEAR$]"
 			},
 			new String[] {
 				_language.get(resourceBundle, "download"),
 				EmailUtil.getShareIconURL(),
+				EmailUtil.getDocumentationURL(faroProject),
 				_getDownloadURL(
 					jsonObject.getString("batchId"), faroUser.getGroupId()),
-				EmailUtil.getEmailHeaderURL(), subject,
+				EmailUtil.getEmailHeaderURL(),
+				_language.get(resourceBundle, "your-request-is-complete"),
 				_language.get(resourceBundle, "contact-support"),
 				_language.get(resourceBundle, "documentation"),
 				_language.get(resourceBundle, "announcements"),
@@ -139,14 +116,57 @@ public class EmailServlet extends BaseAsahServlet {
 					jsonObject.getString("batchId")),
 				_language.get(
 					resourceBundle, "download-files-are-available-for-30-days"),
-				subject, String.valueOf(DateUtil.getYear(new Date()))
+				_language.get(resourceBundle, "your-request-is-complete"),
+				String.valueOf(DateUtil.getYear(new Date()))
 			});
+	}
 
-		_mailService.sendEmail(new MailMessage(from, to, subject, body, true));
+	private String _getDownloadURL(String batchId, long groupId) {
+		String url =
+			FaroPropsValues.FARO_URL + "/o/proxy/download/data-control-tasks";
+
+		url = HttpComponentsUtil.addParameter(url, "projectGroupId", groupId);
+
+		return HttpComponentsUtil.addParameter(url, "batchId", batchId);
+	}
+
+	private void _sendEmail(JSONObject jsonObject) throws Exception {
+		FaroUser faroUser = _faroUserLocalService.fetchFaroUser(
+			jsonObject.getLong("ownerId"));
+
+		if (faroUser == null) {
+			return;
+		}
+
+		User user = _userLocalService.getUser(faroUser.getLiveUserId());
+
+		ResourceBundle resourceBundle =
+			_faroEmailLocalService.getResourceBundle(user.getLocale());
+
+		FaroProject faroProject =
+			_faroProjectLocalService.getFaroProjectByGroupId(
+				faroUser.getGroupId());
+
+		FaroEmailSender.create(
+			_mailService
+		).setBody(
+			_getBody(faroProject, faroUser, jsonObject, resourceBundle)
+		).setFaroProject(
+			faroProject
+		).setSubject(
+			_language.get(resourceBundle, "your-request-is-complete")
+		).setToEmailAddress(
+			user.getEmailAddress()
+		).setToName(
+			user.getFullName()
+		).send();
 	}
 
 	@Reference
 	private FaroEmailLocalService _faroEmailLocalService;
+
+	@Reference
+	private FaroProjectLocalService _faroProjectLocalService;
 
 	@Reference
 	private FaroUserLocalService _faroUserLocalService;

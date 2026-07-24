@@ -11,6 +11,7 @@ import {GlobalMenuPage} from '../product-navigation-applications-menu/GlobalMenu
 export class DigitalSalesRoomsPage {
 	readonly archiveButton: Locator;
 	readonly archiveMenuItem: Locator;
+	readonly archivedRoomWarning: Locator;
 	readonly archivedStatusFilterRadio: Locator;
 	readonly deleteButton: Locator;
 	readonly deleteConfirmationModal: Locator;
@@ -43,6 +44,7 @@ export class DigitalSalesRoomsPage {
 	constructor(page: Page) {
 		this.archiveButton = page.getByRole('button', {name: 'Archive'});
 		this.archiveMenuItem = page.getByRole('menuitem', {name: 'Archive'});
+		this.archivedRoomWarning = page.locator('#dsr-archived-room-warning');
 		this.archivedStatusFilterRadio = page.getByRole('radio', {
 			name: 'Archived',
 		});
@@ -91,7 +93,9 @@ export class DigitalSalesRoomsPage {
 			name: 'Save as Template',
 		});
 		this.shareMenuItem = page.getByRole('menuitem', {name: 'Share'});
-		this.settingsMenuItem = page.getByRole('menuitem', {name: 'Settings'});
+		this.settingsMenuItem = page.getByRole('menuitem', {
+			name: 'Room Settings',
+		});
 		this.showResultsButton = page.getByRole('button', {
 			name: 'Show Results',
 		});
@@ -111,6 +115,8 @@ export class DigitalSalesRoomsPage {
 
 	async archiveRoom(roomName: string) {
 		await this.clickRowActionsMenuItem(roomName, this.archiveMenuItem);
+
+		await expect(this.archiveButton).toHaveClass(/btn-warning/);
 
 		await this.archiveButton.click();
 

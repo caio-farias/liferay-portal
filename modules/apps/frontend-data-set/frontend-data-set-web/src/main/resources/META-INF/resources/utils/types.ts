@@ -26,6 +26,8 @@ export declare function FrontendDataSet({
 	header,
 	id,
 	infoPanelComponent,
+	infoPanelContainerRef,
+	infoPanelPosition,
 	inlineAddingSettings,
 	inlineEditingSettings,
 	items,
@@ -133,6 +135,7 @@ export interface IBulkActionItem {
 	target?: 'modal' | 'sidePanel';
 }
 export interface ICreationActionItem {
+	className?: string;
 	data?: {
 		disableHeader?: boolean;
 		permissionKey?: string;
@@ -357,6 +360,8 @@ export interface IFrontendDataSetProps {
 	hideManagementBarInEmptyState?: boolean;
 	id: string;
 	infoPanelComponent?: React.ComponentType<IInfoPanelComponent>;
+	infoPanelContainerRef?: React.RefObject<HTMLElement>;
+	infoPanelPosition?: 'absolute' | 'fixed';
 	inlineAddingSettings?: {
 		apiURL: string;
 		defaultBodyContent: object;

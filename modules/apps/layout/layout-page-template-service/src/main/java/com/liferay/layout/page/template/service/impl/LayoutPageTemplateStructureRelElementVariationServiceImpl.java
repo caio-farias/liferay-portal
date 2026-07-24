@@ -31,6 +31,7 @@ import org.osgi.service.component.annotations.Reference;
 public class LayoutPageTemplateStructureRelElementVariationServiceImpl
 	extends LayoutPageTemplateStructureRelElementVariationServiceBaseImpl {
 
+	@Override
 	public LayoutPageTemplateStructureRelElementVariation
 			addOrUpdateLayoutPageTemplateStructureRelElementVariation(
 				String externalReferenceCode, long groupId, boolean active,
@@ -39,6 +40,16 @@ public class LayoutPageTemplateStructureRelElementVariationServiceImpl
 				String segmentsExperienceERC, String targetElement,
 				String[] audienceEntryERCs, ServiceContext serviceContext)
 		throws PortalException {
+
+		LayoutPageTemplateStructureRelElementVariation
+			layoutPageTemplateStructureRelElementVariation =
+				layoutPageTemplateStructureRelElementVariationLocalService.
+					fetchLayoutPageTemplateStructureRelElementVariationByExternalReferenceCode(
+						externalReferenceCode, groupId);
+
+		if (layoutPageTemplateStructureRelElementVariation != null) {
+			plid = layoutPageTemplateStructureRelElementVariation.getPlid();
+		}
 
 		_layoutModelResourcePermission.check(
 			getPermissionChecker(), plid, ActionKeys.UPDATE);
@@ -50,18 +61,28 @@ public class LayoutPageTemplateStructureRelElementVariationServiceImpl
 				targetElement, audienceEntryERCs, serviceContext);
 	}
 
+	@Override
 	public void deleteLayoutPageTemplateStructureRelElementVariation(
-			String externalReferenceCode, long groupId, long plid)
+			String externalReferenceCode, long groupId)
 		throws PortalException {
 
+		LayoutPageTemplateStructureRelElementVariation
+			layoutPageTemplateStructureRelElementVariation =
+				layoutPageTemplateStructureRelElementVariationLocalService.
+					getLayoutPageTemplateStructureRelElementVariationByExternalReferenceCode(
+						externalReferenceCode, groupId);
+
 		_layoutModelResourcePermission.check(
-			getPermissionChecker(), plid, ActionKeys.UPDATE);
+			getPermissionChecker(),
+			layoutPageTemplateStructureRelElementVariation.getPlid(),
+			ActionKeys.UPDATE);
 
 		layoutPageTemplateStructureRelElementVariationLocalService.
 			deleteLayoutPageTemplateStructureRelElementVariation(
 				externalReferenceCode, groupId);
 	}
 
+	@Override
 	public List<LayoutPageTemplateStructureRelElementVariation>
 			getLayoutPageTemplateStructureRelElementVariations(long plid)
 		throws PortalException {
@@ -71,6 +92,28 @@ public class LayoutPageTemplateStructureRelElementVariationServiceImpl
 
 		return layoutPageTemplateStructureRelElementVariationLocalService.
 			getLayoutPageTemplateStructureRelElementVariations(plid);
+	}
+
+	@Override
+	public LayoutPageTemplateStructureRelElementVariation
+			updateLayoutPageTemplateStructureRelElementVariation(
+				String externalReferenceCode, long groupId, boolean active)
+		throws PortalException {
+
+		LayoutPageTemplateStructureRelElementVariation
+			layoutPageTemplateStructureRelElementVariation =
+				layoutPageTemplateStructureRelElementVariationLocalService.
+					getLayoutPageTemplateStructureRelElementVariationByExternalReferenceCode(
+						externalReferenceCode, groupId);
+
+		_layoutModelResourcePermission.check(
+			getPermissionChecker(),
+			layoutPageTemplateStructureRelElementVariation.getPlid(),
+			ActionKeys.UPDATE);
+
+		return layoutPageTemplateStructureRelElementVariationLocalService.
+			updateLayoutPageTemplateStructureRelElementVariation(
+				externalReferenceCode, groupId, active);
 	}
 
 	@Reference(

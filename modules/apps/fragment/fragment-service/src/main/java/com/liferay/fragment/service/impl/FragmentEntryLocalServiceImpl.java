@@ -5,6 +5,10 @@
 
 package com.liferay.fragment.service.impl;
 
+import com.liferay.depot.model.DepotEntry;
+import com.liferay.depot.model.DepotEntryGroupRel;
+import com.liferay.depot.service.DepotEntryGroupRelLocalService;
+import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.fragment.configuration.FragmentServiceConfiguration;
@@ -21,6 +25,7 @@ import com.liferay.fragment.service.FragmentEntryLinkLocalService;
 import com.liferay.fragment.service.base.FragmentEntryLocalServiceBaseImpl;
 import com.liferay.fragment.service.persistence.FragmentCollectionPersistence;
 import com.liferay.fragment.validator.FragmentEntryValidator;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.aop.AopService;
@@ -895,6 +900,14 @@ public class FragmentEntryLocalServiceImpl
 		}
 	}
 
+	private DepotEntry _fetchGroupDepotEntry(Group group) {
+		if (!group.isDepot()) {
+			return null;
+		}
+
+		return _depotEntryLocalService.fetchGroupDepotEntry(group.getGroupId());
+	}
+
 	private Map<String, FileEntry> _getFileEntries(
 		long fragmentCollectionId, FragmentEntry fragmentEntry) {
 
@@ -933,8 +946,10 @@ public class FragmentEntryLocalServiceImpl
 			long userId)
 		throws Exception {
 
-		if (folderIdMap.containsKey(folderPath)) {
-			return folderIdMap.get(folderPath);
+		Long folderId = folderIdMap.get(folderPath);
+
+		if (folderId != null) {
+			return folderId;
 		}
 
 		String folderName = folderPath;
@@ -981,14 +996,28 @@ public class FragmentEntryLocalServiceImpl
 	private void _propagateChanges(FragmentEntry fragmentEntry)
 		throws PortalException {
 
+		Group group = _groupLocalService.getGroup(fragmentEntry.getGroupId());
+
 		ActionableDynamicQuery actionableDynamicQuery =
 			_fragmentEntryLinkLocalService.getActionableDynamicQuery();
-
-		Group group = _groupLocalService.getGroup(fragmentEntry.getGroupId());
 
 		actionableDynamicQuery.setAddCriteriaMethod(
 			dynamicQuery -> {
 				Conjunction conjunction = RestrictionsFactoryUtil.conjunction();
+
+				DepotEntry depotEntry = _fetchGroupDepotEntry(group);
+
+				if (depotEntry != null) {
+					List<Long> groupIds = TransformUtil.transform(
+						_depotEntryGroupRelLocalService.getDepotEntryGroupRels(
+							depotEntry),
+						DepotEntryGroupRel::getToGroupId);
+
+					groupIds.add(group.getGroupId());
+
+					conjunction.add(
+						RestrictionsFactoryUtil.in("groupId", groupIds));
+				}
 
 				conjunction.add(
 					RestrictionsFactoryUtil.eq(
@@ -1124,6 +1153,12 @@ public class FragmentEntryLocalServiceImpl
 
 	@Reference
 	private CustomSQL _customSQL;
+
+	@Reference
+	private DepotEntryGroupRelLocalService _depotEntryGroupRelLocalService;
+
+	@Reference
+	private DepotEntryLocalService _depotEntryLocalService;
 
 	@Reference
 	private DLAppLocalService _dlAppLocalService;

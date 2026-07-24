@@ -2765,9 +2765,8 @@ public class BundleSiteInitializer implements SiteInitializer {
 		Locale siteDefaultLocale = _portal.getSiteDefaultLocale(
 			serviceContext.getScopeGroupId());
 
-		if (!nameMap.containsKey(siteDefaultLocale)) {
-			nameMap.put(siteDefaultLocale, pageJSONObject.getString("name"));
-		}
+		nameMap.putIfAbsent(
+			siteDefaultLocale, pageJSONObject.getString("name"));
 
 		String type = StringUtil.toLowerCase(pageJSONObject.getString("type"));
 
@@ -2785,10 +2784,8 @@ public class BundleSiteInitializer implements SiteInitializer {
 			SiteInitializerUtil.toMap(
 				pageJSONObject.getString("friendlyURL_i18n")));
 
-		if (!friendlyURLMap.containsKey(siteDefaultLocale)) {
-			friendlyURLMap.put(
-				siteDefaultLocale, pageJSONObject.getString("friendlyURL"));
-		}
+		friendlyURLMap.putIfAbsent(
+			siteDefaultLocale, pageJSONObject.getString("friendlyURL"));
 
 		UnicodeProperties unicodeProperties = new UnicodeProperties(true);
 
@@ -3999,17 +3996,18 @@ public class BundleSiteInitializer implements SiteInitializer {
 
 			if (segmentsEntry == null) {
 				segmentsEntry = _segmentsEntryLocalService.addSegmentsEntry(
-					jsonObject.getString("segmentsEntryKey"),
+					null, jsonObject.getString("segmentsEntryKey"),
 					SiteInitializerUtil.toMap(
 						jsonObject.getString("name_i18n")),
 					null, jsonObject.getBoolean("active", true),
 					jsonObject.get(
 						"criteria"
 					).toString(),
-					serviceContext);
+					null, serviceContext);
 			}
 			else {
 				segmentsEntry = _segmentsEntryLocalService.updateSegmentsEntry(
+					segmentsEntry.getExternalReferenceCode(),
 					segmentsEntry.getSegmentsEntryId(),
 					jsonObject.getString("segmentsEntryKey"),
 					SiteInitializerUtil.toMap(

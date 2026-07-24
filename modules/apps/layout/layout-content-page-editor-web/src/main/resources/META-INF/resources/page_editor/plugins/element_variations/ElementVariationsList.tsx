@@ -3,8 +3,12 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import ClayButton from '@clayui/button';
+import {ClayDropDownWithItems} from '@clayui/drop-down';
+import ClayIcon from '@clayui/icon';
 import ClayLabel from '@clayui/label';
 import ClayList from '@clayui/list';
+import ClayLoadingIndicator from '@clayui/loading-indicator';
 import React from 'react';
 
 import {ElementVariation} from './elementVariationsReducer';
@@ -18,10 +22,11 @@ function hasValueInAnyLanguage(
 
 interface Props {
 	audiences: Array<{label: string; value: string}>;
-	editableElementOptions: EditableElementOption[];
+	editableElementOptions: EditableElementOption[] | null;
 	elementVariations: ElementVariation[];
 	onDeleteElementVariation: (elementVariation: ElementVariation) => void;
 	onEditElementVariation: (key: string) => void;
+	onUpdateElementVariation: (elementVariation: ElementVariation) => void;
 }
 
 export default function ElementVariationsList({
@@ -30,6 +35,7 @@ export default function ElementVariationsList({
 	elementVariations,
 	onDeleteElementVariation,
 	onEditElementVariation,
+	onUpdateElementVariation,
 }: Props) {
 	const groupedElementVariations = elementVariations.reduce(
 		(groupedElementVariations, elementVariation) => {
@@ -45,6 +51,10 @@ export default function ElementVariationsList({
 		},
 		{} as Record<string, ElementVariation[]>
 	);
+
+	if (!editableElementOptions) {
+		return <ClayLoadingIndicator className="mt-3" />;
+	}
 
 	return (
 		<>
@@ -91,7 +101,7 @@ export default function ElementVariationsList({
 														elementVariation.html
 													) ? (
 														<ClayLabel
-															className="label-inverse-content-1"
+															className="label-inverse-content-6"
 															displayType="unstyled"
 															inverse
 														>
@@ -125,6 +135,14 @@ export default function ElementVariationsList({
 															)}
 														</ClayLabel>
 													) : null}
+
+													{elementVariation.active ? null : (
+														<ClayLabel displayType="danger">
+															{Liferay.Language.get(
+																'disabled'
+															)}
+														</ClayLabel>
+													)}
 												</div>
 											</ClayList.ItemText>
 										</ClayList.ItemField>
@@ -143,16 +161,19 @@ export default function ElementVariationsList({
 													)}
 												/>
 
-												<ClayList.QuickActionMenu.Item
-													onClick={() =>
-														onDeleteElementVariation(
-															elementVariation
-														)
+												<ElementVariationActions
+													elementVariation={
+														elementVariation
 													}
-													symbol="trash"
-													title={Liferay.Language.get(
-														'delete'
-													)}
+													onDeleteElementVariation={
+														onDeleteElementVariation
+													}
+													onEditElementVariation={
+														onEditElementVariation
+													}
+													onUpdateElementVariation={
+														onUpdateElementVariation
+													}
 												/>
 											</ClayList.QuickActionMenu>
 										</ClayList.ItemField>
@@ -164,5 +185,53 @@ export default function ElementVariationsList({
 				)
 			)}
 		</>
+	);
+}
+
+interface ElementVariationActionsProps {
+	elementVariation: ElementVariation;
+	onDeleteElementVariation: (elementVariation: ElementVariation) => void;
+	onEditElementVariation: (key: string) => void;
+	onUpdateElementVariation: (elementVariation: ElementVariation) => void;
+}
+
+function ElementVariationActions({
+	elementVariation,
+	onDeleteElementVariation,
+	onEditElementVariation,
+	onUpdateElementVariation,
+}: ElementVariationActionsProps) {
+	return (
+		<ClayDropDownWithItems
+			items={[
+				{
+					label: Liferay.Language.get('edit'),
+					onClick: () => onEditElementVariation(elementVariation.key),
+					symbolLeft: 'pencil',
+				},
+				{
+					label: elementVariation.active
+						? Liferay.Language.get('disable')
+						: Liferay.Language.get('enable'),
+					onClick: () => onUpdateElementVariation(elementVariation),
+					symbolLeft: 'check-circle',
+				},
+				{
+					label: Liferay.Language.get('delete'),
+					onClick: () => onDeleteElementVariation(elementVariation),
+					symbolLeft: 'trash',
+				},
+			]}
+			trigger={
+				<ClayButton
+					aria-label={Liferay.Language.get('actions')}
+					className="component-action quick-action-item"
+					displayType="unstyled"
+					title={Liferay.Language.get('actions')}
+				>
+					<ClayIcon symbol="ellipsis-v" />
+				</ClayButton>
+			}
+		/>
 	);
 }

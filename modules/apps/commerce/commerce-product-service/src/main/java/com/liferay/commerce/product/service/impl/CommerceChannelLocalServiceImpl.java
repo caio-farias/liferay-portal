@@ -130,6 +130,7 @@ public class CommerceChannelLocalServiceImpl
 		commerceChannel.setPriceDisplayType(
 			CommercePricingConstants.TAX_EXCLUDED_FROM_PRICE);
 		commerceChannel.setDiscountsTargetNetPrice(true);
+		commerceChannel.setStatus(WorkflowConstants.STATUS_APPROVED);
 
 		commerceChannel = commerceChannelPersistence.update(commerceChannel);
 
@@ -268,8 +269,7 @@ public class CommerceChannelLocalServiceImpl
 			return null;
 		}
 
-		return commerceChannelLocalService.fetchCommerceChannel(
-			group.getClassPK());
+		return commerceChannelPersistence.fetchByPrimaryKey(group.getClassPK());
 	}
 
 	@Override
@@ -283,7 +283,7 @@ public class CommerceChannelLocalServiceImpl
 		throws PortalException {
 
 		CommerceChannel commerceChannel =
-			commerceChannelLocalService.getCommerceChannel(commerceChannelId);
+			commerceChannelPersistence.findByPrimaryKey(commerceChannelId);
 
 		return _groupLocalService.fetchGroup(
 			commerceChannel.getCompanyId(),
@@ -298,8 +298,7 @@ public class CommerceChannelLocalServiceImpl
 
 		Group group = _groupLocalService.getGroup(groupId);
 
-		return commerceChannelLocalService.getCommerceChannel(
-			group.getClassPK());
+		return commerceChannelPersistence.findByPrimaryKey(group.getClassPK());
 	}
 
 	@Override

@@ -4564,6 +4564,22 @@
 	},
 	{
 		"classNames": [
+			"PortletSharedSearchResponse"
+		],
+		"from": "getKeywordsOptional",
+		"issueKey": "LPD-47005",
+		"to": "getKeywords"
+	},
+	{
+		"classNames": [
+			"PortletSharedSearchResponse"
+		],
+		"from": "getSpellCheckSuggestionOptional",
+		"issueKey": "LPD-47005",
+		"to": "getSpellCheckSuggestion"
+	},
+	{
+		"classNames": [
 			"SiteNavigationMenuLocalService",
 			"SiteNavigationMenuLocalServiceUtil"
 		],
@@ -5586,6 +5602,11 @@
 		"to": "addUserWithWorkflow(param#0#, param#1#, param#2#, param#3#, param#4#, param#5#, param#6#, param#7#, param#8#, param#9#, param#10#, param#11#, param#12#, param#13#, param#14#, param#15#, param#16#, param#17#, param#18#, UserConstants.TYPE_REGULAR, param#19#, param#20#, param#21#, param#22#, param#23#, param#24#)"
 	},
 	{
+		"from": "new FileAttachment(File paramName, String paramName)",
+		"hasMessage": true,
+		"issueKey": "LPD-61487"
+	},
+	{
 		"classNames": [
 			"LayoutLocalService",
 			"LayoutLocalServiceUtil",
@@ -5993,6 +6014,15 @@
 			"java",
 			"jsp"
 		]
+	},
+	{
+		"from": "SitesUtil.updateLayoutSetPrototypesLinks",
+		"issueKey": "LPD-85995",
+		"newImports": [
+			"com.liferay.sites.kernel.util.Sites"
+		],
+		"newReference": "Sites _sites",
+		"to": "_sites.updateLayoutSetPrototypesLinks"
 	},
 	{
 		"from": "regex:MultiVMPoolUtil\\s*.\\s*getPortalCache\\(\\s*(?<prefixMethodName>[\\s\\S]*?)\\)",

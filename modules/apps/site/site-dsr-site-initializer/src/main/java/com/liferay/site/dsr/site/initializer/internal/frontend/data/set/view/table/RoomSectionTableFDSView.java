@@ -51,15 +51,9 @@ public class RoomSectionTableFDSView extends BaseTableFDSView {
 			fdsTableSchemaField -> fdsTableSchemaField.setContentRenderer(
 				"roomTrendTableCellRenderer")
 		).add(
-			"status", "status",
-			fdsTableSchemaField -> fdsTableSchemaField.setContentRenderer(
-				"roomStatusTableCellRenderer")
-		).add(
-			"roomStatus", "room-status",
+			"roomStatus", "status",
 			fdsTableSchemaField -> fdsTableSchemaField.setContentRenderer(
 				"roomStatusFieldTableCellRenderer")
-		).add(
-			_getDateFDSTableSchemaField("archiveDate", "archive-date")
 		).build();
 	}
 

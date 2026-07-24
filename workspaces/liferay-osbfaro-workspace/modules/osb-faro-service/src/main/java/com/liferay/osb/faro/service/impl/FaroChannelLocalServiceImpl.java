@@ -5,14 +5,16 @@
 
 package com.liferay.osb.faro.service.impl;
 
-import com.liferay.mail.kernel.model.MailMessage;
 import com.liferay.mail.kernel.service.MailService;
 import com.liferay.osb.faro.constants.FaroChannelConstants;
 import com.liferay.osb.faro.model.FaroChannel;
+import com.liferay.osb.faro.model.FaroProject;
 import com.liferay.osb.faro.model.FaroUser;
 import com.liferay.osb.faro.service.FaroUserLocalService;
 import com.liferay.osb.faro.service.base.FaroChannelLocalServiceBaseImpl;
+import com.liferay.osb.faro.service.persistence.FaroProjectPersistence;
 import com.liferay.osb.faro.util.EmailUtil;
+import com.liferay.osb.faro.util.FaroEmailSender;
 import com.liferay.osb.faro.util.FaroPropsValues;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.aop.AopService;
@@ -36,8 +38,6 @@ import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.ResourceBundleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
-
-import jakarta.mail.internet.InternetAddress;
 
 import java.util.Collections;
 import java.util.Date;
@@ -235,25 +235,11 @@ public class FaroChannelLocalServiceImpl
 			permissionChecker.getUserId());
 	}
 
-	private void _sendEmail(
-			FaroChannel faroChannel, long invitedUserId, long roleId,
-			long userId)
+	private String _getBody(
+			FaroChannel faroChannel, FaroProject faroProject,
+			ResourceBundle resourceBundle, long roleId, String subject,
+			User user)
 		throws Exception {
-
-		User user = _userLocalService.getUser(userId);
-
-		InternetAddress from = new InternetAddress(
-			"ac@liferay.com", user.getFullName() + " (Analytics Cloud)");
-
-		User invitedUser = _userLocalService.getUser(invitedUserId);
-
-		InternetAddress to = new InternetAddress(
-			invitedUser.getEmailAddress(), invitedUser.getFullName());
-
-		ResourceBundle resourceBundle = ResourceBundleUtil.getBundle(
-			"content.Language", invitedUser.getLocale(), getClass());
-
-		String subject = _language.get(resourceBundle, "new-property-access");
 
 		String roleName = null;
 
@@ -268,22 +254,28 @@ public class FaroChannelLocalServiceImpl
 			roleName = "member-fragment";
 		}
 
-		String body = StringUtil.replace(
+		return StringUtil.replace(
 			StringUtil.read(
 				getClassLoader(),
 				"com/liferay/osb/faro/dependencies/property-invite.html"),
 			new String[] {
-				"[$BUTTON_TEXT$]", "[$BUTTON_URL$]", "[$EMAIL_HEADER_URL$]",
-				"[$EMAIL_TITLE$]", "[$FARO_URL$]", "[$FOOTER_MENU_1$]",
-				"[$FOOTER_MENU_2$]", "[$FOOTER_MENU_3$]", "[$FOOTER_MSG_1$]",
-				"[$FOOTER_MSG_2$]", "[$FOOTER_MSG_3$]", "[$FOOTER_MSG_4$]",
-				"[$HEADER_MSG_1$]", "[$LIFERAY_LOGO_URL$]",
+				"[$BUTTON_TEXT$]", "[$BUTTON_URL$]", "[$DOCUMENTATION_URL$]",
+				"[$EMAIL_HEADER_URL$]", "[$EMAIL_TITLE$]", "[$FARO_URL$]",
+				"[$FOOTER_MENU_1$]", "[$FOOTER_MENU_2$]", "[$FOOTER_MENU_3$]",
+				"[$FOOTER_MSG_1$]", "[$FOOTER_MSG_2$]", "[$FOOTER_MSG_3$]",
+				"[$FOOTER_MSG_4$]", "[$HEADER_MSG_1$]", "[$LIFERAY_LOGO_URL$]",
 				"[$NOTIFICATION_MSG_1$]", "[$NOTIFICATION_MSG_2$]", "[$YEAR$]"
 			},
 			new String[] {
-				_language.get(resourceBundle, "go-to-analytics-cloud"),
-				EmailUtil.getShareIconURL(), EmailUtil.getEmailHeaderURL(),
-				subject, FaroPropsValues.FARO_URL,
+				_language.get(
+					resourceBundle,
+					EmailUtil.getLanguageKey(
+						faroProject, "go-to-analytics-cloud",
+						"go-to-liferay-data-platform")),
+				EmailUtil.getShareIconURL(),
+				EmailUtil.getDocumentationURL(faroProject),
+				EmailUtil.getEmailHeaderURL(), subject,
+				FaroPropsValues.FARO_URL,
 				_language.get(resourceBundle, "contact-support"),
 				_language.get(resourceBundle, "documentation"),
 				_language.get(resourceBundle, "announcements"),
@@ -304,8 +296,12 @@ public class FaroChannelLocalServiceImpl
 				subject, EmailUtil.getLiferayIconURL(),
 				_language.format(
 					resourceBundle,
-					"you-have-been-added-as-a-team-x-on-the-analytics-cloud-" +
-						"x-workspace-property-by-x",
+					EmailUtil.getLanguageKey(
+						faroProject,
+						"you-have-been-added-as-a-team-x-on-the-analytics-" +
+							"cloud-x-workspace-property-by-x",
+						"you-have-been-added-as-a-team-x-on-the-liferay-data-" +
+							"platform-x-workspace-property-by-x"),
 					new String[] {
 						roleName, faroChannel.getName(), user.getEmailAddress()
 					}),
@@ -314,12 +310,45 @@ public class FaroChannelLocalServiceImpl
 					"log-in-to-your-workspace-to-access-this-property"),
 				String.valueOf(DateUtil.getYear(new Date()))
 			});
+	}
 
-		_mailService.sendEmail(new MailMessage(from, to, subject, body, true));
+	private void _sendEmail(
+			FaroChannel faroChannel, long invitedUserId, long roleId,
+			long userId)
+		throws Exception {
+
+		FaroProject faroProject = _faroProjectPersistence.findByGroupId(
+			faroChannel.getWorkspaceGroupId());
+
+		User user = _userLocalService.getUser(userId);
+
+		User invitedUser = _userLocalService.getUser(invitedUserId);
+
+		ResourceBundle resourceBundle = ResourceBundleUtil.getBundle(
+			"content.Language", invitedUser.getLocale(), getClass());
+
+		FaroEmailSender.create(
+			_mailService
+		).setBody(
+			_getBody(
+				faroChannel, faroProject, resourceBundle, roleId,
+				_language.get(resourceBundle, "new-property-access"), user)
+		).setFaroProject(
+			faroProject
+		).setSubject(
+			_language.get(resourceBundle, "new-property-access")
+		).setToEmailAddress(
+			invitedUser.getEmailAddress()
+		).setToName(
+			invitedUser.getFullName()
+		).send();
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		FaroChannelLocalServiceImpl.class);
+
+	@Reference
+	private FaroProjectPersistence _faroProjectPersistence;
 
 	@Reference
 	private FaroUserLocalService _faroUserLocalService;

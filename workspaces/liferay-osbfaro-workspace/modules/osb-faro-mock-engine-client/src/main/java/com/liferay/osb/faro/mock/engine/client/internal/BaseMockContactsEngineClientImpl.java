@@ -28,6 +28,7 @@ import com.liferay.osb.faro.engine.client.model.AssetSummaryType;
 import com.liferay.osb.faro.engine.client.model.AssetSummaryVocabulary;
 import com.liferay.osb.faro.engine.client.model.Author;
 import com.liferay.osb.faro.engine.client.model.BlockedKeyword;
+import com.liferay.osb.faro.engine.client.model.CatalogField;
 import com.liferay.osb.faro.engine.client.model.Channel;
 import com.liferay.osb.faro.engine.client.model.ChannelDataSource;
 import com.liferay.osb.faro.engine.client.model.Credentials;
@@ -36,6 +37,7 @@ import com.liferay.osb.faro.engine.client.model.DXPOrganization;
 import com.liferay.osb.faro.engine.client.model.DXPUserGroup;
 import com.liferay.osb.faro.engine.client.model.DataSource;
 import com.liferay.osb.faro.engine.client.model.DataSourceField;
+import com.liferay.osb.faro.engine.client.model.DataSourceFieldCatalogEntry;
 import com.liferay.osb.faro.engine.client.model.DataSourceProgress;
 import com.liferay.osb.faro.engine.client.model.Distribution;
 import com.liferay.osb.faro.engine.client.model.Event;
@@ -67,6 +69,7 @@ import java.io.OutputStream;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.osgi.service.component.annotations.Reference;
 
@@ -78,11 +81,11 @@ public abstract class BaseMockContactsEngineClientImpl
 
 	@Override
 	public AccountLifecycle addAccountLifecycle(
-		FaroProject faroProject, String description, String name,
-		String segmentId) {
+		FaroProject faroProject, AccountLifecycle accountLifecycle,
+		String channelId) {
 
 		return contactsEngineClient.addAccountLifecycle(
-			faroProject, description, name, segmentId);
+			faroProject, accountLifecycle, channelId);
 	}
 
 	@Override
@@ -304,6 +307,15 @@ public abstract class BaseMockContactsEngineClientImpl
 	}
 
 	@Override
+	public Map<String, List<DataSourceFieldCatalogEntry>>
+		discoverDataSourceFieldCatalogEntries(
+			FaroProject faroProject, DataSource dataSource) {
+
+		return contactsEngineClient.discoverDataSourceFieldCatalogEntries(
+			faroProject, dataSource);
+	}
+
+	@Override
 	public <T> T get(
 			FaroProject faroProject, Map<String, String> headers, String path,
 			Map<String, List<String>> queryParameters, Class<T> returnType)
@@ -519,12 +531,14 @@ public abstract class BaseMockContactsEngineClientImpl
 
 	public Results<AssetSummary> getAssetSummaries(
 		FaroProject faroProject, long channelId, String filterString,
-		String keywords, String objectType, int rangeKey, String selectedMetric,
-		int cur, int delta, String sortString) {
+		String keywords, String objectType, String rangeEnd, int rangeKey,
+		String rangeStart, String selectedMetric, int cur, int delta,
+		String sortString) {
 
 		return contactsEngineClient.getAssetSummaries(
 			faroProject, channelId, filterString, keywords, objectType,
-			rangeKey, selectedMetric, cur, delta, sortString);
+			rangeEnd, rangeKey, rangeStart, selectedMetric, cur, delta,
+			sortString);
 	}
 
 	@Override
@@ -598,6 +612,16 @@ public abstract class BaseMockContactsEngineClientImpl
 
 		return contactsEngineClient.getBlockedKeywords(
 			faroProject, query, cur, delta, orderByFields);
+	}
+
+	@Override
+	public Results<CatalogField> getCatalogFields(
+			FaroProject faroProject, String query, String tableName, int cur,
+			int delta, String sortString)
+		throws FaroEngineClientException {
+
+		return contactsEngineClient.getCatalogFields(
+			faroProject, query, tableName, cur, delta, sortString);
 	}
 
 	@Override
@@ -705,6 +729,27 @@ public abstract class BaseMockContactsEngineClientImpl
 
 		return contactsEngineClient.getDataSourceDXPUserGroups(
 			faroProject, id, name, cur, delta);
+	}
+
+	@Override
+	public Map<String, List<DataSourceFieldCatalogEntry>>
+		getDataSourceFieldCatalogEntries(
+			FaroProject faroProject, String id, boolean refresh) {
+
+		return contactsEngineClient.getDataSourceFieldCatalogEntries(
+			faroProject, id, refresh);
+	}
+
+	@Override
+	public Results<DataSourceFieldCatalogEntry>
+			getDataSourceFieldCatalogEntries(
+				FaroProject faroProject, String entityType, String filterString,
+				String id, String search, int cur, int delta, String sortString)
+		throws FaroEngineClientException {
+
+		return contactsEngineClient.getDataSourceFieldCatalogEntries(
+			faroProject, entityType, filterString, id, search, cur, delta,
+			sortString);
 	}
 
 	@Override
@@ -1299,6 +1344,15 @@ public abstract class BaseMockContactsEngineClientImpl
 		return contactsEngineClient.updateDataSource(
 			faroProject, id, credentials, event, name, provider, status, url,
 			userId);
+	}
+
+	@Override
+	public void updateDataSourceFieldSelection(
+		FaroProject faroProject, String id,
+		Map<String, Set<String>> selectedFieldNames) {
+
+		contactsEngineClient.updateDataSourceFieldSelection(
+			faroProject, id, selectedFieldNames);
 	}
 
 	@Override

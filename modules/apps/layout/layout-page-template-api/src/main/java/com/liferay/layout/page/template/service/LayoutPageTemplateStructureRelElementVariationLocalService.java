@@ -143,6 +143,9 @@ public interface LayoutPageTemplateStructureRelElementVariationLocalService
 	public void deleteLayoutPageTemplateStructureRelElementVariation(
 		String externalReferenceCode, long groupId);
 
+	public void deleteLayoutPageTemplateStructureRelElementVariations(
+		long plid, String segmentsExperienceERC);
+
 	/**
 	 * @throws PortalException
 	 */
@@ -384,6 +387,11 @@ public interface LayoutPageTemplateStructureRelElementVariationLocalService
 			LayoutPageTemplateStructureRelElementVariation
 				layoutPageTemplateStructureRelElementVariation);
 
+	public LayoutPageTemplateStructureRelElementVariation
+			updateLayoutPageTemplateStructureRelElementVariation(
+				String externalReferenceCode, long groupId, boolean active)
+		throws PortalException;
+
 	@Override
 	@Transactional(enabled = false)
 	public CTPersistence<LayoutPageTemplateStructureRelElementVariation>
@@ -403,4 +411,4 @@ public interface LayoutPageTemplateStructureRelElementVariationLocalService
 		throws E;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-473839327
+// LIFERAY-SERVICE-BUILDER-HASH:190826426

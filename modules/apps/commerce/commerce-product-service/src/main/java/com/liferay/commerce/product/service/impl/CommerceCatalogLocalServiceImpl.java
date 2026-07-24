@@ -99,6 +99,7 @@ public class CommerceCatalogLocalServiceImpl
 		commerceCatalog.setCommerceCurrencyCode(commerceCurrencyCode);
 		commerceCatalog.setCatalogDefaultLanguageId(catalogDefaultLanguageId);
 		commerceCatalog.setSystem(system);
+		commerceCatalog.setStatus(WorkflowConstants.STATUS_APPROVED);
 
 		// Group
 
@@ -285,7 +286,7 @@ public class CommerceCatalogLocalServiceImpl
 		throws PortalException {
 
 		CommerceCatalog commerceCatalog =
-			commerceCatalogLocalService.getCommerceCatalog(commerceCatalogId);
+			commerceCatalogPersistence.findByPrimaryKey(commerceCatalogId);
 
 		Group group = _groupLocalService.fetchGroup(
 			commerceCatalog.getCompanyId(),

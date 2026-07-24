@@ -3,11 +3,13 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+export {default as AddMembersInput} from './common/components/AddMembersInput';
 export {default as Breadcrumb} from './common/components/Breadcrumb';
 export {default as EnterpriseProductMenuBanner} from './common/components/EnterpriseProductMenuBanner';
 export {default as SpaceSelector} from './common/components/SpaceSelector';
 export {default as SpaceSticker} from './common/components/SpaceSticker';
 export {default as Toolbar} from './common/components/Toolbar';
+export {default as VerticalNavLayout} from './common/components/VerticalNavLayout';
 export {default as FieldPicker} from './common/components/forms/FieldPicker';
 export {default as FieldText} from './common/components/forms/FieldText';
 export {default as FieldWrapper} from './common/components/forms/FieldWrapper';

@@ -27,6 +27,7 @@ import com.liferay.osb.faro.engine.client.model.AssetSummaryType;
 import com.liferay.osb.faro.engine.client.model.AssetSummaryVocabulary;
 import com.liferay.osb.faro.engine.client.model.Author;
 import com.liferay.osb.faro.engine.client.model.BlockedKeyword;
+import com.liferay.osb.faro.engine.client.model.CatalogField;
 import com.liferay.osb.faro.engine.client.model.Channel;
 import com.liferay.osb.faro.engine.client.model.ChannelDataSource;
 import com.liferay.osb.faro.engine.client.model.Credentials;
@@ -35,6 +36,7 @@ import com.liferay.osb.faro.engine.client.model.DXPOrganization;
 import com.liferay.osb.faro.engine.client.model.DXPUserGroup;
 import com.liferay.osb.faro.engine.client.model.DataSource;
 import com.liferay.osb.faro.engine.client.model.DataSourceField;
+import com.liferay.osb.faro.engine.client.model.DataSourceFieldCatalogEntry;
 import com.liferay.osb.faro.engine.client.model.DataSourceProgress;
 import com.liferay.osb.faro.engine.client.model.Distribution;
 import com.liferay.osb.faro.engine.client.model.Event;
@@ -67,6 +69,7 @@ import java.io.OutputStream;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * @author Shinn Lok
@@ -74,8 +77,8 @@ import java.util.Map;
 public interface ContactsEngineClient {
 
 	public AccountLifecycle addAccountLifecycle(
-		FaroProject faroProject, String description, String name,
-		String segmentId);
+		FaroProject faroProject, AccountLifecycle accountLifecycle,
+		String channelId);
 
 	public Results<BlockedKeyword> addBlockedKeywords(
 		FaroProject faroProject, List<String> keywords);
@@ -170,6 +173,10 @@ public interface ContactsEngineClient {
 
 	public void disconnectDataSources(FaroProject faroProject)
 		throws FaroEngineClientException;
+
+	public Map<String, List<DataSourceFieldCatalogEntry>>
+		discoverDataSourceFieldCatalogEntries(
+			FaroProject faroProject, DataSource dataSource);
 
 	public <T> T get(
 			FaroProject faroProject, Map<String, String> headers, String path,
@@ -266,7 +273,7 @@ public interface ContactsEngineClient {
 		int delta, List<OrderByField> orderByFields);
 
 	public Results<ApiUsageMetric> getApiUsageMetrics(
-		FaroProject faroProject, Date usageDate);
+		FaroProject faroProject, String endDateString, String startDateString);
 
 	public Asset getAsset(FaroProject faroProject, String id)
 		throws FaroEngineClientException;
@@ -277,8 +284,9 @@ public interface ContactsEngineClient {
 
 	public Results<AssetSummary> getAssetSummaries(
 		FaroProject faroProject, long channelId, String filterString,
-		String keywords, String objectType, int rangeKey, String selectedMetric,
-		int cur, int delta, String sortString);
+		String keywords, String objectType, String rangeEnd, int rangeKey,
+		String rangeStart, String selectedMetric, int cur, int delta,
+		String sortString);
 
 	public Results<AssetSummaryCategory> getAssetSummaryCategories(
 		FaroProject faroProject, String accountId, long channelId,
@@ -311,6 +319,11 @@ public interface ContactsEngineClient {
 	public Results<BlockedKeyword> getBlockedKeywords(
 		FaroProject faroProject, String query, int cur, int delta,
 		List<OrderByField> orderByFields);
+
+	public Results<CatalogField> getCatalogFields(
+			FaroProject faroProject, String query, String tableName, int cur,
+			int delta, String sortString)
+		throws FaroEngineClientException;
 
 	public Channel getChannel(FaroProject faroProject, String id)
 		throws FaroEngineClientException;
@@ -356,6 +369,16 @@ public interface ContactsEngineClient {
 
 	public Results<DXPUserGroup> getDataSourceDXPUserGroups(
 		FaroProject faroProject, String id, String name, int cur, int delta);
+
+	public Map<String, List<DataSourceFieldCatalogEntry>>
+		getDataSourceFieldCatalogEntries(
+			FaroProject faroProject, String id, boolean refresh);
+
+	public Results<DataSourceFieldCatalogEntry>
+			getDataSourceFieldCatalogEntries(
+				FaroProject faroProject, String entityType, String filterString,
+				String id, String search, int cur, int delta, String sortString)
+		throws FaroEngineClientException;
 
 	public List<DataSourceField> getDataSourceFields(
 		FaroProject faroProject, String id, String context, int count);
@@ -641,6 +664,10 @@ public interface ContactsEngineClient {
 		FaroProject faroProject, String id, Credentials credentials,
 		Event event, String name, Provider provider, String status, String url,
 		long userId);
+
+	public void updateDataSourceFieldSelection(
+		FaroProject faroProject, String id,
+		Map<String, Set<String>> selectedFieldNames);
 
 	public FieldMapping updateFieldMapping(
 		FaroProject faroProject, String context,

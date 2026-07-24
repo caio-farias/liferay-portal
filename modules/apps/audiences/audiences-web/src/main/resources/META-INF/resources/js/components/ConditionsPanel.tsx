@@ -7,78 +7,126 @@ import {Option, Picker} from '@clayui/core';
 import ClayEmptyState from '@clayui/empty-state';
 import {useScreenReaderAnnounce} from '@liferay/layout-js-components-web';
 import classNames from 'classnames';
-import React, {Dispatch, Fragment} from 'react';
-import {useDrop} from 'react-dnd';
+import React, {Dispatch, Fragment, useMemo, useRef, useState} from 'react';
+import {ConnectDropTarget, useDrop} from 'react-dnd';
 
 import {
 	CATEGORY_ICON_COLORS,
 	DEFAULT_ICON_COLOR,
 } from '../constants/categoryIconColors';
-import {DRAG_TYPES} from '../constants/dragTypes';
-import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
-import {useMovementSource} from '../keyboard_movement/KeyboardMovementContext';
+import {
+	AttributeDragItem,
+	DRAG_TYPES,
+	RowDragItem,
+} from '../constants/dragTypes';
+import {DROP_POSITIONS} from '../constants/dropPositions';
+import useKeyboardNavigation, {
+	NavigationItemProps,
+} from '../hooks/useKeyboardNavigation';
+import {
+	useMovementSource,
+	useMovementTarget,
+} from '../keyboard_movement/KeyboardMovementContext';
 import KeyboardMovementManager from '../keyboard_movement/KeyboardMovementManager';
 import {Action} from '../reducer';
-import {AudiencesCriteria, AudiencesCriteriaType, Rule} from '../types';
+import {AudiencesCriteria, AudiencesCriteriaType, Group} from '../types';
+import {getAudiencesCriteriasByKey} from '../util/getAudiencesCriteriasByKey';
+import {getConditionLabel} from '../util/getConditionLabel';
+import {DropZone, getDropPosition} from '../util/getDropPosition';
+import {canGroupNode} from '../util/tree/canGroupNode';
+import {flattenRules} from '../util/tree/flattenRules';
+import {isGroup} from '../util/tree/isGroup';
 import RuleRow from './RuleRow';
 
 interface IProps {
 	audiencesCriteriaTypes: AudiencesCriteriaType[];
-	conjunction: string;
 	dispatch: Dispatch<Action>;
-	rules: Rule[];
+	root: Group;
 }
 
-interface AttributeDragItem {
-	audiencesCriteria: AudiencesCriteria;
-	type: string;
+interface RenderContext {
+	announce: (message: string) => void;
+	audiencesCriteriasByKey: Record<string, AudiencesCriteria>;
+	dispatch: Dispatch<Action>;
+	getItemProps: (index: number) => NavigationItemProps;
+	iconColorsByKey: Record<string, string>;
+	ruleIndexById: Map<string, number>;
+}
+
+function collectNodeNames(
+	group: Group,
+	audiencesCriteriasByKey: Record<string, AudiencesCriteria>,
+	namesById: Record<string, string> = {}
+): Record<string, string> {
+	group.items.forEach((node) => {
+		if (isGroup(node)) {
+			const conjunction =
+				node.conjunction === 'OR'
+					? Liferay.Language.get('any')
+					: Liferay.Language.get('all');
+
+			namesById[node.id] = `${conjunction} ${Liferay.Language.get(
+				'of-these-criteria-are-met'
+			)}`;
+
+			collectNodeNames(node, audiencesCriteriasByKey, namesById);
+		}
+		else {
+			const audiencesCriteria = audiencesCriteriasByKey[node.attribute];
+
+			namesById[node.id] = audiencesCriteria
+				? getConditionLabel(node, audiencesCriteria)
+				: node.attribute;
+		}
+	});
+
+	return namesById;
 }
 
 export default function ConditionsPanel({
 	audiencesCriteriaTypes,
-	conjunction,
 	dispatch,
-	rules,
+	root,
 }: IProps) {
-	const audiencesCriterias = audiencesCriteriaTypes.flatMap(
-		(audiencesCriteriaType) => audiencesCriteriaType.audiencesCriterias
+	const audiencesCriteriasByKey = useMemo(
+		() => getAudiencesCriteriasByKey(audiencesCriteriaTypes),
+		[audiencesCriteriaTypes]
 	);
 
-	const audiencesCriteriasByKey: Record<string, AudiencesCriteria> =
-		Object.fromEntries(
-			audiencesCriterias.map((audiencesCriteria) => [
-				audiencesCriteria.key,
-				audiencesCriteria,
-			])
-		);
-
-	const iconColorsByKey: Record<string, string> = Object.fromEntries(
-		audiencesCriteriaTypes.flatMap((audiencesCriteriaType) =>
-			audiencesCriteriaType.audiencesCriterias.map(
-				(audiencesCriteria) => [
-					audiencesCriteria.key,
-					CATEGORY_ICON_COLORS[audiencesCriteriaType.key] ??
-						DEFAULT_ICON_COLOR,
-				]
-			)
-		)
+	const iconColorsByKey: Record<string, string> = useMemo(
+		() =>
+			Object.fromEntries(
+				audiencesCriteriaTypes.flatMap((audiencesCriteriaType) =>
+					audiencesCriteriaType.audiencesCriterias.map(
+						(audiencesCriteria) => [
+							audiencesCriteria.key,
+							CATEGORY_ICON_COLORS[audiencesCriteriaType.key] ??
+								DEFAULT_ICON_COLOR,
+						]
+					)
+				)
+			),
+		[audiencesCriteriaTypes]
 	);
 
 	const announce = useScreenReaderAnnounce();
 
 	const movementSource = useMovementSource();
 
-	const {getItemProps} = useKeyboardNavigation({itemCount: rules.length});
+	const ruleIndexById = useMemo(
+		() =>
+			new Map(flattenRules(root).map((rule, index) => [rule.id, index])),
+		[root]
+	);
 
-	const movementItems = rules.map((rule) => {
-		const audiencesCriteria = audiencesCriteriasByKey[rule.attribute];
-
-		return {
-			icon: audiencesCriteria?.icon ?? '',
-			id: rule.id,
-			name: audiencesCriteria?.label ?? rule.attribute,
-		};
+	const {getItemProps} = useKeyboardNavigation({
+		itemCount: ruleIndexById.size,
 	});
+
+	const namesById = useMemo(
+		() => collectNodeNames(root, audiencesCriteriasByKey),
+		[audiencesCriteriasByKey, root]
+	);
 
 	const [{canDrop, isOver}, drop] = useDrop<
 		AttributeDragItem,
@@ -90,27 +138,23 @@ export default function ConditionsPanel({
 			canDrop: monitor.canDrop(),
 			isOver: monitor.isOver(),
 		}),
-		drop: (item) => handleAddRule(item.audiencesCriteria),
+		drop: (item) => {
+			dispatch({
+				audiencesCriteria: item.audiencesCriteria,
+				type: 'ADD_RULE',
+			});
+
+			announce(Liferay.Language.get('a-condition-was-added'));
+		},
 	});
 
-	function handleAddRule(
-		audiencesCriteria: AudiencesCriteria,
-		index?: number
-	) {
-		dispatch({audiencesCriteria, index, type: 'ADD_RULE'});
-
-		announce(Liferay.Language.get('a-condition-was-added'));
-	}
-
-	const handleReorder = (newItems: Array<{id: string}>) => {
-		const rulesById = new Map(rules.map((rule) => [rule.id, rule]));
-
-		dispatch({
-			rules: newItems
-				.map((item) => rulesById.get(item.id))
-				.filter((rule): rule is Rule => Boolean(rule)),
-			type: 'REORDER_RULES',
-		});
+	const context: RenderContext = {
+		announce,
+		audiencesCriteriasByKey,
+		dispatch,
+		getItemProps,
+		iconColorsByKey,
+		ruleIndexById,
 	};
 
 	return (
@@ -118,8 +162,8 @@ export default function ConditionsPanel({
 			{movementSource ? (
 				<KeyboardMovementManager
 					dispatch={dispatch}
-					items={movementItems}
-					rules={rules}
+					namesById={namesById}
+					root={root}
 					source={movementSource}
 				/>
 			) : null}
@@ -130,143 +174,342 @@ export default function ConditionsPanel({
 				</p>
 			</div>
 
-			{rules.length ? (
+			{root.items.length ? (
 				<>
-					<div className="align-items-center bg-lighter border-top d-flex p-3">
-						<div className="mr-3">
-							<Picker
-								UNSAFE_menuClassName="audience-builder-conjunction-menu"
-								aria-label={Liferay.Language.get('conjunction')}
-								className="form-control-sm text-uppercase w-auto"
-								items={[
-									{
-										label: Liferay.Language.get('and'),
-										value: 'AND',
-									},
-									{
-										label: Liferay.Language.get('or'),
-										value: 'OR',
-									},
-								]}
-								onSelectionChange={(key) =>
-									dispatch({
-										conjunction: key as string,
-										type: 'SET_CONJUNCTION',
-									})
-								}
-								selectedKey={conjunction}
-							>
-								{(item) => (
-									<Option key={item.value}>
-										{item.label}
-									</Option>
-								)}
-							</Picker>
-						</div>
-
-						<span className="text-2 text-secondary">
-							{conjunction === 'OR'
-								? Liferay.Language.get('any-rule-must-match')
-								: Liferay.Language.get('all-rules-must-match')}
-
-							{' · '}
-
-							{rules.length === 1
-								? Liferay.Util.sub(
-										Liferay.Language.get('x-criterion'),
-										rules.length
-									)
-								: Liferay.Util.sub(
-										Liferay.Language.get('x-criteria'),
-										rules.length
-									)}
-						</span>
-					</div>
+					<ConjunctionBar
+						conjunction={root.conjunction}
+						conjunctionLabelId={`audience-builder-conjunction-${root.id}`}
+						onConjunctionChange={(value) =>
+							dispatch({
+								conjunction: value,
+								type: 'SET_CONJUNCTION',
+							})
+						}
+					/>
 
 					<div
 						aria-label={Liferay.Language.get('conditions')}
-						aria-orientation="vertical"
 						className="px-3 py-2"
-						role="menu"
+						role="list"
 					>
-						{rules.map((rule, index) => (
-							<Fragment key={rule.id}>
-								{index > 0 ? (
-									<div
-										aria-hidden="true"
-										className="font-weight-semi-bold my-3 text-3 text-secondary text-uppercase"
-									>
-										{conjunction === 'OR'
-											? Liferay.Language.get('or')
-											: Liferay.Language.get('and')}
-									</div>
-								) : null}
-
-								<RuleRow
-									audiencesCriteria={
-										audiencesCriteriasByKey[rule.attribute]
-									}
-									iconColor={iconColorsByKey[rule.attribute]}
-									index={index}
-									items={movementItems}
-									navigationProps={getItemProps(index)}
-									onAddRule={handleAddRule}
-									onChange={(newRule) =>
-										dispatch({
-											index,
-											rule: newRule,
-											type: 'UPDATE_RULE',
-										})
-									}
-									onDelete={() => {
-										dispatch({index, type: 'DELETE_RULE'});
-
-										announce(
-											Liferay.Language.get(
-												'a-condition-was-removed'
-											)
-										);
-									}}
-									onDuplicate={() => {
-										dispatch({
-											index,
-											type: 'DUPLICATE_RULE',
-										});
-
-										announce(
-											Liferay.Language.get(
-												'a-condition-was-duplicated'
-											)
-										);
-									}}
-									onReorder={handleReorder}
-									rule={rule}
-								/>
-							</Fragment>
-						))}
+						<GroupItems context={context} group={root} path={[]} />
 					</div>
 				</>
 			) : (
-				<div
-					className={classNames(
-						'audience-builder-drop-zone m-4 p-4',
-						{
-							'audience-builder-drop-zone--active': canDrop,
-							'audience-builder-drop-zone--over': isOver,
-						}
+				<ConditionsEmptyState
+					canDrop={canDrop}
+					dropRef={drop}
+					isOver={isOver}
+				/>
+			)}
+		</div>
+	);
+}
+
+interface GroupItemsProps {
+	context: RenderContext;
+	group: Group;
+	path: number[];
+}
+
+function GroupItems({context, group, path}: GroupItemsProps) {
+	const {
+		announce,
+		audiencesCriteriasByKey,
+		dispatch,
+		getItemProps,
+		iconColorsByKey,
+		ruleIndexById,
+	} = context;
+
+	const handleAddRule = (
+		audiencesCriteria: AudiencesCriteria,
+		insertIndex?: number
+	) => {
+		dispatch({
+			audiencesCriteria,
+			groupPath: path,
+			index: insertIndex,
+			type: 'ADD_RULE',
+		});
+
+		announce(Liferay.Language.get('a-condition-was-added'));
+	};
+
+	const handleMoveRule = (nodeId: string, targetIndex: number) =>
+		dispatch({
+			nodeId,
+			targetGroupId: group.id,
+			targetIndex,
+			type: 'MOVE_RULE',
+		});
+
+	return (
+		<>
+			{group.items.map((node, index) => {
+				const nodePath = [...path, index];
+
+				return (
+					<Fragment key={node.id}>
+						{index > 0 ? (
+							<div
+								aria-hidden="true"
+								className="font-weight-semi-bold my-3 text-3 text-secondary text-uppercase"
+							>
+								{group.conjunction === 'OR'
+									? Liferay.Language.get('or')
+									: Liferay.Language.get('and')}
+							</div>
+						) : null}
+
+						{isGroup(node) ? (
+							<GroupRow
+								context={context}
+								group={node}
+								index={index}
+								onAddRule={handleAddRule}
+								onMoveRule={handleMoveRule}
+								path={nodePath}
+							/>
+						) : (
+							<RuleRow
+								audiencesCriteria={
+									audiencesCriteriasByKey[node.attribute]
+								}
+								canGroup={canGroupNode(nodePath)}
+								iconColor={iconColorsByKey[node.attribute]}
+								index={index}
+								navigationProps={getItemProps(
+									ruleIndexById.get(node.id) ?? 0
+								)}
+								onAddRule={handleAddRule}
+								onChange={(rule) =>
+									dispatch({
+										path: nodePath,
+										rule,
+										type: 'UPDATE_RULE',
+									})
+								}
+								onDelete={() => {
+									dispatch({
+										path: nodePath,
+										type: 'DELETE_RULE',
+									});
+
+									announce(
+										Liferay.Language.get(
+											'a-condition-was-removed'
+										)
+									);
+								}}
+								onDuplicate={() => {
+									dispatch({
+										path: nodePath,
+										type: 'DUPLICATE_RULE',
+									});
+
+									announce(
+										Liferay.Language.get(
+											'a-condition-was-duplicated'
+										)
+									);
+								}}
+								onGroup={(audiencesCriteria) =>
+									dispatch({
+										audiencesCriteria,
+										targetId: node.id,
+										type: 'ADD_GROUP',
+									})
+								}
+								onMoveGroup={(nodeId) =>
+									dispatch({
+										nodeId,
+										targetId: node.id,
+										type: 'MOVE_RULE_INTO_NEW_GROUP',
+									})
+								}
+								onMoveRule={handleMoveRule}
+								rule={node}
+							/>
+						)}
+					</Fragment>
+				);
+			})}
+		</>
+	);
+}
+
+interface GroupRowProps {
+	context: RenderContext;
+	group: Group;
+	index: number;
+	onAddRule: (audiencesCriteria: AudiencesCriteria, index?: number) => void;
+	onMoveRule: (nodeId: string, index: number) => void;
+	path: number[];
+}
+
+function GroupRow({
+	context,
+	group,
+	index,
+	onAddRule,
+	onMoveRule,
+	path,
+}: GroupRowProps) {
+	const {dispatch} = context;
+
+	const movementTarget = useMovementTarget();
+
+	const groupRef = useRef<HTMLDivElement | null>(null);
+
+	const [dropPosition, setDropPosition] = useState<DropZone | null>(null);
+
+	const isMovementTarget = movementTarget.nodeId === group.id;
+
+	const [{isOver}, dropRef] = useDrop<RowDragItem, void, {isOver: boolean}>({
+		accept: [DRAG_TYPES.ATTRIBUTE, DRAG_TYPES.RULE],
+		collect: (monitor) => ({
+			isOver: monitor.isOver({shallow: true}) && monitor.canDrop(),
+		}),
+		drop: (item, monitor) => {
+			if (monitor.didDrop()) {
+				return;
+			}
+
+			const targetIndex =
+				getDropPosition(groupRef, monitor, {canGroup: false}) ===
+				DROP_POSITIONS.top
+					? index
+					: index + 1;
+
+			if ('audiencesCriteria' in item) {
+				onAddRule(item.audiencesCriteria, targetIndex);
+			}
+			else {
+				onMoveRule(item.id, targetIndex);
+			}
+		},
+		hover: (_item, monitor) => {
+			setDropPosition(
+				monitor.isOver({shallow: true})
+					? getDropPosition(groupRef, monitor, {canGroup: false})
+					: null
+			);
+		},
+	});
+
+	const setGroupRef = (element: HTMLDivElement | null) => {
+		groupRef.current = element;
+
+		dropRef(element);
+	};
+
+	const conjunctionLabelId = `audience-builder-conjunction-${group.id}`;
+
+	return (
+		<div
+			aria-labelledby={`${conjunctionLabelId}-value ${conjunctionLabelId}`}
+			className={classNames(
+				'audience-builder-group border overflow-hidden rounded',
+				{
+					'audience-builder-group--drop-bottom':
+						(isOver && dropPosition === DROP_POSITIONS.bottom) ||
+						(isMovementTarget &&
+							movementTarget.position === DROP_POSITIONS.bottom),
+					'audience-builder-group--drop-top':
+						(isOver && dropPosition === DROP_POSITIONS.top) ||
+						(isMovementTarget &&
+							movementTarget.position === DROP_POSITIONS.top),
+				}
+			)}
+			data-keyboard-movement-id={group.id}
+			ref={setGroupRef}
+			role="listitem"
+		>
+			<ConjunctionBar
+				conjunction={group.conjunction}
+				conjunctionLabelId={conjunctionLabelId}
+				onConjunctionChange={(value) =>
+					dispatch({
+						conjunction: value,
+						groupPath: path,
+						type: 'SET_CONJUNCTION',
+					})
+				}
+			/>
+
+			<div
+				aria-labelledby={`${conjunctionLabelId}-value ${conjunctionLabelId}`}
+				className="px-3 py-2"
+				role="list"
+			>
+				<GroupItems context={context} group={group} path={path} />
+			</div>
+		</div>
+	);
+}
+
+interface ConjunctionBarProps {
+	conjunction: string;
+	conjunctionLabelId: string;
+	onConjunctionChange: (conjunction: string) => void;
+}
+
+function ConjunctionBar({
+	conjunction,
+	conjunctionLabelId,
+	onConjunctionChange,
+}: ConjunctionBarProps) {
+	return (
+		<div className="align-items-center bg-lighter border-top c-gap-2 d-flex p-3 text-3 text-secondary">
+			<Picker
+				aria-labelledby={conjunctionLabelId}
+				className="form-control-sm w-auto"
+				id={`${conjunctionLabelId}-value`}
+				items={[
+					{label: Liferay.Language.get('all'), value: 'AND'},
+					{label: Liferay.Language.get('any'), value: 'OR'},
+				]}
+				onSelectionChange={(key) => onConjunctionChange(key as string)}
+				selectedKey={conjunction}
+			>
+				{(item) => <Option key={item.value}>{item.label}</Option>}
+			</Picker>
+
+			<span id={conjunctionLabelId}>
+				{Liferay.Language.get('of-these-criteria-are-met')}
+			</span>
+		</div>
+	);
+}
+
+interface ConditionsEmptyStateProps {
+	canDrop: boolean;
+	dropRef: ConnectDropTarget;
+	isOver: boolean;
+}
+
+function ConditionsEmptyState({
+	canDrop,
+	dropRef,
+	isOver,
+}: ConditionsEmptyStateProps) {
+	return (
+		<div
+			className={classNames('audience-builder-drop-zone m-4 p-4', {
+				'audience-builder-drop-zone--active': canDrop,
+				'audience-builder-drop-zone--over': isOver,
+			})}
+			ref={dropRef}
+		>
+			{!canDrop && (
+				<ClayEmptyState
+					description={Liferay.Language.get(
+						'to-create-a-new-audience-drag-items-from-the-sidebar-and-drop-them-here'
 					)}
-					ref={drop}
-				>
-					{!canDrop && (
-						<ClayEmptyState
-							description={Liferay.Language.get(
-								'to-create-a-new-audience-drag-items-from-the-sidebar-and-drop-them-here'
-							)}
-							imgSrc={`${Liferay.ThemeDisplay.getPathThemeImages()}/states/search_state.svg`}
-							title={Liferay.Language.get('no-criteria-yet')}
-						/>
-					)}
-				</div>
+					imgSrc={`${Liferay.ThemeDisplay.getPathThemeImages()}/states/empty_state.svg`}
+					title={Liferay.Language.get('no-criteria-yet')}
+				/>
 			)}
 		</div>
 	);

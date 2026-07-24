@@ -28,17 +28,18 @@ exports[`VerticalTimeline should render with a header and initialExpanded 1`] = 
                 >
                   Yesterday
                 </span>
-                <svg
-                  class="lexicon-icon lexicon-icon-ac_event_icon event-icon icon-root"
-                  role="presentation"
-                >
-                  <use
-                    href="#ac_event_icon"
-                  />
-                </svg>
                 <span
-                  class="item-count"
-                />
+                  class="item-count text-secondary"
+                >
+                  <svg
+                    class="lexicon-icon lexicon-icon-click event-icon icon-root mr-2"
+                    role="presentation"
+                  >
+                    <use
+                      href="#click"
+                    />
+                  </svg>
+                </span>
               </div>
             </div>
           </div>
@@ -94,13 +95,22 @@ exports[`VerticalTimeline should render with a header and initialExpanded 1`] = 
                   </span>
                 </span>
                 <a
-                  class="d-inline-block subtitle"
+                  class="subtitle"
                   href="3 Document Downloads, 2 Form Submissions, 24 Page Visits"
                   rel="noopener noreferrer"
                   target="_blank"
                 >
+                  <svg
+                    class="lexicon-icon lexicon-icon-shortcut"
+                    font-size="8"
+                    role="presentation"
+                  >
+                    <use
+                      href="#shortcut"
+                    />
+                  </svg>
                   <span
-                    class="text-truncate"
+                    class="text-truncate mb-1"
                     data-tooltip="false"
                     title=""
                   >
@@ -219,13 +229,22 @@ Firefox"
                           </span>
                         </span>
                         <a
-                          class="d-inline-block subtitle"
+                          class="subtitle"
                           href="www.liferay.com/testing"
                           rel="noopener noreferrer"
                           target="_blank"
                         >
+                          <svg
+                            class="lexicon-icon lexicon-icon-shortcut"
+                            font-size="8"
+                            role="presentation"
+                          >
+                            <use
+                              href="#shortcut"
+                            />
+                          </svg>
                           <span
-                            class="text-truncate"
+                            class="text-truncate mb-1"
                             data-tooltip="false"
                             title=""
                           >
@@ -292,13 +311,22 @@ Firefox"
                           </span>
                         </span>
                         <a
-                          class="d-inline-block subtitle"
+                          class="subtitle"
                           href="www.liferay.com/testing 2"
                           rel="noopener noreferrer"
                           target="_blank"
                         >
+                          <svg
+                            class="lexicon-icon lexicon-icon-shortcut"
+                            font-size="8"
+                            role="presentation"
+                          >
+                            <use
+                              href="#shortcut"
+                            />
+                          </svg>
                           <span
-                            class="text-truncate"
+                            class="text-truncate mb-1"
                             data-tooltip="false"
                             title=""
                           >
@@ -347,17 +375,18 @@ Firefox"
                 >
                   Today
                 </span>
-                <svg
-                  class="lexicon-icon lexicon-icon-ac_event_icon event-icon icon-root"
-                  role="presentation"
-                >
-                  <use
-                    href="#ac_event_icon"
-                  />
-                </svg>
                 <span
-                  class="item-count"
-                />
+                  class="item-count text-secondary"
+                >
+                  <svg
+                    class="lexicon-icon lexicon-icon-click event-icon icon-root mr-2"
+                    role="presentation"
+                  >
+                    <use
+                      href="#click"
+                    />
+                  </svg>
+                </span>
               </div>
             </div>
           </div>
@@ -413,13 +442,22 @@ Firefox"
                   </span>
                 </span>
                 <a
-                  class="d-inline-block subtitle"
+                  class="subtitle"
                   href="3 Document Downloads, 2 Form Submissions, 24 Page Visits"
                   rel="noopener noreferrer"
                   target="_blank"
                 >
+                  <svg
+                    class="lexicon-icon lexicon-icon-shortcut"
+                    font-size="8"
+                    role="presentation"
+                  >
+                    <use
+                      href="#shortcut"
+                    />
+                  </svg>
                   <span
-                    class="text-truncate"
+                    class="text-truncate mb-1"
                     data-tooltip="false"
                     title=""
                   >
@@ -536,13 +574,22 @@ Firefox"
                           </span>
                         </span>
                         <a
-                          class="d-inline-block subtitle"
+                          class="subtitle"
                           href="www.liferay.com/testing"
                           rel="noopener noreferrer"
                           target="_blank"
                         >
+                          <svg
+                            class="lexicon-icon lexicon-icon-shortcut"
+                            font-size="8"
+                            role="presentation"
+                          >
+                            <use
+                              href="#shortcut"
+                            />
+                          </svg>
                           <span
-                            class="text-truncate"
+                            class="text-truncate mb-1"
                             data-tooltip="false"
                             title=""
                           >
@@ -609,13 +656,22 @@ Firefox"
                           </span>
                         </span>
                         <a
-                          class="d-inline-block subtitle"
+                          class="subtitle"
                           href="www.liferay.com/testing 2"
                           rel="noopener noreferrer"
                           target="_blank"
                         >
+                          <svg
+                            class="lexicon-icon lexicon-icon-shortcut"
+                            font-size="8"
+                            role="presentation"
+                          >
+                            <use
+                              href="#shortcut"
+                            />
+                          </svg>
                           <span
-                            class="text-truncate"
+                            class="text-truncate mb-1"
                             data-tooltip="false"
                             title=""
                           >
@@ -699,13 +755,22 @@ Firefox"
                   </a>
                 </span>
                 <a
-                  class="d-inline-block subtitle"
+                  class="subtitle"
                   href="3 Document Downloads, 2 Form Submissions, 24 Page Visits"
                   rel="noopener noreferrer"
                   target="_blank"
                 >
+                  <svg
+                    class="lexicon-icon lexicon-icon-shortcut"
+                    font-size="8"
+                    role="presentation"
+                  >
+                    <use
+                      href="#shortcut"
+                    />
+                  </svg>
                   <span
-                    class="text-truncate"
+                    class="text-truncate mb-1"
                     data-tooltip="false"
                     title=""
                   >
@@ -821,14 +886,34 @@ Firefox"
                             Visited Liferay: Testing
                           </span>
                         </span>
+                        <div
+                          class="description"
+                        >
+                          <span
+                            class="text-truncate"
+                            data-tooltip="false"
+                            title=""
+                          >
+                            Liferay: Digital experience software tailored to your needs
+                          </span>
+                        </div>
                         <a
-                          class="d-inline-block subtitle"
+                          class="subtitle"
                           href="www.liferay.com/testing"
                           rel="noopener noreferrer"
                           target="_blank"
                         >
+                          <svg
+                            class="lexicon-icon lexicon-icon-shortcut"
+                            font-size="8"
+                            role="presentation"
+                          >
+                            <use
+                              href="#shortcut"
+                            />
+                          </svg>
                           <span
-                            class="text-truncate"
+                            class="text-truncate mb-1"
                             data-tooltip="false"
                             title=""
                           >
@@ -897,13 +982,22 @@ Firefox"
                           </span>
                         </span>
                         <a
-                          class="d-inline-block subtitle"
+                          class="subtitle"
                           href="www.liferay.com/testing 2"
                           rel="noopener noreferrer"
                           target="_blank"
                         >
+                          <svg
+                            class="lexicon-icon lexicon-icon-shortcut"
+                            font-size="8"
+                            role="presentation"
+                          >
+                            <use
+                              href="#shortcut"
+                            />
+                          </svg>
                           <span
-                            class="text-truncate"
+                            class="text-truncate mb-1"
                             data-tooltip="false"
                             title=""
                           >

@@ -13,14 +13,15 @@ import com.liferay.audiences.model.AudiencesEntry;
 import com.liferay.audiences.service.AudiencesEntryLocalService;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.test.AssertUtils;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
-import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 
@@ -28,7 +29,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,12 +45,6 @@ public class AudiencesEntryLocalServiceTest {
 	public static final AggregateTestRule aggregateTestRule =
 		new LiferayIntegrationTestRule();
 
-	@Before
-	public void setUp() throws Exception {
-		_serviceContext = ServiceContextTestUtil.getServiceContext(
-			TestPropsValues.getGroupId());
-	}
-
 	@Test
 	@TestInfo("LPD-95291")
 	public void testAddAudiencesEntry() throws Exception {
@@ -59,10 +53,35 @@ public class AudiencesEntryLocalServiceTest {
 
 		AudiencesEntry audiencesEntry = _addAudiencesEntry(
 			externalReferenceCode,
-			StringBundler.concat(
-				"{\"conjunction\": \"AND\", \"rules\": [{\"attribute\": ",
-				"\"url\", \"operator\": \"eq\", \"value\": \"",
-				RandomTestUtil.randomString(), "\"}]}"),
+			JSONUtil.put(
+				"conjunction", "AND"
+			).put(
+				"rules",
+				JSONUtil.putAll(
+					JSONUtil.put(
+						"attribute", "url"
+					).put(
+						"operator", "eq"
+					).put(
+						"value", RandomTestUtil.randomString()
+					),
+					JSONUtil.put(
+						"attribute", "segment"
+					).put(
+						"operator", "eq"
+					).put(
+						"value", RandomTestUtil.randomString()
+					),
+					JSONUtil.put(
+						"attribute",
+						"custom:/o/frontend-js-audiences-web/__liferay__" +
+							"/custom-attributes.js#signed_in"
+					).put(
+						"operator", "eq"
+					).put(
+						"value", true
+					))
+			).toString(),
 			name);
 
 		Assert.assertEquals(
@@ -77,7 +96,12 @@ public class AudiencesEntryLocalServiceTest {
 			AudiencesEntryJSONException.class,
 			"/conjunction: INVALID is not a valid enum value",
 			() -> _addAudiencesEntry(
-				null, "{\"conjunction\": \"INVALID\", \"rules\": []}",
+				null,
+				JSONUtil.put(
+					"conjunction", "INVALID"
+				).put(
+					"rules", JSONUtil.putAll()
+				).toString(),
 				RandomTestUtil.randomString()));
 		AssertUtils.assertFailure(
 			DuplicateAudiencesEntryExternalReferenceCodeException.class,
@@ -95,8 +119,8 @@ public class AudiencesEntryLocalServiceTest {
 	public void testDeleteAudiencesEntry() throws Exception {
 		AudiencesEntry audiencesEntry =
 			_audiencesEntryLocalService.addAudiencesEntry(
-				null, StringPool.BLANK, RandomTestUtil.randomString(),
-				_serviceContext);
+				null, TestPropsValues.getUserId(), StringPool.BLANK,
+				RandomTestUtil.randomString());
 
 		long audiencesEntryId = audiencesEntry.getAudiencesEntryId();
 
@@ -107,37 +131,48 @@ public class AudiencesEntryLocalServiceTest {
 	}
 
 	@Test
-	@TestInfo("LPD-95291")
+	@TestInfo({"LPD-94450", "LPD-95291"})
 	public void testUpdateAudiencesEntry() throws Exception {
 		AudiencesEntry audiencesEntry = _addAudiencesEntry(
 			null, StringPool.BLANK, RandomTestUtil.randomString());
+
+		_user = UserTestUtil.addUser();
 
 		String externalReferenceCode = RandomTestUtil.randomString();
 		String name = RandomTestUtil.randomString();
 
 		audiencesEntry = _audiencesEntryLocalService.updateAudiencesEntry(
-			audiencesEntry.getAudiencesEntryId(), externalReferenceCode,
-			audiencesEntry.getJSON(), name);
+			externalReferenceCode, _user.getUserId(),
+			audiencesEntry.getAudiencesEntryId(), audiencesEntry.getJSON(),
+			name);
 
 		Assert.assertEquals(
 			externalReferenceCode, audiencesEntry.getExternalReferenceCode());
 		Assert.assertEquals(name, audiencesEntry.getName());
+		Assert.assertEquals(_user.getUserId(), audiencesEntry.getUserId());
+		Assert.assertEquals(_user.getFullName(), audiencesEntry.getUserName());
 
 		AudiencesEntry updatedAudiencesEntry = audiencesEntry;
 
 		AssertUtils.assertFailure(
 			AudiencesEntryNameException.class, null,
 			() -> _audiencesEntryLocalService.updateAudiencesEntry(
-				updatedAudiencesEntry.getAudiencesEntryId(),
 				updatedAudiencesEntry.getExternalReferenceCode(),
+				TestPropsValues.getUserId(),
+				updatedAudiencesEntry.getAudiencesEntryId(),
 				updatedAudiencesEntry.getJSON(), StringPool.BLANK));
 		AssertUtils.assertFailure(
 			AudiencesEntryJSONException.class,
 			"/conjunction: INVALID is not a valid enum value",
 			() -> _audiencesEntryLocalService.updateAudiencesEntry(
-				updatedAudiencesEntry.getAudiencesEntryId(),
 				updatedAudiencesEntry.getExternalReferenceCode(),
-				"{\"conjunction\": \"INVALID\", \"rules\": []}",
+				TestPropsValues.getUserId(),
+				updatedAudiencesEntry.getAudiencesEntryId(),
+				JSONUtil.put(
+					"conjunction", "INVALID"
+				).put(
+					"rules", JSONUtil.putAll()
+				).toString(),
 				updatedAudiencesEntry.getName()));
 
 		audiencesEntry = _addAudiencesEntry(
@@ -152,7 +187,8 @@ public class AudiencesEntryLocalServiceTest {
 				externalReferenceCode, " and company ",
 				TestPropsValues.getCompanyId()),
 			() -> _audiencesEntryLocalService.updateAudiencesEntry(
-				audiencesEntryId, externalReferenceCode, StringPool.BLANK,
+				externalReferenceCode, TestPropsValues.getUserId(),
+				audiencesEntryId, StringPool.BLANK,
 				RandomTestUtil.randomString()));
 	}
 
@@ -162,7 +198,7 @@ public class AudiencesEntryLocalServiceTest {
 
 		AudiencesEntry audiencesEntry =
 			_audiencesEntryLocalService.addAudiencesEntry(
-				externalReferenceCode, json, name, _serviceContext);
+				externalReferenceCode, TestPropsValues.getUserId(), json, name);
 
 		_audiencesEntries.add(audiencesEntry);
 
@@ -175,6 +211,7 @@ public class AudiencesEntryLocalServiceTest {
 	@Inject
 	private AudiencesEntryLocalService _audiencesEntryLocalService;
 
-	private ServiceContext _serviceContext;
+	@DeleteAfterTestRun
+	private User _user;
 
 }

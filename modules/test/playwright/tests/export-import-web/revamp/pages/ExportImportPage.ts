@@ -5,13 +5,18 @@
 
 import {Locator, Page} from '@playwright/test';
 
+import {clickAndExpectToBeVisible} from '../../../../utils/clickAndExpectToBeVisible';
+import {PORTLET_URLS} from '../../../../utils/portletUrls';
+import {getTempDir} from '../../../../utils/temp';
 import {zipFolder} from '../../../../utils/zip';
 
-import type {taskStatus} from '../../main/pages/ExportImportPage';
+export type taskStatus = 'completedWithErrors' | 'success';
 
 export class ExportImportPage {
+	readonly actionsButton: (name: string) => Locator;
 	readonly completedLabel: Locator;
 	readonly continueButton: Locator;
+	readonly downloadMenuItem: Locator;
 	readonly exportButton: Locator;
 	readonly exportMenuItem: Locator;
 	readonly fileSelector: Locator;
@@ -26,8 +31,14 @@ export class ExportImportPage {
 	) => Locator;
 
 	constructor(page: Page) {
+		this.actionsButton = (name) =>
+			page.getByRole('button', {name: `${name} Actions`});
 		this.completedLabel = page.getByText('completed');
 		this.continueButton = page.getByRole('button', {name: 'Continue'});
+		this.downloadMenuItem = page.getByRole('menuitem', {
+			exact: true,
+			name: 'Download',
+		});
 		this.exportButton = page.getByRole('button', {name: 'Export'});
 		this.exportMenuItem = page.getByRole('menuitem', {
 			name: 'Export',
@@ -55,12 +66,44 @@ export class ExportImportPage {
 		};
 	}
 
+	async clickNew() {
+		await clickAndExpectToBeVisible({
+			target: this.nameInput,
+			trigger: this.newButton,
+		});
+	}
+
+	async download(name: string): Promise<string> {
+		const downloadPromise = this.page.waitForEvent('download');
+
+		await clickAndExpectToBeVisible({
+			target: this.downloadMenuItem,
+			trigger: this.actionsButton(name),
+		});
+
+		await this.downloadMenuItem.click();
+
+		const download = await downloadPromise;
+
+		const filePath = getTempDir() + download.suggestedFilename();
+
+		await download.saveAs(filePath);
+
+		return filePath;
+	}
+
 	async export(name: string) {
-		await this.newButton.click();
+		await this.clickNew();
 
 		await this.nameInput.fill(name);
 
 		await this.exportButton.click();
+	}
+
+	async goToExport(siteFriendlyUrlPath: string) {
+		await this.page.goto(
+			`/group${siteFriendlyUrlPath}${PORTLET_URLS.export}`
+		);
 	}
 
 	async import(folderPath: string, name: string) {

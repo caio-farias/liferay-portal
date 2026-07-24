@@ -7,13 +7,15 @@ import ClayLayout from '@clayui/layout';
 import React, {useContext} from 'react';
 
 import {SectionHeader} from '../common/SectionHeader';
-import {SpacesDropdown} from '../common/SpacesDropdown';
+import {SpacePicker} from '../common/SpacePicker';
 import {InventoryContext, InventoryContextProvider} from './InventoryContext';
 import {ContentCard} from './components/ContentCard';
 import {ExpiredAssetsCard} from './components/ExpiredAssetsCard';
 import {FilesCard} from './components/FilesCard';
 import {InventoryAnalysisCard} from './components/InventoryAnalysisCard';
 import {LanguagesDropdown} from './components/LanguagesDropdown';
+
+import '../../../../css/dashboard/InventoryDashboard.scss';
 
 export default function InventoryDashboard({
 	constants,
@@ -38,7 +40,7 @@ function InventoryDashboardContent() {
 			<ClayLayout.Row className="mb-4">
 				<ClayLayout.Col size={12}>
 					<div className="d-flex">
-						<SpacesDropdown
+						<SpacePicker
 							className="mr-3"
 							onSelectSpace={changeSpace}
 							selectedSpace={space}
@@ -52,9 +54,7 @@ function InventoryDashboardContent() {
 			<ClayLayout.Row className="mb-2">
 				<ClayLayout.Col size={12}>
 					<SectionHeader
-						ariaLevel={2}
 						icon="plus-squares"
-						role="heading"
 						title={Liferay.Language.get('what-is-new')}
 					/>
 				</ClayLayout.Col>
@@ -73,9 +73,7 @@ function InventoryDashboardContent() {
 			<ClayLayout.Row className="mb-2">
 				<ClayLayout.Col size={12}>
 					<SectionHeader
-						ariaLevel={2}
 						icon="diagram"
-						role="heading"
 						title={Liferay.Language.get('assets-distributions')}
 					/>
 				</ClayLayout.Col>
@@ -90,9 +88,7 @@ function InventoryDashboardContent() {
 			<ClayLayout.Row className="mb-2">
 				<ClayLayout.Col size={12}>
 					<SectionHeader
-						ariaLevel={2}
 						icon="order-form-pencil"
-						role="heading"
 						title={Liferay.Language.get('health-and-usage')}
 					/>
 				</ClayLayout.Col>

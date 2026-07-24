@@ -119,6 +119,29 @@ public class ObjectEntryModelDocumentContributor
 		fieldArray.addField(field);
 	}
 
+	private void _addMultiValuedKeywordField(
+		FieldArray fieldArray, String fieldName, String[] values) {
+
+		if (ArrayUtil.isEmpty(values)) {
+			return;
+		}
+
+		Field field = new Field("");
+
+		field.addField(new Field("fieldName", fieldName));
+		field.addField(new Field("valueFieldName", "value_keyword"));
+
+		String[] keywordValues = new String[values.length];
+
+		for (int i = 0; i < values.length; i++) {
+			keywordValues[i] = StringUtil.lowerCase(values[i]);
+		}
+
+		field.addField(new Field("value_keyword", keywordValues));
+
+		fieldArray.addField(field);
+	}
+
 	private void _addTitleFields(
 			Document document, ObjectDefinition objectDefinition,
 			ObjectEntry objectEntry)
@@ -263,11 +286,30 @@ public class ObjectEntryModelDocumentContributor
 		}
 		else if (StringUtil.equals(
 					objectField.getBusinessType(),
-					ObjectFieldConstants.BUSINESS_TYPE_MULTISELECT_PICKLIST) &&
-				 (fieldValue instanceof List)) {
+					ObjectFieldConstants.BUSINESS_TYPE_MULTISELECT_PICKLIST)) {
 
-			fieldValue = ListUtil.toString(
-				(List)fieldValue, (String)null, StringPool.COMMA_AND_SPACE);
+			String valueString = null;
+
+			if (fieldValue instanceof List) {
+				valueString = ListUtil.toString(
+					(List)fieldValue, (String)null, StringPool.COMMA_AND_SPACE);
+			}
+			else {
+				valueString = String.valueOf(fieldValue);
+			}
+
+			if (objectField.isIndexedAsKeyword()) {
+				_addMultiValuedKeywordField(
+					fieldArray, fieldName,
+					StringUtil.split(valueString, StringPool.COMMA_AND_SPACE));
+
+				_appendToContent(
+					locale, fieldName, textEmbeddingContentHelper, valueString);
+
+				return;
+			}
+
+			fieldValue = valueString;
 		}
 		else if (StringUtil.equals(
 					objectField.getBusinessType(),
@@ -416,7 +458,7 @@ public class ObjectEntryModelDocumentContributor
 
 		document.addKeyword(
 			"objectDefinitionExternalReferenceCode",
-			objectDefinition.getExternalReferenceCode());
+			objectDefinition.getExternalReferenceCode(), true);
 		document.addKeyword(
 			"objectDefinitionId", objectEntry.getObjectDefinitionId());
 		document.addKeyword(
@@ -447,6 +489,18 @@ public class ObjectEntryModelDocumentContributor
 			values = objectEntry.getIndexedValues();
 
 			for (ObjectField objectField : objectFields) {
+				if (StringUtil.equals(
+						objectField.getBusinessType(),
+						ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT)) {
+
+					long fileEntryId = GetterUtil.getLong(
+						values.get(objectField.getName()));
+
+					if (fileEntryId != 0) {
+						_contributeFile(document, fileEntryId);
+					}
+				}
+
 				if (objectField.isLocalized()) {
 					Map<String, Object> localizedValues =
 						(Map<String, Object>)values.get(
@@ -519,16 +573,6 @@ public class ObjectEntryModelDocumentContributor
 
 			_contributeObjectEntryFolder(
 				document, objectEntry.getObjectEntryFolderId());
-
-			if (values == null) {
-				values = objectEntry.getIndexedValues();
-			}
-
-			long fileEntryId = GetterUtil.getLong(values.get("file"));
-
-			if (fileEntryId != 0) {
-				_contributeFile(document, fileEntryId);
-			}
 		}
 
 		if (objectDefinition.isCMP()) {
