@@ -19,6 +19,7 @@ import com.liferay.portal.cluster.multiple.internal.ClusterReceiver;
 import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.security.fips.FIPSModeValidator;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
@@ -64,6 +65,9 @@ public class JGroupsClusterChannelFactory implements ClusterChannelFactory {
 		ExecutorService executorService, String channleLogicName,
 		String channelPropertiesLocation, String clusterName,
 		ClusterReceiver clusterReceiver) {
+
+		FIPSModeValidator.validateClusterChannelPropertiesLocation(
+			channelPropertiesLocation);
 
 		try {
 			return new JGroupsClusterChannel(

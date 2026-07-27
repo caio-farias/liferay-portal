@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -89,6 +90,21 @@ public class FIPSModeValidator {
 		}
 	}
 
+	public static void validateClusterChannelPropertiesLocation(
+		String channelPropertiesLocation) {
+
+		if (!PropsValues.FIPS_ENABLED ||
+			StringUtil.startsWith(
+				channelPropertiesLocation, "jgroups/secure/x509/")) {
+
+			return;
+		}
+
+		throw new SecurityException(
+			"The clustering authentication profile \"" +
+				channelPropertiesLocation + "\" is not allowed in FIPS mode");
+	}
+
 	public static void validateKey(String algorithm, int keySize) {
 		if (!PropsValues.FIPS_ENABLED) {
 			return;
@@ -112,6 +128,19 @@ public class FIPSModeValidator {
 
 		throw new SecurityException(
 			"URL protocol scheme is not allowed in FIPS mode");
+	}
+
+	private static void _validateClusterChannelProperties() {
+		validateClusterChannelPropertiesLocation(
+			PropsUtil.get(PropsKeys.CLUSTER_LINK_CHANNEL_PROPERTIES_CONTROL));
+
+		Properties properties = PropsUtil.getProperties(
+			PropsKeys.CLUSTER_LINK_CHANNEL_PROPERTIES_TRANSPORT, true);
+
+		for (Object value : properties.values()) {
+			validateClusterChannelPropertiesLocation(
+				GetterUtil.getString(value));
+		}
 	}
 
 	private static void _validateFIPSProvider(Provider[] providers) {
@@ -259,6 +288,10 @@ public class FIPSModeValidator {
 	private static void _validateProperties() {
 		if (GetterUtil.getBoolean(PropsUtil.get(PropsKeys.AUTH_MAC_ALLOW))) {
 			validateAlgorithm(PropsUtil.get(PropsKeys.AUTH_MAC_ALGORITHM));
+		}
+
+		if (PropsValues.CLUSTER_LINK_ENABLED) {
+			_validateClusterChannelProperties();
 		}
 
 		validateAlgorithm(
