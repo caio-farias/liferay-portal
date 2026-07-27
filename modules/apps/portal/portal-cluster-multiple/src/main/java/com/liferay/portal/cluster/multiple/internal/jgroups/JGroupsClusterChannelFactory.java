@@ -23,6 +23,7 @@ import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
+import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.SocketUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -64,6 +65,15 @@ public class JGroupsClusterChannelFactory implements ClusterChannelFactory {
 		ExecutorService executorService, String channleLogicName,
 		String channelPropertiesLocation, String clusterName,
 		ClusterReceiver clusterReceiver) {
+
+		if (PropsValues.FIPS_ENABLED &&
+			!channelPropertiesLocation.startsWith("jgroups/secure/x509/")) {
+
+			throw new SecurityException(
+				"The clustering authentication profile \"" +
+					channelPropertiesLocation +
+						"\" is not allowed in FIPS mode");
+		}
 
 		try {
 			return new JGroupsClusterChannel(
