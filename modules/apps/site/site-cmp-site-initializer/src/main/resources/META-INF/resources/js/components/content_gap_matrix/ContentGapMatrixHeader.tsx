@@ -5,7 +5,7 @@
 
 import ClayIcon from '@clayui/icon';
 import ClayLabel from '@clayui/label';
-import {AIAssistantChat} from '@liferay/ai-hub-cell-js-components-web';
+import {AIAssistantTriggerButton} from '@liferay/ai-hub-cell-js-components-web';
 import {sub} from 'frontend-js-web';
 import React from 'react';
 
@@ -13,15 +13,15 @@ import {MatrixData} from './types';
 import {computeCoveragePercentage, countCriticalGaps} from './utils';
 
 export default function ContentGapMatrixHeader({
+	cmpProjectObjectEntryId,
+	cmpProjectObjectEntryTitle,
 	data,
 	groupId,
-	projectId,
-	projectTitle,
 }: {
+	cmpProjectObjectEntryId?: string;
+	cmpProjectObjectEntryTitle?: string;
 	data?: MatrixData;
 	groupId?: number;
-	projectId?: string;
-	projectTitle?: string;
 }) {
 	const coveragePercentage = data ? computeCoveragePercentage(data) : 0;
 	const coverageDisplayType =
@@ -68,20 +68,20 @@ export default function ContentGapMatrixHeader({
 			</div>
 
 			{Liferay.FeatureFlags['LPD-62272'] && (
-				<AIAssistantChat
+				<AIAssistantTriggerButton
 					context={{
 						cmsGroupId: groupId,
 						focusScope: 'full-matrix',
-						projectId,
+						projectId: cmpProjectObjectEntryId,
 					}}
 					initialMessage={sub(
 						Liferay.Language.get(
 							'get-ai-insights-for-the-x-content-coverage-matrix'
 						),
-						projectTitle
+						cmpProjectObjectEntryTitle
 					)}
 					instructionDefinitionScope="cms"
-					triggerLabel={Liferay.Language.get('get-ai-insights')}
+					label={Liferay.Language.get('get-ai-insights')}
 				/>
 			)}
 		</div>

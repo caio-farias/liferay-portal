@@ -241,10 +241,11 @@ public class GenerateReportsControllerBuildRunner
 
 		StringBuilder sb = new StringBuilder();
 
-		String jenkinsMasterName = buildProperties.getProperty(
-			"report.generate.reports.jenkins.master");
-
-		String jobURL = "http://" + jenkinsMasterName + "/job/generate-reports";
+		String jobURL = JenkinsResultsParserUtil.combine(
+			JenkinsResultsParserUtil.getMostAvailableMasterURL(
+				"http://" + buildData.getCohortName() + ".liferay.com", null, 1,
+				"generate-reports"),
+			"/job/generate-reports");
 
 		sb.append(jobURL);
 

@@ -68,6 +68,11 @@ create table DataLimitEntry (
 	modifiedDate DATE null
 );
 
+create table DateEntry (
+	dateEntryId LONG not null primary key,
+	value DATE null
+);
+
 create table DefinedDefaultOrderEntry (
 	definedDefaultOrderEntryId LONG not null primary key,
 	modifiedDate DATE null,
@@ -110,7 +115,8 @@ create table ERCVersionedEntry (
 	head BOOLEAN,
 	ercVersionedEntryId LONG not null primary key,
 	groupId LONG,
-	companyId LONG
+	companyId LONG,
+	blob_ BLOB
 );
 
 create table ERCVersionedEntryVersion (
@@ -120,7 +126,8 @@ create table ERCVersionedEntryVersion (
 	externalReferenceCode VARCHAR(75) null,
 	ercVersionedEntryId LONG,
 	groupId LONG,
-	companyId LONG
+	companyId LONG,
+	blob_ BLOB
 );
 
 create table EagerBlobEntry (

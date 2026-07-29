@@ -13,6 +13,7 @@ import com.liferay.osb.faro.engine.client.model.AccountLifecycleMetric;
 import com.liferay.osb.faro.engine.client.model.AccountLifecycleStageMetric;
 import com.liferay.osb.faro.engine.client.model.AccountLifecycleStatus;
 import com.liferay.osb.faro.engine.client.model.AccountMetric;
+import com.liferay.osb.faro.engine.client.model.AccountName;
 import com.liferay.osb.faro.engine.client.model.Activity;
 import com.liferay.osb.faro.engine.client.model.ActivityAggregation;
 import com.liferay.osb.faro.engine.client.model.ActivityAsset;
@@ -38,6 +39,7 @@ import com.liferay.osb.faro.engine.client.model.DataSource;
 import com.liferay.osb.faro.engine.client.model.DataSourceField;
 import com.liferay.osb.faro.engine.client.model.DataSourceFieldCatalogEntry;
 import com.liferay.osb.faro.engine.client.model.DataSourceProgress;
+import com.liferay.osb.faro.engine.client.model.DataSourceUsageMetric;
 import com.liferay.osb.faro.engine.client.model.Distribution;
 import com.liferay.osb.faro.engine.client.model.Event;
 import com.liferay.osb.faro.engine.client.model.Field;
@@ -53,6 +55,7 @@ import com.liferay.osb.faro.engine.client.model.IndividualTransformation;
 import com.liferay.osb.faro.engine.client.model.Interest;
 import com.liferay.osb.faro.engine.client.model.PageExperience;
 import com.liferay.osb.faro.engine.client.model.PageVisited;
+import com.liferay.osb.faro.engine.client.model.ProjectDataSourceCount;
 import com.liferay.osb.faro.engine.client.model.ProjectUsageMetric;
 import com.liferay.osb.faro.engine.client.model.Provider;
 import com.liferay.osb.faro.engine.client.model.RealTimeMembershipMetric;
@@ -231,6 +234,11 @@ public interface ContactsEngineClient {
 	public List<AccountMetric> getAccountMetrics(
 		FaroProject faroProject, Long channelId);
 
+	public Results<AccountName> getAccountNames(
+		FaroProject faroProject, String assetId, String assetTitle,
+		String assetType, Long channelId, String keywords, String rangeEnd,
+		Integer rangeKey, String rangeStart, int page, int pageSize);
+
 	public Results<Account> getAccounts(
 		FaroProject faroProject, String channelId, String filterString,
 		String query, int cur, int delta, String sortString);
@@ -406,6 +414,9 @@ public interface ContactsEngineClient {
 		String providerType, List<String> states, int cur, int delta,
 		List<OrderByField> orderByFields);
 
+	public Results<DataSourceUsageMetric> getDataSourceUsageMetrics(
+		FaroProject faroProject, Date date);
+
 	public long getDXPUsersCount(FaroProject faroProject, String id);
 
 	public Long getEnrichedProfilesCount(
@@ -579,6 +590,9 @@ public interface ContactsEngineClient {
 
 	public PageVisited getPageVisited(FaroProject faroProject, String id);
 
+	public Results<ProjectDataSourceCount> getProjectDataSourceCounts(
+		FaroProject faroProject);
+
 	public Results<ProjectUsageMetric> getProjectUsageMetrics(
 		FaroProject faroProject, Date sinceDate);
 
@@ -650,8 +664,7 @@ public interface ContactsEngineClient {
 	public void setEngineURL(String engineURL);
 
 	public AccountLifecycle updateAccountLifecycle(
-		FaroProject faroProject, String description, String id, String name,
-		String segmentId);
+		FaroProject faroProject, AccountLifecycle accountLifecycle);
 
 	public void updateAccountLifecycleStageRule(
 		FaroProject faroProject, String filterMetadata, String filterString,

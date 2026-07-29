@@ -1,4 +1,5 @@
 import * as breadcrumbs from 'shared/util/breadcrumbs';
+import AccountDropdown from 'shared/components/AccountDropdown';
 import BasePage from 'shared/components/base-page';
 import BundleRouter from 'route-middleware/BundleRouter';
 import DownloadCSVReport from 'shared/components/download-report/DownloadCSVReport';
@@ -14,10 +15,15 @@ import {pickBy} from 'lodash';
 import {Router} from 'shared/types';
 import {sub} from 'shared/util/lang';
 import {Switch} from 'react-router-dom';
+import {useAccountFilter} from 'shared/hooks/useAccountFilter';
 import {useChannelContext} from 'shared/context/channel';
 import {useDataSources} from 'shared/context/dataSources';
+import {useLDPEnabled} from 'shared/hooks/useLDPEnabled';
 import {useQueryRangeSelectors} from 'shared/hooks/useQueryRangeSelectors';
 
+const Accounts = lazy(
+	() => import(/* webpackChunkName: "FormsAccounts" */ './Accounts')
+);
 const Overview = lazy(
 	() => import(/* webpackChunkName: "FormsOverview" */ './Overview')
 );
@@ -28,19 +34,6 @@ const KnownIndividuals = lazy(
 			/* webpackChunkName: "FormsKnownIndividuals" */ './KnownIndividuals'
 		)
 );
-
-const NAV_ITEMS = [
-	{
-		exact: true,
-		label: Liferay.Language.get('overview'),
-		route: Routes.ASSETS_FORMS_OVERVIEW,
-	},
-	{
-		exact: true,
-		label: Liferay.Language.get('known-individuals'),
-		route: Routes.ASSETS_FORMS_KNOWN_INDIVIDUALS,
-	},
-];
 
 const Form: React.FC<{
 	className: string;
@@ -57,7 +50,34 @@ const Form: React.FC<{
 		},
 	} = router;
 
+	const LDPEnabled = useLDPEnabled({groupId});
+
+	const NAV_ITEMS = [
+		{
+			exact: true,
+			label: Liferay.Language.get('overview'),
+			route: Routes.ASSETS_FORMS_OVERVIEW,
+		},
+		...(LDPEnabled
+			? [
+					{
+						exact: true,
+						label: Liferay.Language.get('visitors'),
+						route: Routes.ASSETS_FORMS_ACCOUNTS,
+					},
+				]
+			: [
+					{
+						exact: true,
+						label: Liferay.Language.get('known-individuals'),
+						route: Routes.ASSETS_FORMS_KNOWN_INDIVIDUALS,
+					},
+				]),
+	];
+
 	const [filters] = useState({});
+
+	const {accountId, accountName, setAccount} = useAccountFilter();
 
 	const dataSourceStates = useDataSources();
 
@@ -103,12 +123,25 @@ const Form: React.FC<{
 						touchpoint,
 						type,
 					}}
-					routeQueries={pickBy(rangeSelectorsFromQuery)}
+					routeQueries={pickBy({
+						...rangeSelectorsFromQuery,
+						accountId,
+						accountName,
+					})}
 				/>
 			</BasePage.Header>
 
 			{getMatchedRoute(NAV_ITEMS) === Routes.ASSETS_FORMS_OVERVIEW && (
 				<BasePage.SubHeader>
+					{LDPEnabled && (
+						<AccountDropdown
+							assetType="form"
+							initialAccountId={accountId}
+							initialAccountName={accountName}
+							onFilterChange={setAccount}
+						/>
+					)}
+
 					<div className="d-flex justify-content-end w-100">
 						<DownloadPDFReport
 							disabled={!!dataSourceStates.empty}
@@ -138,7 +171,13 @@ const Form: React.FC<{
 				</BasePage.SubHeader>
 			)}
 
-			<BasePage.Context.Provider value={{filters, router}}>
+			<BasePage.Context.Provider
+				value={{
+					accountId,
+					filters,
+					router,
+				}}
+			>
 				<BasePage.Body>
 					<Suspense fallback={<Loading />}>
 						<Switch>
@@ -154,6 +193,13 @@ const Form: React.FC<{
 								destructured={false}
 								exact
 								path={Routes.ASSETS_FORMS_KNOWN_INDIVIDUALS}
+							/>
+
+							<BundleRouter
+								data={Accounts}
+								destructured={false}
+								exact
+								path={Routes.ASSETS_FORMS_ACCOUNTS}
 							/>
 
 							<RouteNotFound />

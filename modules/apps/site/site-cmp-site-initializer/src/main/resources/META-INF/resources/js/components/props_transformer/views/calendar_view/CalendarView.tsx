@@ -42,11 +42,11 @@ import type {FirstDayOfWeekLocale} from 'frontend-js-web';
 const ADD_TASK_BUTTON_CLASS_NAME = 'lfr__calendar-view-add-task-button';
 
 interface CalendarViewProps {
+	cmpProjectObjectDefinitionId: number;
+	cmpProjectObjectEntryId?: string;
 	hasAddTaskPermission: boolean;
 	items: ITask[];
 	itemsActions: IItemsActions[];
-	projectId?: string;
-	projectObjectDefinitionId: number;
 }
 
 interface MoreLinkPopover {
@@ -56,11 +56,11 @@ interface MoreLinkPopover {
 }
 
 export default function CalendarView({
+	cmpProjectObjectDefinitionId,
+	cmpProjectObjectEntryId,
 	hasAddTaskPermission,
 	items,
 	itemsActions,
-	projectId,
-	projectObjectDefinitionId,
 }: CalendarViewProps) {
 	const {loadData, onItemsChange} = useContext(FrontendDataSetContext);
 
@@ -189,11 +189,11 @@ export default function CalendarView({
 			contentComponent: ({closeModal}: {closeModal: () => void}) => (
 				<CreateTaskModal
 					closeModal={closeModal}
+					cmpProjectObjectDefinitionId={cmpProjectObjectDefinitionId}
+					cmpProjectObjectEntryId={cmpProjectObjectEntryId}
 					dueDate={dueDate}
 					loadData={loadData}
 					onItemsChange={onItemsChange}
-					projectId={projectId}
-					projectObjectDefinitionId={projectObjectDefinitionId}
 					state={DEFAULT_TASK_STATE_KEY}
 				/>
 			),
@@ -499,9 +499,13 @@ export default function CalendarView({
 				}}
 				eventStartEditable={currentView !== 'dayGridDay'}
 				events={events}
+				firstDay={dateUtils.getFirstDayOfWeek(
+					locale as FirstDayOfWeekLocale
+				)}
 				fixedWeekCount={false}
 				headerToolbar={false}
 				initialView="dayGridMonth"
+				locale={locale}
 				moreLinkClassNames={[
 					'btn',
 					'btn-outline-secondary',
@@ -558,7 +562,6 @@ export default function CalendarView({
 				<CalendarMoreLinkPopover
 					alignElement={moreLinkPopover.alignElement}
 					itemsActions={itemsActions}
-					loadData={loadData}
 					onClose={() => setMoreLinkPopover(null)}
 					tasks={moreLinkPopover.tasks}
 				/>

@@ -60,8 +60,10 @@ const getTableWithData = (useDB) => {
 			size: Sizes.XXXLarge,
 			symbol: 'ac_satellite',
 		},
-		emptyTitle: Liferay.Language.get('there-are-no-pages-found'),
+		emptyTitle: Liferay.Language.get('no-pages-were-found'),
 		getColumns: ({
+			accountId,
+			accountName,
 			router: {
 				params: {channelId, groupId},
 				query,
@@ -71,6 +73,8 @@ const getTableWithData = (useDB) => {
 
 			return [
 				sitePagesListColumns.getTitleUrl({
+					accountId,
+					accountName,
 					channelId,
 					groupId,
 					rangeSelectors,

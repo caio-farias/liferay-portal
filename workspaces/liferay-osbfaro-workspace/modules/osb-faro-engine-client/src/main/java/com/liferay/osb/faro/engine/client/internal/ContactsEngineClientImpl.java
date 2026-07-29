@@ -22,6 +22,7 @@ import com.liferay.osb.faro.engine.client.model.AccountLifecycleStageMetric;
 import com.liferay.osb.faro.engine.client.model.AccountLifecycleStageRule;
 import com.liferay.osb.faro.engine.client.model.AccountLifecycleStatus;
 import com.liferay.osb.faro.engine.client.model.AccountMetric;
+import com.liferay.osb.faro.engine.client.model.AccountName;
 import com.liferay.osb.faro.engine.client.model.Activity;
 import com.liferay.osb.faro.engine.client.model.ActivityAggregation;
 import com.liferay.osb.faro.engine.client.model.ActivityAsset;
@@ -48,6 +49,7 @@ import com.liferay.osb.faro.engine.client.model.DataSource;
 import com.liferay.osb.faro.engine.client.model.DataSourceField;
 import com.liferay.osb.faro.engine.client.model.DataSourceFieldCatalogEntry;
 import com.liferay.osb.faro.engine.client.model.DataSourceProgress;
+import com.liferay.osb.faro.engine.client.model.DataSourceUsageMetric;
 import com.liferay.osb.faro.engine.client.model.Distribution;
 import com.liferay.osb.faro.engine.client.model.EntityModelPagedModel;
 import com.liferay.osb.faro.engine.client.model.Event;
@@ -65,6 +67,7 @@ import com.liferay.osb.faro.engine.client.model.Interest;
 import com.liferay.osb.faro.engine.client.model.PageExperience;
 import com.liferay.osb.faro.engine.client.model.PageVisited;
 import com.liferay.osb.faro.engine.client.model.PagedModel;
+import com.liferay.osb.faro.engine.client.model.ProjectDataSourceCount;
 import com.liferay.osb.faro.engine.client.model.ProjectUsageMetric;
 import com.liferay.osb.faro.engine.client.model.Provider;
 import com.liferay.osb.faro.engine.client.model.RealTimeMembershipMetric;
@@ -888,6 +891,52 @@ public class ContactsEngineClientImpl
 			new ParameterizedTypeReference<List<AccountMetric>>() {
 			},
 			uriVariables);
+	}
+
+	@Override
+	public Results<AccountName> getAccountNames(
+		FaroProject faroProject, String assetId, String assetTitle,
+		String assetType, Long channelId, String keywords, String rangeEnd,
+		Integer rangeKey, String rangeStart, int page, int pageSize) {
+
+		Map<String, Object> uriVariables = getUriVariables(faroProject);
+
+		uriVariables.put("assetId", assetId);
+
+		if (Validator.isNotNull(assetTitle)) {
+			uriVariables.put("assetTitle", assetTitle);
+		}
+
+		uriVariables.put("assetType", assetType);
+		uriVariables.put("channelId", channelId);
+
+		if (Validator.isNotNull(keywords)) {
+			uriVariables.put("keywords", keywords);
+		}
+
+		uriVariables.put("page", page);
+		uriVariables.put("pageSize", pageSize);
+
+		if (Validator.isNotNull(rangeEnd)) {
+			uriVariables.put("rangeEnd", rangeEnd);
+		}
+
+		if (rangeKey != null) {
+			uriVariables.put("rangeKey", rangeKey);
+		}
+
+		if (Validator.isNotNull(rangeStart)) {
+			uriVariables.put("rangeStart", rangeStart);
+		}
+
+		PagedModel<?, AccountName> pagedModel = get(
+			faroProject, Rels.ACCOUNT_NAMES,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<AccountName>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
 	}
 
 	@Override
@@ -2065,6 +2114,20 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
+	public Results<DataSourceUsageMetric> getDataSourceUsageMetrics(
+		FaroProject faroProject, Date date) {
+
+		PagedModel<?, DataSourceUsageMetric> pagedModel = get(
+			faroProject, Rels.DATA_SOURCE_USAGE_METRICS,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<DataSourceUsageMetric>>() {
+			},
+			Collections.singletonMap("date", date));
+
+		return pagedModel.getResults();
+	}
+
+	@Override
 	public long getDXPUsersCount(FaroProject faroProject, String id) {
 		RestTemplate restTemplate = getRestTemplate(faroProject);
 
@@ -3203,6 +3266,20 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
+	public Results<ProjectDataSourceCount> getProjectDataSourceCounts(
+		FaroProject faroProject) {
+
+		PagedModel<?, ProjectDataSourceCount> pagedModel = get(
+			faroProject, Rels.PROJECTS_DATA_SOURCE_COUNTS,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<ProjectDataSourceCount>>() {
+			},
+			getUriVariables(faroProject));
+
+		return pagedModel.getResults();
+	}
+
+	@Override
 	public Results<ProjectUsageMetric> getProjectUsageMetrics(
 		FaroProject faroProject, Date sinceDate) {
 
@@ -3522,19 +3599,12 @@ public class ContactsEngineClientImpl
 
 	@Override
 	public AccountLifecycle updateAccountLifecycle(
-		FaroProject faroProject, String description, String id, String name,
-		String segmentId) {
-
-		AccountLifecycle accountLifecycle = new AccountLifecycle();
-
-		accountLifecycle.setDescription(description);
-		accountLifecycle.setId(id);
-		accountLifecycle.setName(name);
-		accountLifecycle.setSegmentId(segmentId);
+		FaroProject faroProject, AccountLifecycle accountLifecycle) {
 
 		return put(
 			faroProject, Rels.ACCOUNT_LIFECYCLE, accountLifecycle,
-			AccountLifecycle.class, getUriVariables(faroProject, id));
+			AccountLifecycle.class,
+			getUriVariables(faroProject, accountLifecycle.getId()));
 	}
 
 	@Override

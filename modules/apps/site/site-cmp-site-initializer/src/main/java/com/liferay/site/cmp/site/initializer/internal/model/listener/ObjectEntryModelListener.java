@@ -27,7 +27,10 @@ import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.portal.kernel.search.Indexer;
+import com.liferay.portal.kernel.search.IndexerRegistryUtil;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ResourceActionLocalService;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
@@ -42,6 +45,8 @@ import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.workflow.kaleo.model.KaleoTaskInstanceToken;
+import com.liferay.portal.workflow.kaleo.service.KaleoTaskInstanceTokenLocalService;
 import com.liferay.site.cmp.site.initializer.internal.util.RoleUtil;
 
 import java.io.Serializable;
@@ -50,6 +55,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 import org.osgi.service.component.annotations.Component;
@@ -66,6 +72,7 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 		throws ModelListenerException {
 
 		try {
+			_reindexLinkedObjectEntry(objectEntry);
 			_setResourcePermissions(objectEntry);
 			_updateGroup(objectEntry);
 			_updateProjectCompletionRate(objectEntry);
@@ -80,6 +87,7 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 		throws ModelListenerException {
 
 		try {
+			_reindexLinkedObjectEntry(objectEntry);
 			_updateProjectCompletionRate(objectEntry);
 		}
 		catch (Exception exception) {
@@ -139,15 +147,90 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 	private String[] _getProjectContributorActionIds(
 		ObjectDefinition objectDefinition) {
 
-		if (StringUtil.equals(
-				objectDefinition.getExternalReferenceCode(), "L_CMP_TASK")) {
+		String externalReferenceCode =
+			objectDefinition.getExternalReferenceCode();
 
+		if (StringUtil.equals(externalReferenceCode, "L_CMP_PROJECT_LINK") ||
+			StringUtil.equals(externalReferenceCode, "L_CMP_TASK_LINK")) {
+
+			return new String[] {ActionKeys.DELETE, ActionKeys.VIEW};
+		}
+
+		if (StringUtil.equals(externalReferenceCode, "L_CMP_TASK")) {
 			return new String[] {
 				ActionKeys.ADD_DISCUSSION, ActionKeys.UPDATE, ActionKeys.VIEW
 			};
 		}
 
 		return new String[] {ActionKeys.ADD_DISCUSSION, ActionKeys.VIEW};
+	}
+
+	private void _reindexKaleoTaskInstanceTokens(ObjectEntry objectEntry)
+		throws Exception {
+
+		Indexer<KaleoTaskInstanceToken> indexer =
+			IndexerRegistryUtil.nullSafeGetIndexer(
+				KaleoTaskInstanceToken.class);
+
+		for (KaleoTaskInstanceToken kaleoTaskInstanceToken :
+				_kaleoTaskInstanceTokenLocalService.getKaleoTaskInstanceTokens(
+					objectEntry.getModelClassName(),
+					objectEntry.getObjectEntryId())) {
+
+			indexer.reindex(kaleoTaskInstanceToken);
+		}
+	}
+
+	private void _reindexLinkedObjectEntry(ObjectEntry objectEntry)
+		throws Exception {
+
+		ObjectDefinition objectDefinition = objectEntry.getObjectDefinition();
+
+		if (!StringUtil.equals(
+				objectDefinition.getExternalReferenceCode(),
+				"L_CMP_PROJECT_LINK") &&
+			!StringUtil.equals(
+				objectDefinition.getExternalReferenceCode(),
+				"L_CMP_TASK_LINK")) {
+
+			return;
+		}
+
+		Map<String, Serializable> values = objectEntry.getValues();
+
+		Group group = _groupLocalService.fetchGroupByExternalReferenceCode(
+			MapUtil.getString(values, "groupExternalReferenceCode"),
+			objectEntry.getCompanyId());
+
+		if (group == null) {
+			return;
+		}
+
+		ObjectDefinition linkedObjectDefinition =
+			_objectDefinitionLocalService.fetchObjectDefinitionByClassName(
+				objectEntry.getCompanyId(),
+				MapUtil.getString(values, "className"));
+
+		if (linkedObjectDefinition == null) {
+			return;
+		}
+
+		ObjectEntry linkedObjectEntry =
+			_objectEntryLocalService.fetchObjectEntry(
+				MapUtil.getString(values, "classExternalReferenceCode"),
+				group.getGroupId(),
+				linkedObjectDefinition.getObjectDefinitionId());
+
+		if (linkedObjectEntry == null) {
+			return;
+		}
+
+		Indexer<ObjectEntry> indexer = IndexerRegistryUtil.nullSafeGetIndexer(
+			linkedObjectDefinition.getClassName());
+
+		indexer.reindex(linkedObjectEntry);
+
+		_reindexKaleoTaskInstanceTokens(linkedObjectEntry);
 	}
 
 	private void _setResourcePermissions(ObjectEntry objectEntry)
@@ -158,17 +241,17 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 				objectEntry.getObjectDefinitionId());
 
 		if (!StringUtil.equals(
-				objectDefinition.getExternalReferenceCode(), "L_CMP_PROJECT") &&
-			!StringUtil.equals(
-				objectDefinition.getExternalReferenceCode(), "L_CMP_TASK")) {
+				objectDefinition.getObjectFolderExternalReferenceCode(),
+				"L_CMP_PROJECT_MANAGEMENT_DEFINITIONS")) {
 
 			return;
 		}
 
 		JSONObject defaultPermissionsJSONObject =
-			_getCMPDefaultPermissionJSONObject(
-				_objectDefinitionLocalService.fetchObjectDefinition(
-					objectEntry.getObjectDefinitionId()));
+			_getCMPDefaultPermissionJSONObject(objectDefinition);
+
+		List<String> resourceActions = ResourceActionsUtil.getResourceActions(
+			objectEntry.getModelClassName());
 
 		for (Role role :
 				TransformUtil.transformToList(
@@ -189,7 +272,8 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 				objectEntry.getCompanyId(), objectEntry.getModelClassName(),
 				ResourceConstants.SCOPE_INDIVIDUAL,
 				String.valueOf(objectEntry.getObjectEntryId()),
-				role.getRoleId(), actionIds);
+				role.getRoleId(),
+				ArrayUtil.filter(actionIds, resourceActions::contains));
 		}
 	}
 
@@ -369,6 +453,10 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 
 	@Reference
 	private GroupLocalService _groupLocalService;
+
+	@Reference
+	private KaleoTaskInstanceTokenLocalService
+		_kaleoTaskInstanceTokenLocalService;
 
 	@Reference
 	private ObjectDefinitionLocalService _objectDefinitionLocalService;

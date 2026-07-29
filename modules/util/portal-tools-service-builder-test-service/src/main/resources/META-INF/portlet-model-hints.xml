@@ -44,6 +44,10 @@
 		<field name="createDate" type="Date" />
 		<field name="modifiedDate" type="Date" />
 	</model>
+	<model name="com.liferay.portal.tools.service.builder.test.model.DateEntry">
+		<field name="dateEntryId" type="long" />
+		<field name="value" type="Date" />
+	</model>
 	<model name="com.liferay.portal.tools.service.builder.test.model.DefinedDefaultOrderEntry">
 		<field name="definedDefaultOrderEntryId" type="long" />
 		<field name="modifiedDate" type="Date" />
@@ -99,6 +103,7 @@
 		<field name="ercVersionedEntryId" type="long" />
 		<field name="groupId" type="long" />
 		<field name="companyId" type="long" />
+		<field name="blob" type="Blob" />
 	</model>
 	<model name="com.liferay.portal.tools.service.builder.test.model.ERCVersionedEntryVersion">
 		<field name="ercVersionedEntryVersionId" type="long" />
@@ -108,6 +113,7 @@
 		<field name="ercVersionedEntryId" type="long" />
 		<field name="groupId" type="long" />
 		<field name="companyId" type="long" />
+		<field name="blob" type="Blob" />
 	</model>
 	<model name="com.liferay.portal.tools.service.builder.test.model.FinderWhereClauseEntry">
 		<field name="finderWhereClauseEntryId" type="long" />
