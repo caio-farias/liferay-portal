@@ -4,19 +4,26 @@
  */
 
 import {ClayTooltipProvider} from '@clayui/tooltip';
+import {CONTENT_CHANGED_EVENT} from '@liferay/ai-hub-cell-js-components-web';
+import {FDS_EVENT} from '@liferay/frontend-data-set-web';
 import {sub} from 'frontend-js-web';
-import React from 'react';
+import React, {useEffect} from 'react';
 
 import ContentGapCell from './ContentGapCell';
 import {MatrixData, TaxonomyTerm} from './types';
-import {useCoverageFilter} from './useCoverageFilter';
+import {useAIInsightsChatContext} from './useAIInsightsChatContext';
+import {useAssetFDSFilter} from './useAssetFDSFilter';
 import {buildCountsByCellKey, getCellKey, getMaxRealCount} from './utils';
 
 export default function ContentGapMatrixGrid({
 	assetFDSId,
+	cmpProjectObjectEntryId,
+	cmpProjectScopeKey,
 	data,
 }: {
 	assetFDSId: string;
+	cmpProjectObjectEntryId?: string;
+	cmpProjectScopeKey?: string;
 	data: MatrixData;
 }) {
 	const {funnelStages, personas} = data;
@@ -24,17 +31,45 @@ export default function ContentGapMatrixGrid({
 	const countsByCellKey = buildCountsByCellKey(data.cells);
 	const maxRealCount = getMaxRealCount(data);
 
-	const {applyFilter, selectedCategoryIds} = useCoverageFilter(assetFDSId);
+	const {applyFilter, filteredFunnelStageId, filteredPersonaId} =
+		useAssetFDSFilter(assetFDSId, data);
+
+	useEffect(() => {
+		const handleContentChanged = () => {
+			Liferay.fire(FDS_EVENT.UPDATE_DISPLAY, {id: assetFDSId});
+		};
+
+		Liferay.on(CONTENT_CHANGED_EVENT, handleContentChanged);
+
+		return () => {
+			Liferay.detach(CONTENT_CHANGED_EVENT, handleContentChanged);
+		};
+	}, [assetFDSId]);
 
 	const getCount = (personaId: string, funnelStageId: string) =>
 		countsByCellKey.get(getCellKey(personaId, funnelStageId)) ?? 0;
+
+	const getAIInsightsChatContext = useAIInsightsChatContext({
+		cmpProjectObjectEntryId,
+		cmpProjectScopeKey,
+	});
 
 	const handleGenerate = (
 		persona: TaxonomyTerm,
 		funnelStage: TaxonomyTerm
 	) => {
 		Liferay.fire('openAIAssistantChat', {
-			context: {funnelStage: funnelStage.name, persona: persona.name},
+			context: {
+				...getAIInsightsChatContext(),
+				gaps: [
+					{
+						funnelStage: funnelStage.name,
+						funnelStageId: funnelStage.id,
+						persona: persona.name,
+						personaId: persona.id,
+					},
+				],
+			},
 			message: sub(
 				Liferay.Language.get(
 					'generate-content-for-the-x-persona-and-the-x-funnel-stage'
@@ -97,8 +132,8 @@ export default function ContentGapMatrixGrid({
 								onGenerate={handleGenerate}
 								persona={persona}
 								selected={
-									selectedCategoryIds.has(persona.id) &&
-									selectedCategoryIds.has(funnelStage.id)
+									filteredPersonaId === persona.id &&
+									filteredFunnelStageId === funnelStage.id
 								}
 								totalCount={getCount(
 									persona.id,

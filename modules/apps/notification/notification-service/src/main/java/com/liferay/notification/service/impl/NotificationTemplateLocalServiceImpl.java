@@ -30,7 +30,6 @@ import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.SystemEventConstants;
@@ -311,17 +310,19 @@ public class NotificationTemplateLocalServiceImpl
 			notificationTemplate, ResourceConstants.SCOPE_INDIVIDUAL);
 
 		NotificationRecipient notificationRecipient =
-			notificationTemplate.getNotificationRecipient();
+			notificationTemplate.fetchNotificationRecipient();
 
-		_notificationRecipientLocalService.deleteNotificationRecipient(
-			notificationRecipient);
+		if (notificationRecipient != null) {
+			_notificationRecipientLocalService.deleteNotificationRecipient(
+				notificationRecipient);
 
-		for (NotificationRecipientSetting notificationRecipientSetting :
-				notificationRecipient.getNotificationRecipientSettings()) {
+			for (NotificationRecipientSetting notificationRecipientSetting :
+					notificationRecipient.getNotificationRecipientSettings()) {
 
-			_notificationRecipientSettingLocalService.
-				deleteNotificationRecipientSetting(
-					notificationRecipientSetting);
+				_notificationRecipientSettingLocalService.
+					deleteNotificationRecipientSetting(
+						notificationRecipientSetting);
+			}
 		}
 
 		List<NotificationQueueEntry> notificationQueueEntries =
@@ -366,23 +367,13 @@ public class NotificationTemplateLocalServiceImpl
 		notificationTemplate = notificationTemplatePersistence.findByPrimaryKey(
 			notificationTemplate.getNotificationTemplateId());
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				notificationTemplate.getCompanyId(), "LPD-17564")) {
-
-			NotificationTemplateUtil.validateInvokerBundle(
-				"Only allowed bundles can update system notification templates",
-				notificationTemplate.isSystem());
-		}
-
 		_validate(notificationContext);
 
 		NotificationRecipient notificationRecipient =
 			_notificationRecipientLocalService.updateNotificationRecipient(
 				notificationContext.getNotificationRecipient());
 
-		if (FeatureFlagManagerUtil.isEnabled(
-				notificationTemplate.getCompanyId(), "LPD-17564") &&
-			notificationTemplate.isSystem() &&
+		if (notificationTemplate.isSystem() &&
 			!ObjectDefinitionUtil.isInvokerBundleAllowed()) {
 
 			notificationTemplate.setName(name);

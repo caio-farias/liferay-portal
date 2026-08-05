@@ -6,7 +6,6 @@
 package com.liferay.site.cmp.site.initializer.internal.struts.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
-import com.liferay.asset.kernel.service.AssetTagLocalService;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.service.ObjectDefinitionLocalService;
@@ -45,9 +44,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 /**
  * @author Carolina Barbosa
  */
-@FeatureFlags(
-	featureFlags = {@FeatureFlag("LPD-17564"), @FeatureFlag("LPD-58677")}
-)
+@FeatureFlags(featureFlags = @FeatureFlag("LPD-58677"))
 @RunWith(Arquillian.class)
 public class AddTaskStrutsActionTest {
 
@@ -125,22 +122,10 @@ public class AddTaskStrutsActionTest {
 			MapUtil.getLong(
 				cmpTaskObjectEntry.getValues(),
 				"r_cmpProjectToCMPTasks_c_cmpProjectId"));
-
-		String[] tagNames = _assetTagLocalService.getTagNames(
-			_cmpTaskObjectDefinition.getClassName(),
-			cmpTaskObjectEntry.getObjectEntryId());
-
-		Assert.assertTrue(
-			StringUtil.startsWith(
-				tagNames[0],
-				_cmpTaskObjectDefinition.getExternalReferenceCode()));
 	}
 
 	@Inject(filter = "path=/cms/add_task")
 	private StrutsAction _addTaskStrutsAction;
-
-	@Inject
-	private AssetTagLocalService _assetTagLocalService;
 
 	private ObjectEntry _cmpProjectObjectEntry;
 	private ObjectDefinition _cmpTaskObjectDefinition;

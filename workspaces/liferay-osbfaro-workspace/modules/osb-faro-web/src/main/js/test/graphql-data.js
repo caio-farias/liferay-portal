@@ -63,7 +63,6 @@ import {getSafeRangeSelectors} from 'shared/util/util';
 import {INTERVAL_KEY_MAP} from 'shared/util/time';
 import {isArray, mapValues, range} from 'lodash';
 import {PageAudienceReportQuery} from 'shared/components/audience-report/queries';
-import {SegmentPageViewsQuery} from 'shared/queries/SegmentPageViewsQuery';
 
 const METRIC_TYPENAME_MAP = {
 	histogram: 'HistogramMetric',
@@ -993,7 +992,7 @@ export function mockSitesTabsReq({rangeKey}) {
 	};
 }
 
-export function mockSitesTopPagesReq() {
+export function mockSitesTopPagesReq(variables = {}) {
 	return {
 		request: {
 			query: SitesTopPagesQuery,
@@ -1008,6 +1007,7 @@ export function mockSitesTopPagesReq() {
 					type: 'DESC',
 				},
 				start: 0,
+				...variables,
 			},
 		},
 		result: {
@@ -1599,7 +1599,10 @@ export function mockRecommendationReq(item = {}, mockVariables = {}) {
 	};
 }
 
-export function mockPagePathReq(data = [], {accountId, rangeKey = 30} = {}) {
+export function mockPagePathReq(
+	data = [],
+	{accountId, rangeKey = 30, segmentId} = {}
+) {
 	return {
 		request: {
 			query: PagePathQuery,
@@ -1611,6 +1614,7 @@ export function mockPagePathReq(data = [], {accountId, rangeKey = 30} = {}) {
 				rangeStart: null,
 				title: 'Liferay DXP - Home',
 				...(accountId && {accountId}),
+				...(segmentId && {segmentId}),
 			},
 		},
 		result: {
@@ -1710,34 +1714,6 @@ export function mockSearchStringListReq() {
 					key: 'search-query-strings',
 					value: JSON.stringify(['jackson']),
 				},
-			},
-		},
-	};
-}
-
-export function mockSegmentPageViewsReq({segmentPageViews}) {
-	return {
-		request: {
-			fetchPolicy: 'network-only',
-			query: SegmentPageViewsQuery,
-			variables: {
-				canonicalUrl: 'http://liferay.com',
-				channelId: '456',
-				rangeEnd: null,
-				rangeKey: 0,
-				rangeStart: null,
-				segmentIds: segmentPageViews.map(
-					(segment) => segment.segmentId
-				),
-				title: 'Liferay DXP - Home',
-			},
-		},
-		result: {
-			data: {
-				segmentPageViews: segmentPageViews.map((segment) => ({
-					...segment,
-					__typename: 'SegmentPageView',
-				})),
 			},
 		},
 	};
@@ -2463,6 +2439,7 @@ const DEFAULT_ACCOUNT_USER_SESSIONS = [
 				url: 'https://liferay.com/home',
 			},
 		],
+		individualId: 'jane-doe-id',
 		languageId: 'en-US',
 		screenHeight: 1080,
 		screenWidth: 1920,

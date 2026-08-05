@@ -30,7 +30,6 @@ import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserGroupTestUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.test.rule.FeatureFlag;
-import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -52,9 +51,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 /**
  * @author Pedro Leite
  */
-@FeatureFlags(
-	featureFlags = {@FeatureFlag("LPD-17564"), @FeatureFlag("LPD-58677")}
-)
+@FeatureFlag("LPD-58677")
 @RunWith(Arquillian.class)
 @Sync
 public class ViewProjectMembersSummarySectionDisplayContextTest
@@ -100,6 +97,9 @@ public class ViewProjectMembersSummarySectionDisplayContextTest
 		Assert.assertEquals(
 			String.valueOf(TestPropsValues.getUserId()),
 			getValue(dropdownItem, "assetLibraryCreatorUserId"));
+		Assert.assertEquals(
+			String.valueOf(_objectEntry.getObjectEntryId()),
+			getValue(dropdownItem, "cmpProjectObjectEntryId"));
 		Assert.assertEquals(
 			_group.getExternalReferenceCode(),
 			getValue(dropdownItem, "externalReferenceCode"));
@@ -170,6 +170,8 @@ public class ViewProjectMembersSummarySectionDisplayContextTest
 				).put(
 					"assetLibraryCreatorUserId",
 					String.valueOf(TestPropsValues.getUserId())
+				).put(
+					"cmpProjectObjectEntryId", _objectEntry.getObjectEntryId()
 				).put(
 					"externalReferenceCode", _group.getExternalReferenceCode()
 				).put(

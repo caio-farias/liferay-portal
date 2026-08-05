@@ -6,7 +6,6 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {dataApiHelpersTest} from '../../../../fixtures/dataApiHelpersTest';
-import {featureFlagsTest} from '../../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../../fixtures/loginTest';
 import {checkAccessibility} from '../../../../utils/checkAccessibility';
 import {clickAndExpectToBeVisible} from '../../../../utils/clickAndExpectToBeVisible';
@@ -20,9 +19,6 @@ const test = mergeTests(
 	categorizationPagesTest,
 	cmsPagesTest,
 	dataApiHelpersTest,
-	featureFlagsTest({
-		'LPD-17564': {enabled: true},
-	}),
 	loginTest()
 );
 
@@ -30,9 +26,6 @@ const systemCategoryTest = mergeTests(
 	categorizationPagesTest,
 	cmsPagesTest,
 	dataApiHelpersTest,
-	featureFlagsTest({
-		'LPD-17564': {enabled: true},
-	}),
 	loginTest()
 );
 
@@ -244,6 +237,38 @@ test.describe("Category tests that don't focus on creation", () => {
 			await editCategoryPage.gotoEditCategory(categoryId);
 
 			await expect(page.getByText(newCategoryDescription)).toBeVisible();
+		}
+	);
+
+	test(
+		"Edit the slug of a Vocabulary's Category",
+		{tag: '@LPD-99566'},
+		async ({editCategoryPage}) => {
+
+			// A new category has no slug yet
+
+			await editCategoryPage.gotoCreateCategory(vocabularyId);
+
+			await expect(editCategoryPage.slugInput).toBeEmpty();
+
+			// An empty slug falls back to the category name
+
+			await editCategoryPage.gotoEditCategory(categoryId);
+
+			await expect(editCategoryPage.slugInput).toHaveValue(categoryName);
+
+			// A slug is normalized and kept
+
+			await editCategoryPage.fillSlug('Winter Sports');
+
+			await editCategoryPage.clickSave();
+			await editCategoryPage.handleEditConfirmationModal(true);
+
+			await editCategoryPage.gotoEditCategory(categoryId);
+
+			await expect(editCategoryPage.slugInput).toHaveValue(
+				'winter-sports'
+			);
 		}
 	);
 

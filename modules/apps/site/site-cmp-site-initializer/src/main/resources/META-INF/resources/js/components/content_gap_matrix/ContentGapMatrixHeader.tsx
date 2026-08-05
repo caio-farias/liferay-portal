@@ -10,19 +10,28 @@ import {sub} from 'frontend-js-web';
 import React from 'react';
 
 import {MatrixData} from './types';
+import {useAIInsightsChatContext} from './useAIInsightsChatContext';
 import {computeCoveragePercentage, countCriticalGaps} from './utils';
 
 export default function ContentGapMatrixHeader({
+	cmpProjectObjectEntryDescription,
 	cmpProjectObjectEntryId,
 	cmpProjectObjectEntryTitle,
+	cmpProjectScopeKey,
 	data,
-	groupId,
 }: {
+	cmpProjectObjectEntryDescription?: string;
 	cmpProjectObjectEntryId?: string;
 	cmpProjectObjectEntryTitle?: string;
+	cmpProjectScopeKey?: string;
 	data?: MatrixData;
-	groupId?: number;
 }) {
+	const getAIInsightsChatContext = useAIInsightsChatContext({
+		cmpProjectObjectEntryDescription,
+		cmpProjectObjectEntryId,
+		cmpProjectScopeKey,
+	});
+
 	const coveragePercentage = data ? computeCoveragePercentage(data) : 0;
 	const coverageDisplayType =
 		coveragePercentage === 0
@@ -69,11 +78,7 @@ export default function ContentGapMatrixHeader({
 
 			{Liferay.FeatureFlags['LPD-62272'] && (
 				<AIAssistantTriggerButton
-					context={{
-						cmsGroupId: groupId,
-						focusScope: 'full-matrix',
-						projectId: cmpProjectObjectEntryId,
-					}}
+					getContext={getAIInsightsChatContext}
 					initialMessage={sub(
 						Liferay.Language.get(
 							'get-ai-insights-for-the-x-content-coverage-matrix'

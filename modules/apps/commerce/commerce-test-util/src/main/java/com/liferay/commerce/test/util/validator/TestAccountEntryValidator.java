@@ -50,6 +50,8 @@ public class TestAccountEntryValidator implements AccountEntryValidator {
 
 	@Override
 	public String getClassPK(AccountEntry accountEntry, JSONObject jsonObject) {
+		_jsonObject = jsonObject;
+
 		return _classPK;
 	}
 
@@ -57,8 +59,17 @@ public class TestAccountEntryValidator implements AccountEntryValidator {
 		return _jsonObject;
 	}
 
+	@Override
+	public boolean isSkipped(AccountEntry accountEntry, JSONObject jsonObject) {
+		return _skipped;
+	}
+
 	public void setResultStatus(String resultStatus) {
 		_resultStatus = resultStatus;
+	}
+
+	public void setSkipped(boolean skipped) {
+		_skipped = skipped;
 	}
 
 	@Override
@@ -80,5 +91,6 @@ public class TestAccountEntryValidator implements AccountEntryValidator {
 	private volatile JSONObject _jsonObject;
 	private final String _resultMessage;
 	private String _resultStatus;
+	private volatile boolean _skipped;
 
 }

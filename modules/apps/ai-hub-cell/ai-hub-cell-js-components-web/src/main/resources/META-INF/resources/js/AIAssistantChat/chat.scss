@@ -220,6 +220,17 @@ html#{$cadmin-selector} .cadmin {
 			}
 		}
 
+		.ai-assistant-chat__quick-replies {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.5rem;
+			padding: 0 0.5rem 0.5rem;
+		}
+
+		.ai-assistant-chat__quick-reply {
+			border-radius: 0.625rem;
+		}
+
 		.ai-assistant-chat__form {
 			@include ai-assistant-chat-gutter;
 
@@ -385,6 +396,10 @@ html#{$cadmin-selector} .cadmin {
 				background: transparent;
 				margin: 0 0.5rem 0.5rem;
 			}
+
+			&-title {
+				font-weight: 600;
+			}
 		}
 
 		.ai-assistant-chat__language-select {
@@ -484,38 +499,5 @@ html#{$cadmin-selector} .cadmin {
 		flex-grow: 1;
 		height: auto;
 		min-height: 0;
-	}
-
-	.ai-assistant {
-		--ai-assistant-focus-box-shadow: #{unquote(
-				'0 0 10px hsl(from #{$cadmin-purple} h s l / 0.15)'
-			)};
-
-		[data-ai-state='focused'] {
-			.form-control {
-				background-color: $cadmin-input-bg;
-				border-color: $cadmin-purple-d2;
-				box-shadow: var(--ai-assistant-focus-box-shadow);
-				color: $cadmin-input-color;
-			}
-		}
-
-		[data-ai-state='working'] {
-			.form-control {
-				background-color: $cadmin-purple-l5;
-				border-color: $cadmin-purple-l1;
-				box-shadow: var(--ai-assistant-focus-box-shadow);
-				color: $cadmin-purple-d2;
-			}
-		}
-
-		[data-ai-state='result'],
-		[data-ai-state='result-readonly'] {
-			.form-control {
-				background-color: $cadmin-input-bg;
-				border-color: $cadmin-purple-l1;
-				color: $cadmin-purple;
-			}
-		}
 	}
 }

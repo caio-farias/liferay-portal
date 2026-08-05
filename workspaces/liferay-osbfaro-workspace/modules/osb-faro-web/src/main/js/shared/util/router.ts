@@ -50,6 +50,7 @@ export const USERS = 'users';
 /* Filter Key Constants */
 
 export const PERIOD = 'rangeKey';
+export const SEGMENT_CATEGORY = 'segmentCategory';
 export const SEGMENT_STATE = 'state';
 export const SEGMENT_TYPE = 'segmentType';
 export const INDIVIDUAL_COUNT = 'individualCount';
@@ -171,6 +172,8 @@ export const Routes = buildRoutes({
 											CONTACTS_ACCOUNT_INTEREST_DETAILS: `/interests/:interestId/:tabId(${INDIVIDUALS}|${PAGES})?`,
 											CONTACTS_ACCOUNT_INTERESTS:
 												'/interests',
+											CONTACTS_ACCOUNT_OVERVIEW:
+												'/overview',
 											CONTACTS_ACCOUNT_PROFILE:
 												'/profile',
 											CONTACTS_ACCOUNT_SEGMENTS: `/${SEGMENTS}`,

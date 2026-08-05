@@ -40,7 +40,6 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
-import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -61,9 +60,7 @@ import org.junit.runner.RunWith;
 /**
  * @author Pedro Leite
  */
-@FeatureFlags(
-	featureFlags = {@FeatureFlag("LPD-17564"), @FeatureFlag("LPD-58677")}
-)
+@FeatureFlag("LPD-58677")
 @RunWith(Arquillian.class)
 public class CMPObjectEntryModelDocumentContributorTest {
 
@@ -128,7 +125,8 @@ public class CMPObjectEntryModelDocumentContributorTest {
 			Collections.emptyMap(),
 			ServiceContextTestUtil.getServiceContext(_depotEntry.getGroupId()));
 
-		_assertCMPProjectObjectEntryIdsField(linkedObjectEntry);
+		_assertFieldValues("cmpProjectObjectEntryIds", linkedObjectEntry);
+		_assertFieldValues("cmpTaskObjectEntryIds", linkedObjectEntry);
 
 		ObjectEntry cmpProjectObjectEntry1 =
 			CMPTestUtil.addCMPProjectObjectEntry();
@@ -136,8 +134,11 @@ public class CMPObjectEntryModelDocumentContributorTest {
 		ObjectEntry cmpProjectLinkObjectEntry = _addCMPProjectLinkObjectEntry(
 			cmpProjectObjectEntry1, linkedObjectEntry);
 
-		_assertCMPProjectObjectEntryIdsField(
-			linkedObjectEntry, cmpProjectObjectEntry1);
+		_assertFieldValues(
+			"cmpProjectObjectEntryIds", linkedObjectEntry,
+			cmpProjectObjectEntry1);
+
+		_assertFieldValues("cmpTaskObjectEntryIds", linkedObjectEntry);
 
 		ObjectEntry cmpProjectObjectEntry2 =
 			CMPTestUtil.addCMPProjectObjectEntry();
@@ -145,14 +146,61 @@ public class CMPObjectEntryModelDocumentContributorTest {
 		_addCMPProjectLinkObjectEntry(
 			cmpProjectObjectEntry2, linkedObjectEntry);
 
-		_assertCMPProjectObjectEntryIdsField(
-			linkedObjectEntry, cmpProjectObjectEntry1, cmpProjectObjectEntry2);
+		_assertFieldValues(
+			"cmpProjectObjectEntryIds", linkedObjectEntry,
+			cmpProjectObjectEntry1, cmpProjectObjectEntry2);
 
 		_objectEntryLocalService.deleteObjectEntry(
 			cmpProjectLinkObjectEntry.getObjectEntryId());
 
-		_assertCMPProjectObjectEntryIdsField(
-			linkedObjectEntry, cmpProjectObjectEntry2);
+		_assertFieldValues(
+			"cmpProjectObjectEntryIds", linkedObjectEntry,
+			cmpProjectObjectEntry2);
+
+		ObjectEntry cmpProjectObjectEntry3 =
+			CMPTestUtil.addCMPProjectObjectEntry();
+
+		ObjectEntry cmpTaskObjectEntry1 = CMPTestUtil.addCMPTaskObjectEntry(
+			cmpProjectObjectEntry3);
+
+		ObjectEntry cmpTaskLinkObjectEntry1 = _addCMPTaskLinkObjectEntry(
+			cmpTaskObjectEntry1, linkedObjectEntry);
+
+		_assertFieldValues(
+			"cmpProjectObjectEntryIds", linkedObjectEntry,
+			cmpProjectObjectEntry2, cmpProjectObjectEntry3);
+		_assertFieldValues(
+			"cmpTaskObjectEntryIds", linkedObjectEntry, cmpTaskObjectEntry1);
+
+		ObjectEntry cmpTaskObjectEntry2 = CMPTestUtil.addCMPTaskObjectEntry(
+			cmpProjectObjectEntry3);
+
+		ObjectEntry cmpTaskLinkObjectEntry2 = _addCMPTaskLinkObjectEntry(
+			cmpTaskObjectEntry2, linkedObjectEntry);
+
+		_assertFieldValues(
+			"cmpProjectObjectEntryIds", linkedObjectEntry,
+			cmpProjectObjectEntry2, cmpProjectObjectEntry3);
+		_assertFieldValues(
+			"cmpTaskObjectEntryIds", linkedObjectEntry, cmpTaskObjectEntry1,
+			cmpTaskObjectEntry2);
+
+		_objectEntryLocalService.deleteObjectEntry(
+			cmpTaskLinkObjectEntry1.getObjectEntryId());
+
+		_assertFieldValues(
+			"cmpProjectObjectEntryIds", linkedObjectEntry,
+			cmpProjectObjectEntry2, cmpProjectObjectEntry3);
+		_assertFieldValues(
+			"cmpTaskObjectEntryIds", linkedObjectEntry, cmpTaskObjectEntry2);
+
+		_objectEntryLocalService.deleteObjectEntry(
+			cmpTaskLinkObjectEntry2.getObjectEntryId());
+
+		_assertFieldValues(
+			"cmpProjectObjectEntryIds", linkedObjectEntry,
+			cmpProjectObjectEntry2);
+		_assertFieldValues("cmpTaskObjectEntryIds", linkedObjectEntry);
 	}
 
 	private ObjectEntry _addCMPProjectLinkObjectEntry(
@@ -187,9 +235,40 @@ public class CMPObjectEntryModelDocumentContributorTest {
 			ServiceContextTestUtil.getServiceContext());
 	}
 
-	private void _assertCMPProjectObjectEntryIdsField(
-			ObjectEntry linkedObjectEntry,
-			ObjectEntry... cmpProjectObjectEntries)
+	private ObjectEntry _addCMPTaskLinkObjectEntry(
+			ObjectEntry cmpTaskObjectEntry, ObjectEntry linkedObjectEntry)
+		throws Exception {
+
+		ObjectDefinition objectDefinition =
+			_objectDefinitionLocalService.
+				getObjectDefinitionByExternalReferenceCode(
+					"L_CMP_TASK_LINK", TestPropsValues.getCompanyId());
+
+		return _objectEntryLocalService.addObjectEntry(
+			cmpTaskObjectEntry.getGroupId(), cmpTaskObjectEntry.getUserId(),
+			objectDefinition.getObjectDefinitionId(), 0, null,
+			HashMapBuilder.<String, Serializable>put(
+				"classExternalReferenceCode",
+				linkedObjectEntry.getExternalReferenceCode()
+			).put(
+				"className", linkedObjectEntry.getModelClassName()
+			).put(
+				"groupExternalReferenceCode",
+				() -> {
+					Group group = _depotEntry.getGroup();
+
+					return group.getExternalReferenceCode();
+				}
+			).put(
+				"r_cmpTaskToCMPTaskLinks_c_cmpTaskId",
+				cmpTaskObjectEntry.getObjectEntryId()
+			).build(),
+			ServiceContextTestUtil.getServiceContext());
+	}
+
+	private void _assertFieldValues(
+			String fieldName, ObjectEntry linkedObjectEntry,
+			ObjectEntry... objectEntries)
 		throws Exception {
 
 		Indexer<ObjectEntry> indexer = IndexerRegistryUtil.getIndexer(
@@ -197,9 +276,9 @@ public class CMPObjectEntryModelDocumentContributorTest {
 
 		Document document = indexer.getDocument(linkedObjectEntry);
 
-		Field field = document.getField("cmpProjectObjectEntryIds");
+		Field field = document.getField(fieldName);
 
-		if (cmpProjectObjectEntries.length == 0) {
+		if (objectEntries.length == 0) {
 			Assert.assertNull(field);
 
 			return;
@@ -208,9 +287,9 @@ public class CMPObjectEntryModelDocumentContributorTest {
 		Assert.assertEquals(
 			ListUtil.sort(
 				TransformUtil.transformToList(
-					cmpProjectObjectEntries,
-					cmpProjectObjectEntry -> String.valueOf(
-						cmpProjectObjectEntry.getObjectEntryId()))),
+					objectEntries,
+					objectEntry -> String.valueOf(
+						objectEntry.getObjectEntryId()))),
 			ListUtil.sort(Arrays.asList(field.getValues())));
 	}
 

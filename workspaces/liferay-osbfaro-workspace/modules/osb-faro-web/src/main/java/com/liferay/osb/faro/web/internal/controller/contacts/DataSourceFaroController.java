@@ -508,7 +508,7 @@ public class DataSourceFaroController extends BaseFaroController {
 
 	@GET
 	@Path("/{id}/channel-data-sources")
-	@RolesAllowed(RoleConstants.SITE_ADMINISTRATOR)
+	@RolesAllowed(RoleConstants.SITE_MEMBER)
 	public FaroResultsDisplay getChannelDataSourceFaroResultsDisplay(
 			@PathParam("groupId") long groupId, @PathParam("id") String id,
 			@QueryParam("enabled") Boolean enabled,
@@ -919,7 +919,8 @@ public class DataSourceFaroController extends BaseFaroController {
 				Results<IndividualSegment> individualSegmentResults =
 					contactsEngineClient.getIndividualSegments(
 						faroProject, null, id, null, null, null, null, null,
-						IndividualSegment.Status.ACTIVE.name(), 1, 0, null);
+						null, IndividualSegment.Status.ACTIVE.name(), 1, 0,
+						null);
 
 				return individualSegmentResults.getTotal();
 			}

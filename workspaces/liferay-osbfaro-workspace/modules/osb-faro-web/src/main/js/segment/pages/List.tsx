@@ -38,6 +38,7 @@ import {
 	INDIVIDUAL_COUNT,
 	LAST_MEMBERSHIP_UPDATE_DATE,
 	Routes,
+	SEGMENT_CATEGORY,
 	SEGMENT_STATE,
 	SEGMENT_TYPE,
 	SEGMENTS,
@@ -47,7 +48,6 @@ import {
 } from 'shared/util/router';
 import {DateCell} from 'shared/components/table/cell-components';
 import {ENABLE_REAL_TIME_SEGMENTS} from 'shared/util/feature-flags';
-import {FeatureName, useLimitReached} from 'shared/hooks/useLimitReached';
 import {formatDateToTimeZone} from 'shared/util/date';
 import {
 	getDefaultSortOrder,
@@ -57,7 +57,12 @@ import {
 import {Link} from 'react-router-dom';
 import {OrderedMap} from 'immutable';
 import {OrderParams} from 'shared/util/records';
-import {SegmentStates, SegmentTypes, Sizes} from 'shared/util/constants';
+import {
+	SegmentCategories,
+	SegmentStates,
+	SegmentTypes,
+	Sizes,
+} from 'shared/util/constants';
 import {setUriQueryValues} from 'shared/util/router';
 import {sub} from 'shared/util/lang';
 import {useChannelContext} from 'shared/context/channel';
@@ -99,12 +104,33 @@ interface IListProps extends PropsFromRedux {
 	history: any;
 }
 
+const SEGMENT_CATEGORIES_LABEL_MAP = {
+	[SegmentCategories.Account]: Liferay.Language.get('account'),
+	[SegmentCategories.Individual]: Liferay.Language.get('individual'),
+};
+
 const SEGMENT_TYPES_LABEL_MAP = {
 	[SegmentTypes.Batch]: Liferay.Language.get('batch'),
 	[SegmentTypes.RealTime]: Liferay.Language.get('real-time'),
 };
 
 const FILTER_BY_OPTIONS = [
+	{
+		key: SEGMENT_CATEGORY,
+		label: Liferay.Language.get('segment-category'),
+		values: [
+			{
+				label: SEGMENT_CATEGORIES_LABEL_MAP[SegmentCategories.Account],
+				value: SegmentCategories.Account,
+			},
+			{
+				label: SEGMENT_CATEGORIES_LABEL_MAP[
+					SegmentCategories.Individual
+				],
+				value: SegmentCategories.Individual,
+			},
+		],
+	},
 	{
 		key: SEGMENT_TYPE,
 		label: Liferay.Language.get('segment-type'),
@@ -162,7 +188,7 @@ export const List: React.FC<IListProps> = ({
 
 	const {selectedItems, selectionDispatch} = useSelectionContext();
 	const {delta, filterBy, orderIOMap, page, query} = useQueryPagination({
-		filterFields: [SEGMENT_TYPE],
+		filterFields: [SEGMENT_CATEGORY, SEGMENT_TYPE],
 		initialDelta: paginationDefaults.delta,
 		initialOrderIOMap: createOrderIOMap(NAME, getDefaultSortOrder(NAME)),
 		initialPage: paginationDefaults.page,
@@ -190,6 +216,9 @@ export const List: React.FC<IListProps> = ({
 		};
 	}, []);
 
+	const selectedSegmentCategories =
+		filterBy?.get(SEGMENT_CATEGORY)?.toArray() || [];
+
 	const selectedSegmentTypes = filterBy?.get(SEGMENT_TYPE)?.toArray() || [];
 
 	const {data, error, loading, refetch} = useRequest({
@@ -201,69 +230,14 @@ export const List: React.FC<IListProps> = ({
 			orderIOMap,
 			page,
 			query,
+			segmentCategories: selectedSegmentCategories.length
+				? selectedSegmentCategories
+				: undefined,
 			segmentTypes: selectedSegmentTypes.length
 				? selectedSegmentTypes
 				: undefined,
 		},
 	});
-
-	const {
-		data: usageData = [],
-		loading: usageLoading,
-		refetch: refetchUsage,
-	} = useRequest({
-		dataSourceFn: API.projects.fetchFeatureUsages,
-		variables: {groupId},
-	});
-
-	const isBatchDisabled = useLimitReached({
-		data: usageData,
-		featureName: FeatureName.Batch,
-	});
-
-	const realTimeLimitReached = useLimitReached({
-		data: usageData,
-		featureName: FeatureName.RealTime,
-	});
-
-	const isRealTimeDisabled =
-		ENABLE_REAL_TIME_SEGMENTS && realTimeLimitReached;
-
-	const allActionsDisabled = isBatchDisabled && isRealTimeDisabled;
-
-	const getUsageTooltipMessage = () => {
-		if (isBatchDisabled && isRealTimeDisabled) {
-			return Liferay.Language.get(
-				'the-maximum-number-of-segments-has-been-reached-delete-an-existing-segment-to-create-a-new-one'
-			);
-		}
-		if (isBatchDisabled) {
-			return Liferay.Language.get(
-				'a-maximum-of-five-batch-segments-has-been-reached-delete-an-existing-segment-to-create-a-new-one'
-			);
-		}
-		if (isRealTimeDisabled) {
-			return Liferay.Language.get(
-				'a-maximum-of-three-real-time-segments-has-been-reached-delete-an-existing-segment-to-create-a-new-one'
-			);
-		}
-		return null;
-	};
-
-	const getUsageDropDownMessage = () => {
-		if (isBatchDisabled) {
-			return Liferay.Language.get('batch-segment-limit-has-been-reached');
-		}
-		if (isRealTimeDisabled) {
-			return Liferay.Language.get(
-				'real-time-segments-limit-has-been-reached'
-			);
-		}
-		return null;
-	};
-
-	const usageMessage = getUsageTooltipMessage();
-	const usageDropDownMessage = getUsageDropDownMessage();
 
 	const getDisabledSegmentsAlert = (abortSignal: AbortSignal) =>
 		fetchDisabledSegments(channelId, groupId, orderIOMap).then(
@@ -419,7 +393,6 @@ export const List: React.FC<IListProps> = ({
 						selectionDispatch?.({type: ActionTypes.ClearAll});
 
 						refetch?.();
-						refetchUsage?.();
 					})
 					.catch(() => {
 						addAlert({
@@ -490,48 +463,59 @@ export const List: React.FC<IListProps> = ({
 				<Nav>
 					<Nav.Item>
 						<div className="d-flex align-items-center">
-							{ENABLE_REAL_TIME_SEGMENTS ? (
-								<ClayDropDown
-									alignmentPosition={Align.BottomRight}
-									trigger={
-										<ClayButton
-											aria-label={
-												pageActionsLabel &&
-												Liferay.Language.get('menu')
-											}
-											className="button-root p-2 rounded-lg"
-											disabled={
-												error ||
-												loading ||
-												allActionsDisabled
-											}
-											displayType="primary"
-											size="sm"
-										>
-											<>
-												<span>{pageActionsLabel}</span>
-												<ClayIcon
-													className="icon-root ml-2"
-													symbol="caret-bottom"
-												/>
-											</>
-										</ClayButton>
-									}
+							<ClayDropDown
+								alignmentPosition={Align.BottomRight}
+								trigger={
+									<ClayButton
+										aria-label={
+											pageActionsLabel &&
+											Liferay.Language.get('menu')
+										}
+										className="button-root p-2 rounded-lg"
+										disabled={error || loading}
+										displayType="primary"
+										size="sm"
+									>
+										<>
+											<span>{pageActionsLabel}</span>
+											<ClayIcon
+												className="icon-root ml-2"
+												symbol="caret-bottom"
+											/>
+										</>
+									</ClayButton>
+								}
+							>
+								<ClayDropDown.Group
+									header={Liferay.Language.get('account')}
 								>
-									{usageDropDownMessage && (
-										<div
-											className="alert alert-fluid alert-info"
-											role="alert"
-										>
-											{usageDropDownMessage}
-										</div>
-									)}
+									<ClayDropDown.Item
+										data-testid="account-batch-segment-dropdown-item"
+										href={setUriQueryValues(
+											{
+												category:
+													SegmentCategories.Account,
+												type: SegmentTypes.Batch,
+											},
+											toRoute(
+												Routes.CONTACTS_SEGMENT_CREATE,
+												{channelId, groupId}
+											)
+										)}
+									>
+										<ClayIcon
+											className="mr-2"
+											symbol="organizations"
+										/>
+										{Liferay.Language.get('batch')}
+									</ClayDropDown.Item>
+								</ClayDropDown.Group>
 
+								<ClayDropDown.Group
+									header={Liferay.Language.get('individual')}
+								>
 									<ClayDropDown.Item
 										data-testid="batch-segment-dropdown-item"
-										disabled={
-											usageLoading || isBatchDisabled
-										}
 										href={setUriQueryValues(
 											{type: SegmentTypes.Batch},
 											toRoute(
@@ -547,67 +531,26 @@ export const List: React.FC<IListProps> = ({
 										{Liferay.Language.get('batch')}
 									</ClayDropDown.Item>
 
-									<ClayDropDown.Item
-										data-testid="real-time-segment-dropdown-item"
-										disabled={
-											usageLoading || isRealTimeDisabled
-										}
-										href={setUriQueryValues(
-											{type: SegmentTypes.RealTime},
-											toRoute(
-												Routes.CONTACTS_SEGMENT_CREATE,
-												{channelId, groupId}
-											)
-										)}
-									>
-										<ClayIcon
-											className="mr-2"
-											symbol="bolt"
-										/>
-										{Liferay.Language.get('real-time')}
-									</ClayDropDown.Item>
-								</ClayDropDown>
-							) : (
-								<ClayButton
-									aria-label={pageActionsLabel}
-									className="button-root p-2 rounded-lg"
-									data-testid="batch-segment-button"
-									disabled={
-										error || loading || isBatchDisabled
-									}
-									displayType="primary"
-									onClick={() =>
-										history.push(
-											setUriQueryValues(
-												{type: SegmentTypes.Batch},
+									{ENABLE_REAL_TIME_SEGMENTS && (
+										<ClayDropDown.Item
+											data-testid="real-time-segment-dropdown-item"
+											href={setUriQueryValues(
+												{type: SegmentTypes.RealTime},
 												toRoute(
 													Routes.CONTACTS_SEGMENT_CREATE,
 													{channelId, groupId}
 												)
-											)
-										)
-									}
-									size="sm"
-								>
-									{pageActionsLabel}
-								</ClayButton>
-							)}
-
-							{usageMessage && (
-								<ClayButton
-									borderless
-									className="ml-2"
-									data-tooltip-align="right"
-									displayType="unstyled"
-									size="sm"
-									title={usageMessage}
-								>
-									<ClayIcon
-										className="text-secondary"
-										symbol="exclamation-full"
-									/>
-								</ClayButton>
-							)}
+											)}
+										>
+											<ClayIcon
+												className="mr-2"
+												symbol="bolt"
+											/>
+											{Liferay.Language.get('real-time')}
+										</ClayDropDown.Item>
+									)}
+								</ClayDropDown.Group>
+							</ClayDropDown>
 						</div>
 					</Nav.Item>
 				</Nav>
@@ -659,7 +602,7 @@ export const List: React.FC<IListProps> = ({
 					/>
 					<BasePage.Header.Section>
 						<BasePage.Header.PageActions
-							disabled={error || loading || allActionsDisabled}
+							disabled={error || loading}
 							label={pageActionsLabel}
 						/>
 					</BasePage.Header.Section>
@@ -771,7 +714,10 @@ export const List: React.FC<IListProps> = ({
 							delta={delta}
 							filterBy={filterBy}
 							filterByOptions={FILTER_BY_OPTIONS}
-							filterEnabled={!!selectedSegmentTypes.length}
+							filterEnabled={
+								!!selectedSegmentCategories.length ||
+								!!selectedSegmentTypes.length
+							}
 							items={data?.items}
 							loading={loading}
 							noResultsRenderer={

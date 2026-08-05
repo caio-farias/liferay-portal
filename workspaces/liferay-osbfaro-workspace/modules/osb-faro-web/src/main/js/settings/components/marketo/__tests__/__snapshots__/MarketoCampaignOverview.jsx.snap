@@ -452,7 +452,7 @@ exports[`MarketoCampaignOverview should render an error when the count requests 
                         class="form-control"
                         readonly=""
                         type="text"
-                        value="Marketo"
+                        value="Marketo Campaign"
                       />
                     </div>
                     <div
@@ -1187,7 +1187,7 @@ exports[`MarketoCampaignOverview should render the connected data source with th
                         class="form-control"
                         readonly=""
                         type="text"
-                        value="Marketo"
+                        value="Marketo Campaign"
                       />
                     </div>
                     <div
@@ -1365,6 +1365,19 @@ exports[`MarketoCampaignOverview should render the connected data source with th
                           >
                             20 Items Synced
                           </p>
+                        </div>
+                        <div
+                          class="justify-content-center autofit-col"
+                        >
+                          <span
+                            class="label label-success"
+                          >
+                            <span
+                              class="label-item label-item-expand"
+                            >
+                              CONFIGURED
+                            </span>
+                          </span>
                         </div>
                       </li>
                     </ul>
@@ -2223,7 +2236,7 @@ exports[`MarketoCampaignOverview should render the reconnect view when the data 
                         class="form-control"
                         readonly=""
                         type="text"
-                        value="Marketo"
+                        value="Marketo Campaign"
                       />
                     </div>
                     <div
@@ -2344,6 +2357,19 @@ exports[`MarketoCampaignOverview should render the reconnect view when the data 
                           >
                             20 Items Synced
                           </p>
+                        </div>
+                        <div
+                          class="justify-content-center autofit-col"
+                        >
+                          <span
+                            class="label label-success"
+                          >
+                            <span
+                              class="label-item label-item-expand"
+                            >
+                              CONFIGURED
+                            </span>
+                          </span>
                         </div>
                       </li>
                     </ul>

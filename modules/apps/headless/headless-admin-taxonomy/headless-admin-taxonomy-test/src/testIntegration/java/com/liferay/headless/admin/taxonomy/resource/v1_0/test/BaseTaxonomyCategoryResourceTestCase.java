@@ -240,6 +240,7 @@ public abstract class BaseTaxonomyCategoryResourceTestCase {
 		taxonomyCategory.setAssetLibraryKey(regex);
 		taxonomyCategory.setDescription(regex);
 		taxonomyCategory.setExternalReferenceCode(regex);
+		taxonomyCategory.setFriendlyUrlPath(regex);
 		taxonomyCategory.setId(regex);
 		taxonomyCategory.setName(regex);
 		taxonomyCategory.setPath(regex);
@@ -255,6 +256,7 @@ public abstract class BaseTaxonomyCategoryResourceTestCase {
 		Assert.assertEquals(regex, taxonomyCategory.getAssetLibraryKey());
 		Assert.assertEquals(regex, taxonomyCategory.getDescription());
 		Assert.assertEquals(regex, taxonomyCategory.getExternalReferenceCode());
+		Assert.assertEquals(regex, taxonomyCategory.getFriendlyUrlPath());
 		Assert.assertEquals(regex, taxonomyCategory.getId());
 		Assert.assertEquals(regex, taxonomyCategory.getName());
 		Assert.assertEquals(regex, taxonomyCategory.getPath());
@@ -957,7 +959,8 @@ public abstract class BaseTaxonomyCategoryResourceTestCase {
 				assetLibraryId, randomTaxonomyCategory());
 
 		page = taxonomyCategoryResource.getAssetLibraryTaxonomyCategoriesPage(
-			assetLibraryId, null, null, null, Pagination.of(1, 10), null);
+			assetLibraryId, null, null, null,
+			Pagination.of(1, (int)totalCount + 2), null);
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -1717,7 +1720,8 @@ public abstract class BaseTaxonomyCategoryResourceTestCase {
 				siteId, randomTaxonomyCategory());
 
 		page = taxonomyCategoryResource.getSiteTaxonomyCategoriesPage(
-			siteId, null, null, null, Pagination.of(1, 10), null);
+			siteId, null, null, null, Pagination.of(1, (int)totalCount + 2),
+			null);
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -2411,7 +2415,7 @@ public abstract class BaseTaxonomyCategoryResourceTestCase {
 				randomTaxonomyCategory());
 
 		page = taxonomyCategoryResource.getTaxonomyCategoriesRankedPage(
-			null, Pagination.of(1, 10));
+			null, Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -2874,7 +2878,7 @@ public abstract class BaseTaxonomyCategoryResourceTestCase {
 		page =
 			taxonomyCategoryResource.getTaxonomyCategoryTaxonomyCategoriesPage(
 				parentTaxonomyCategoryId, null, null, null,
-				Pagination.of(1, 10), null);
+				Pagination.of(1, (int)totalCount + 2), null);
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -3464,7 +3468,7 @@ public abstract class BaseTaxonomyCategoryResourceTestCase {
 			taxonomyCategoryResource.
 				getTaxonomyVocabularyTaxonomyCategoriesPage(
 					taxonomyVocabularyId, null, null, null, null,
-					Pagination.of(1, 10), null);
+					Pagination.of(1, (int)totalCount + 2), null);
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -5491,6 +5495,24 @@ public abstract class BaseTaxonomyCategoryResourceTestCase {
 				continue;
 			}
 
+			if (Objects.equals("friendlyUrlPath", additionalAssertFieldName)) {
+				if (taxonomyCategory.getFriendlyUrlPath() == null) {
+					valid = false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals(
+					"friendlyUrlPath_i18n", additionalAssertFieldName)) {
+
+				if (taxonomyCategory.getFriendlyUrlPath_i18n() == null) {
+					valid = false;
+				}
+
+				continue;
+			}
+
 			if (Objects.equals("name", additionalAssertFieldName)) {
 				if (taxonomyCategory.getName() == null) {
 					valid = false;
@@ -5829,6 +5851,30 @@ public abstract class BaseTaxonomyCategoryResourceTestCase {
 				if (!Objects.deepEquals(
 						taxonomyCategory1.getExternalReferenceCode(),
 						taxonomyCategory2.getExternalReferenceCode())) {
+
+					return false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals("friendlyUrlPath", additionalAssertFieldName)) {
+				if (!Objects.deepEquals(
+						taxonomyCategory1.getFriendlyUrlPath(),
+						taxonomyCategory2.getFriendlyUrlPath())) {
+
+					return false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals(
+					"friendlyUrlPath_i18n", additionalAssertFieldName)) {
+
+				if (!equals(
+						(Map)taxonomyCategory1.getFriendlyUrlPath_i18n(),
+						(Map)taxonomyCategory2.getFriendlyUrlPath_i18n())) {
 
 					return false;
 				}
@@ -6338,6 +6384,57 @@ public abstract class BaseTaxonomyCategoryResourceTestCase {
 			return sb.toString();
 		}
 
+		if (entityFieldName.equals("friendlyUrlPath")) {
+			Object object = taxonomyCategory.getFriendlyUrlPath();
+
+			String value = String.valueOf(object);
+
+			if (operator.equals("contains")) {
+				sb = new StringBundler();
+
+				sb.append("contains(");
+				sb.append(entityFieldName);
+				sb.append(",'");
+
+				if ((object != null) && (value.length() > 2)) {
+					sb.append(value.substring(1, value.length() - 1));
+				}
+				else {
+					sb.append(value);
+				}
+
+				sb.append("')");
+			}
+			else if (operator.equals("startswith")) {
+				sb = new StringBundler();
+
+				sb.append("startswith(");
+				sb.append(entityFieldName);
+				sb.append(",'");
+
+				if ((object != null) && (value.length() > 1)) {
+					sb.append(value.substring(0, value.length() - 1));
+				}
+				else {
+					sb.append(value);
+				}
+
+				sb.append("')");
+			}
+			else {
+				sb.append("'");
+				sb.append(value);
+				sb.append("'");
+			}
+
+			return sb.toString();
+		}
+
+		if (entityFieldName.equals("friendlyUrlPath_i18n")) {
+			throw new IllegalArgumentException(
+				"Invalid entity field " + entityFieldName);
+		}
+
 		if (entityFieldName.equals("id")) {
 			Object object = taxonomyCategory.getId();
 
@@ -6684,6 +6781,8 @@ public abstract class BaseTaxonomyCategoryResourceTestCase {
 					RandomTestUtil.randomString());
 				externalReferenceCode = StringUtil.toLowerCase(
 					RandomTestUtil.randomString());
+				friendlyUrlPath = StringUtil.toLowerCase(
+					RandomTestUtil.randomString());
 				id = StringUtil.toLowerCase(RandomTestUtil.randomString());
 				name = StringUtil.toLowerCase(RandomTestUtil.randomString());
 				numberOfTaxonomyCategories = RandomTestUtil.randomInt();
@@ -6981,4 +7080,4 @@ public abstract class BaseTaxonomyCategoryResourceTestCase {
 			TaxonomyCategoryResource _taxonomyCategoryResource;
 
 }
-// LIFERAY-REST-BUILDER-HASH:-1919811996
+// LIFERAY-REST-BUILDER-HASH:-734652174

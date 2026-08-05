@@ -120,6 +120,56 @@ public class SitemapRegenerationSchedulerTest {
 	}
 
 	@Test
+	public void testGetNextRegenerateSitemapDate() throws Exception {
+		long companyId = TestPropsValues.getCompanyId();
+
+		_sitemapManager.scheduleRegenerateSitemap(
+			SitemapConstants.ASSET_TYPE_KEY_WEB_CONTENT, companyId,
+			_group.getGroupId(),
+			new Date(System.currentTimeMillis() + Time.DAY));
+
+		Assert.assertEquals(
+			_getNextFireDate(SitemapConstants.ASSET_TYPE_KEY_WEB_CONTENT),
+			_sitemapManager.getNextRegenerateSitemapDate(companyId));
+	}
+
+	@Test
+	public void testGetNextRegenerateSitemapDateWithMultipleJobsScheduled()
+		throws Exception {
+
+		long companyId = TestPropsValues.getCompanyId();
+		long groupId = _group.getGroupId();
+
+		_sitemapManager.scheduleRegenerateSitemap(
+			SitemapConstants.ASSET_TYPE_KEY_WEB_CONTENT, companyId, groupId,
+			new Date(System.currentTimeMillis() + (2 * Time.DAY)));
+		_sitemapManager.scheduleRegenerateSitemap(
+			SitemapConstants.ASSET_TYPE_KEY_PAGES, companyId, groupId,
+			new Date(System.currentTimeMillis() + Time.DAY));
+
+		Date nextFireDate = _getNextFireDate(
+			SitemapConstants.ASSET_TYPE_KEY_PAGES);
+
+		Assert.assertTrue(
+			nextFireDate.before(
+				_getNextFireDate(SitemapConstants.ASSET_TYPE_KEY_WEB_CONTENT)));
+		Assert.assertEquals(
+			nextFireDate,
+			_sitemapManager.getNextRegenerateSitemapDate(companyId));
+	}
+
+	@Test
+	public void testGetNextRegenerateSitemapDateWithNoJobScheduled()
+		throws Exception {
+
+		_deleteRegenerateSitemapScheduledJobs();
+
+		Assert.assertNull(
+			_sitemapManager.getNextRegenerateSitemapDate(
+				TestPropsValues.getCompanyId()));
+	}
+
+	@Test
 	public void testIsRegenerateSitemapInProgress() throws Exception {
 		long companyId = TestPropsValues.getCompanyId();
 
@@ -536,6 +586,17 @@ public class SitemapRegenerationSchedulerTest {
 			TestPropsValues.getCompanyId());
 	}
 
+	private Date _getNextFireDate(String assetTypeKey) throws Exception {
+		List<SchedulerResponse> schedulerResponses =
+			_getRegenerateSitemapSchedulerResponses(assetTypeKey);
+
+		Assert.assertEquals(
+			schedulerResponses.toString(), 1, schedulerResponses.size());
+
+		return _schedulerEngineHelper.getNextFireDate(
+			schedulerResponses.get(0));
+	}
+
 	private CompanyConfigurationTemporarySwapper
 			_getObjectEntryCompanyConfigurationTemporarySwapper(String scope)
 		throws Exception {
@@ -686,7 +747,7 @@ public class SitemapRegenerationSchedulerTest {
 		Assert.assertEquals(
 			schedulerResponses.toString(), 1, schedulerResponses.size());
 
-		return _schedulerEngineHelper.getStartTime(schedulerResponses.get(0));
+		return _schedulerEngineHelper.getStartDate(schedulerResponses.get(0));
 	}
 
 	private static final String _CLASS_NAME_SITEMAP_MANAGER_IMPL =

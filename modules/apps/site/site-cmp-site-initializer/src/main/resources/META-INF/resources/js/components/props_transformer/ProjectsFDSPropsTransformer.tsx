@@ -96,6 +96,7 @@ export default function ProjectsFDSPropsTransformer({
 							additionalProps,
 							itemData,
 							options,
+							requiresUpdatePermission: false,
 							value,
 						}),
 					name: 'simpleActionLinkTableCellRenderer',
@@ -164,6 +165,7 @@ export default function ProjectsFDSPropsTransformer({
 
 				manageMembersAction({
 					assetLibraryCreatorUserId: creatorUserId,
+					cmpProjectObjectEntryId: itemData.embedded.id,
 					externalReferenceCode: scopeExternalReferenceCode,
 					filter: additionalProps?.filter,
 					hasAssignMembersPermission: 'assign-members' in actions,
