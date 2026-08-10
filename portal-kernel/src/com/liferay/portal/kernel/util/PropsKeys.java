@@ -403,6 +403,9 @@ public interface PropsKeys {
 	public static final String CHANGE_TRACKING_DELETION_PROTECTION_ENABLED =
 		"change.tracking.deletion.protection.enabled";
 
+	public static final String CLUSTER_LINK_AUTH_KEYSTORE_TYPE =
+		"cluster.link.auth.keystore.type";
+
 	public static final String CLUSTER_LINK_AUTH_VALUE =
 		"cluster.link.auth.value";
 
