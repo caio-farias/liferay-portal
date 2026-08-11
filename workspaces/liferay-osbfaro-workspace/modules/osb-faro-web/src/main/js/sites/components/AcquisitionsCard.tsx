@@ -40,6 +40,7 @@ const getColumnsFn = (acquisitionType: AcquisitionTypes) => {
 			tooltip: true,
 		}),
 		compositionListColumns.getRelativeMetricBar({
+			abbreviateCount: true,
 			label: Liferay.Language.get('sessions'),
 			maxCount,
 			totalCount,
@@ -76,6 +77,7 @@ interface IAcquisitionsCardProps extends React.HTMLAttributes<HTMLElement> {
 	compositionBagName: CompositionTypes;
 	label: string;
 	legacyDropdownRangeKey?: boolean;
+	minHeight?: number;
 }
 
 const AcquisitionsCard: React.FC<IAcquisitionsCardProps> = ({
@@ -83,11 +85,13 @@ const AcquisitionsCard: React.FC<IAcquisitionsCardProps> = ({
 	compositionBagName,
 	label,
 	legacyDropdownRangeKey,
+	minHeight,
 }) => (
 	<BaseCard
 		className={className}
 		label={label}
 		legacyDropdownRangeKey={legacyDropdownRangeKey ?? true}
+		minHeight={minHeight}
 		reportContainer={ReportContainer.AcquisitionsCard}
 	>
 		{({rangeSelectors}) => (
@@ -113,6 +117,7 @@ const AcquisitionsCardWithData: React.FC<IAcquisitionsCard> = ({
 		router: {
 			params: {channelId},
 		},
+		segmentId,
 	} = useContext(BasePage.Context);
 	const {data, error, loading} = useQuery<
 		AcquisitionsQueryData,
@@ -123,6 +128,7 @@ const AcquisitionsCardWithData: React.FC<IAcquisitionsCard> = ({
 			accountId,
 			activeTabId,
 			channelId,
+			segmentId,
 			size: 5,
 			start: 0,
 		},

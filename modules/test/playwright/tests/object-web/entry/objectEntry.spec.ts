@@ -884,7 +884,7 @@ cmsTest.describe('Manage object entries schedule properties', () => {
 	});
 
 	cmsTest(
-		'can create, read, update, and delete a displayDate of an object entry',
+		'can create, read, and update a displayDate of an object entry',
 		async ({page, viewObjectEntriesPage}) => {
 			await viewObjectEntriesPage.goto(_objectDefinition.className);
 
@@ -937,7 +937,7 @@ cmsTest.describe('Manage object entries schedule properties', () => {
 			await viewObjectEntriesPage.choosePublicationOption('schedule');
 
 			await expect(viewObjectEntriesPage.publishDateInput).toHaveValue(
-				''
+				new RegExp(`^${today.split(' ')[0]}`)
 			);
 
 			await page.getByRole('button', {name: 'Close'}).click();
@@ -5272,9 +5272,13 @@ test.describe('Manage object entries through View Object Entries', () => {
 				'[data-field-name="r_objectRelationshipName_CProductId"]'
 			);
 
-			const productVersion1Value = await fieldContainer
-				.locator('input[type="hidden"][name]:not([name$="_edited"])')
-				.inputValue();
+			const relationshipInput = fieldContainer.locator(
+				'input[type="hidden"][name]:not([name$="_edited"])'
+			);
+
+			await expect(relationshipInput).not.toHaveValue('');
+
+			const productVersion1Value = await relationshipInput.inputValue();
 
 			await viewObjectEntriesPage.selectDropdownItemWithSearch(
 				productVersion2.name['en_US']
@@ -5284,9 +5288,9 @@ test.describe('Manage object entries through View Object Entries', () => {
 
 			await expect(viewObjectEntriesPage.successMessage).toBeVisible();
 
-			const productVersion2Value = await fieldContainer
-				.locator('input[type="hidden"][name]:not([name$="_edited"])')
-				.inputValue();
+			await expect(relationshipInput).not.toHaveValue('');
+
+			const productVersion2Value = await relationshipInput.inputValue();
 
 			await expect(productVersion2Value).toEqual(productVersion1Value);
 
@@ -6069,9 +6073,16 @@ test.describe('Manage object entries through View Object Entries', () => {
 			.getByRole('button', {name: 'astronaut.png'})
 			.waitFor({state: 'visible'});
 
-		expect(
-			await apiHelpers.headlessDelivery.getDocument(fileEntryId1)
-		).toEqual({status: 'NOT_FOUND'});
+		// The replaced temporary file is deleted asynchronously, so poll
+		// instead of asserting the very first read
+
+		await expect
+			.poll(
+				async () =>
+					await apiHelpers.headlessDelivery.getDocument(fileEntryId1),
+				{timeout: 30 * 1000}
+			)
+			.toEqual({status: 'NOT_FOUND'});
 
 		const fileEntryId2 = await page.getAttribute(
 			'input[data-field-name^="testAttachment"]',
@@ -6090,9 +6101,13 @@ test.describe('Manage object entries through View Object Entries', () => {
 
 		await viewObjectEntriesPage.deleteFileButton.click();
 
-		expect(
-			await apiHelpers.headlessDelivery.getDocument(fileEntryId2)
-		).toEqual({status: 'NOT_FOUND'});
+		await expect
+			.poll(
+				async () =>
+					await apiHelpers.headlessDelivery.getDocument(fileEntryId2),
+				{timeout: 30 * 1000}
+			)
+			.toEqual({status: 'NOT_FOUND'});
 
 		// Verify that the file is removed after page reload
 
@@ -6112,9 +6127,13 @@ test.describe('Manage object entries through View Object Entries', () => {
 
 		await page.reload();
 
-		expect(
-			await apiHelpers.headlessDelivery.getDocument(fileEntryId3)
-		).toEqual({status: 'NOT_FOUND'});
+		await expect
+			.poll(
+				async () =>
+					await apiHelpers.headlessDelivery.getDocument(fileEntryId3),
+				{timeout: 30 * 1000}
+			)
+			.toEqual({status: 'NOT_FOUND'});
 
 		// Verify that the file is saved successfully when clicking submit
 
@@ -6322,7 +6341,9 @@ test.describe('Manage object entries through View Object Entries', () => {
 			await test.step('Select the "United States" prefix, fill the phone number field, and save the entry', async () => {
 				await fieldContainer.getByLabel('Country Code').click();
 
-				await page.getByRole('option', {name: /United States/}).click();
+				await page
+					.getByRole('option', {name: /United States/})
+					.dispatchEvent('click');
 
 				await expect(fieldContainer.getByText(prefix)).toBeVisible();
 

@@ -1,9 +1,14 @@
 import AccountMembership from '../AccountMembership';
+import mockStore from 'test/mock-store';
 import React from 'react';
 import {fromJS} from 'immutable';
+import {Provider} from 'react-redux';
 import {render} from '@testing-library/react';
 
 jest.unmock('react-dom');
+
+const renderWithStore = (children: React.ReactNode) =>
+	render(<Provider store={mockStore()}>{children}</Provider>);
 
 describe('Account Membership', () => {
 	const mockData = {
@@ -22,14 +27,14 @@ describe('Account Membership', () => {
 	};
 
 	it('should render the snapshot', () => {
-		const {container} = render(
+		const {container} = renderWithStore(
 			<AccountMembership accountData={fromJS(mockData)} />
 		);
 		expect(container).toMatchSnapshot();
 	});
 
 	it('should render the empty state when showEmptyState is true', () => {
-		const {getByText, queryByText} = render(
+		const {getByText, queryByText} = renderWithStore(
 			<AccountMembership accountData={fromJS(mockData)} showEmptyState>
 				<div>{'empty state rendered'}</div>
 			</AccountMembership>
@@ -40,17 +45,17 @@ describe('Account Membership', () => {
 	});
 
 	it('should correctly format the time entries', () => {
-		const {getByText} = render(
+		const {getByText} = renderWithStore(
 			<AccountMembership accountData={fromJS(mockData)} />
 		);
 
 		expect(getByText('2015')).toBeTruthy();
-		expect(getByText('2021-12-01')).toBeTruthy();
-		expect(getByText('2020-01-01')).toBeTruthy();
+		expect(getByText('Dec 1, 2021')).toBeTruthy();
+		expect(getByText('Jan 1, 2020')).toBeTruthy();
 	});
 
 	it('should display the fallback dash for missing account values', () => {
-		const {getAllByText} = render(
+		const {getAllByText} = renderWithStore(
 			<AccountMembership accountData={fromJS({})} />
 		);
 
@@ -60,7 +65,7 @@ describe('Account Membership', () => {
 
 	it('should render annualRevenue without throwing when currencyCode is null', () => {
 		expect(() =>
-			render(
+			renderWithStore(
 				<AccountMembership
 					accountData={fromJS({
 						...mockData,
@@ -72,7 +77,7 @@ describe('Account Membership', () => {
 	});
 
 	it('links the account name to the account page', () => {
-		const {getByRole} = render(
+		const {getByRole} = renderWithStore(
 			<AccountMembership
 				accountData={fromJS(mockData)}
 				channelId="420253908131944590"
@@ -87,7 +92,7 @@ describe('Account Membership', () => {
 	});
 
 	it('does not link the account name without a channel and group', () => {
-		const {queryByRole} = render(
+		const {queryByRole} = renderWithStore(
 			<AccountMembership accountData={fromJS(mockData)} />
 		);
 

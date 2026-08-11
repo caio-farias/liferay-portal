@@ -5,6 +5,7 @@
 
 import ClayLayout from '@clayui/layout';
 import {TrendClassification} from '@liferay/analytics-reports-js-components-web';
+import {navigate} from 'frontend-js-web';
 import React, {useContext, useEffect, useState} from 'react';
 
 import {SectionHeader} from '../../common/SectionHeader';
@@ -74,6 +75,12 @@ const ATTENTION_CARDS: AttentionCard[] = [
 	},
 ];
 
+const SECTION_PATHS: Partial<Record<keyof AssetStatistics, string>> = {
+	expiredCount: 'expired-assets',
+	pendingCount: 'pending-workflows',
+	reviewDateOverdueCount: 'overdue-reviews',
+};
+
 export function AttentionRequired() {
 	const [loading, setLoading] = useState(true);
 	const {space} = useContext(GovernanceContext);
@@ -96,6 +103,12 @@ export function AttentionRequired() {
 		fetchStatistics();
 	}, [space]);
 
+	const openSection = (path: string) => {
+		const url = `${Liferay.ThemeDisplay.getPathFriendlyURLPublic()}/cms/${path}`;
+
+		navigate(space.siteId ? `${url}?groupId=${space.siteId}` : url);
+	};
+
 	return (
 		<>
 			<SectionHeader icon="semantic-search" title={title} />
@@ -109,25 +122,36 @@ export function AttentionRequired() {
 						icon,
 						statKey,
 						title,
-					}) => (
-						<ClayLayout.Col
-							className="mb-3"
-							key={title}
-							md={6}
-							xl={3}
-						>
-							<InteractiveCard
-								color={color}
-								description={description}
-								hoverContent={hoverContent}
-								icon={icon}
-								loading={loading}
-								title={title}
-								trend={placeholderTrend}
-								value={(statKey && statistics?.[statKey]) || 0}
-							/>
-						</ClayLayout.Col>
-					)
+					}) => {
+						const sectionPath = statKey && SECTION_PATHS[statKey];
+
+						return (
+							<ClayLayout.Col
+								className="mb-3"
+								key={title}
+								md={6}
+								xl={3}
+							>
+								<InteractiveCard
+									color={color}
+									description={description}
+									hoverContent={hoverContent}
+									icon={icon}
+									loading={loading}
+									onClick={
+										sectionPath
+											? () => openSection(sectionPath)
+											: undefined
+									}
+									title={title}
+									trend={placeholderTrend}
+									value={
+										(statKey && statistics?.[statKey]) || 0
+									}
+								/>
+							</ClayLayout.Col>
+						);
+					}
 				)}
 			</ClayLayout.Row>
 		</>

@@ -9,6 +9,7 @@ import React from 'react';
 
 import {openAssetUsageListModal} from '../../common/components/asset_usage/utils';
 import {OBJECT_ENTRY_FOLDER_CLASS_NAME} from '../../common/utils/constants';
+import {getFormattedLabel} from '../../common/utils/getFormattedText';
 import {openCMSModal} from '../../common/utils/openCMSModal';
 import DefaultPermissionModalContent from '../default_permission/DefaultPermissionModalContent';
 import openResetAssetPermissionModal from '../default_permission/ResetPermissionModalContent';
@@ -152,7 +153,7 @@ export default function HomeRecentAssetsFDSPropsTransformer({
 								'edit-and-propagate-default-permissions',
 							apiURL: otherProps.apiURL,
 							classExternalReferenceCode:
-								itemData.embedded.externalReferenceCode,
+								itemData.embedded?.externalReferenceCode,
 							className: itemData.entryClassName,
 							closeModal,
 							section:
@@ -165,7 +166,7 @@ export default function HomeRecentAssetsFDSPropsTransformer({
 			else if (action?.data?.id === 'delete') {
 				const title =
 					itemData.title ||
-					itemData.embedded.title ||
+					itemData.embedded?.title ||
 					Liferay.Language.get('untitled-asset');
 
 				const confirmationMessage =
@@ -174,13 +175,13 @@ export default function HomeRecentAssetsFDSPropsTransformer({
 								Liferay.Language.get(
 									'delete-folder-confirmation-body'
 								),
-								title
+								getFormattedLabel(title)
 							)
 						: sub(
 								Liferay.Language.get(
 									'delete-asset-confirmation-body'
 								),
-								title
+								getFormattedLabel(title)
 							);
 
 				if (additionalProps.brokenLinksCheckerEnabled) {
@@ -238,11 +239,19 @@ export default function HomeRecentAssetsFDSPropsTransformer({
 			else if (action?.data?.id === 'import-translation') {
 				event?.preventDefault();
 
+				if (!itemData.embedded) {
+					return;
+				}
+
 				const formattedHref = replaceTokens(action.href, itemData);
 
 				ACTIONS.importTranslation(itemData, formattedHref, loadData);
 			}
 			else if (action?.data?.id === 'reset-to-default-permissions') {
+				if (!itemData.embedded) {
+					return;
+				}
+
 				openResetAssetPermissionModal({
 					className: itemData.entryClassName,
 					classPK: itemData.embedded.id,
@@ -255,8 +264,12 @@ export default function HomeRecentAssetsFDSPropsTransformer({
 			) {
 				event?.preventDefault();
 
+				if (!itemData.embedded) {
+					return;
+				}
+
 				const currentItemPos = items.findIndex(
-					(item: any) => item.embedded.id === itemData.embedded.id
+					(item: any) => item.embedded?.id === itemData.embedded.id
 				);
 
 				openCMSModal({
@@ -271,6 +284,10 @@ export default function HomeRecentAssetsFDSPropsTransformer({
 				});
 			}
 			else if (action?.data?.id === 'share') {
+				if (!itemData.embedded) {
+					return;
+				}
+
 				const {autocompleteURL, collaboratorURLs} = additionalProps;
 
 				shareAction({
@@ -279,7 +296,7 @@ export default function HomeRecentAssetsFDSPropsTransformer({
 					creator: itemData.embedded.creator,
 					entryClassName: itemData.entryClassName,
 					itemId: itemData.embedded.id,
-					title: itemData.embedded?.title,
+					title: itemData.embedded.title,
 				});
 			}
 		},

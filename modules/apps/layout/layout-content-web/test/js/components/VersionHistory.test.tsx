@@ -5,17 +5,18 @@
 
 import {
 	hideProductMenuIfPresent,
+	openConfirmModal,
 	useMediaQuery,
 } from '@liferay/layout-js-components-web';
 import {render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import {openToast} from 'frontend-js-components-web';
 import {fetch} from 'frontend-js-web';
 import React from 'react';
 
 import '@testing-library/jest-dom';
 
 import VersionHistory from '../../../src/main/resources/META-INF/resources/js/components/VersionHistory';
-import {PageVersion} from '../../../src/main/resources/META-INF/resources/js/types/PageVersion';
 
 jest.mock('@liferay/layout-js-components-web', () => {
 	const react = require('react');
@@ -28,6 +29,7 @@ jest.mock('@liferay/layout-js-components-web', () => {
 					onChange(event.target.value),
 			}),
 		hideProductMenuIfPresent: jest.fn(),
+		openConfirmModal: jest.fn(),
 		useMediaQuery: jest.fn(),
 	};
 });
@@ -41,7 +43,7 @@ jest.mock('frontend-js-web', () => ({
 	fetch: jest.fn(),
 }));
 
-const VERSIONS: PageVersion[] = [
+const VERSIONS = [
 	{
 		creator: {
 			externalReferenceCode: 'MARIA_ARCE',
@@ -72,8 +74,26 @@ const VERSIONS: PageVersion[] = [
 	},
 ];
 
+const DELETABLE_VERSIONS = [
+	{
+		...VERSIONS[0],
+		actions: {delete: {href: '/delete/HOME_V_2', method: 'DELETE'}},
+	},
+	VERSIONS[1],
+];
+
+const RESTORABLE_VERSIONS = [
+	{
+		...VERSIONS[0],
+		actions: {restore: {href: '/restore/HOME_V_2', method: 'POST'}},
+	},
+	VERSIONS[1],
+];
+
 const mockFetch = fetch as jest.Mock;
 const mockHideProductMenu = hideProductMenuIfPresent as jest.Mock;
+const mockOpenConfirmModal = openConfirmModal as jest.Mock;
+const mockOpenToast = openToast as jest.Mock;
 const mockUseMediaQuery = useMediaQuery as jest.Mock;
 
 function mockLargeScreen() {
@@ -84,7 +104,7 @@ function mockSmallScreen() {
 	mockUseMediaQuery.mockReturnValue(false);
 }
 
-function mockVersions(versions: PageVersion[]) {
+function mockVersions(versions: typeof VERSIONS) {
 	mockFetch.mockReturnValue(
 		Promise.resolve({
 			json: () => Promise.resolve({items: versions}),
@@ -93,8 +113,14 @@ function mockVersions(versions: PageVersion[]) {
 	);
 }
 
-function queryDraftItem() {
+function queryCurrentItem() {
 	return document.querySelector('.lexicon-icon-sheets')?.closest('li');
+}
+
+async function openActions(item: HTMLElement) {
+	await userEvent.click(
+		within(item).getByRole('button', {name: 'show-options'})
+	);
 }
 
 function renderComponent({hasDraft = false} = {}) {
@@ -105,8 +131,10 @@ function renderComponent({hasDraft = false} = {}) {
 				availableSegmentsExperiences: [],
 				defaultLanguageId: 'en_US',
 				defaultUserImageSrc: '/image/user_portrait?img_id=0',
-				draftName: 'Home',
-				hasDraft,
+				layout: {
+					name: 'Home',
+					status: hasDraft ? 'draft' : 'approved',
+				},
 				pageSpecificationVersionsURL: 'url',
 			}}
 		/>
@@ -114,8 +142,22 @@ function renderComponent({hasDraft = false} = {}) {
 }
 
 describe('VersionHistory', () => {
+	const {location} = window;
+
+	beforeAll(() => {
+		delete (window as any).location;
+
+		(window as any).location = {...location, reload: jest.fn()};
+	});
+
+	afterAll(() => {
+		(window as any).location = location;
+	});
+
 	beforeEach(() => {
 		mockVersions([]);
+
+		mockOpenConfirmModal.mockResolvedValue(true);
 
 		mockHideProductMenu.mockImplementation(
 			({onHide}: {onHide: () => void}) => onHide()
@@ -177,16 +219,20 @@ describe('VersionHistory', () => {
 		).toBeInTheDocument();
 	});
 
-	it('shows an empty state when there are no versions', async () => {
+	it('only shows the current page item when there are no versions', async () => {
 		mockLargeScreen();
 
 		renderComponent();
 
-		expect(
-			await screen.findByText('there-are-no-results')
-		).toBeInTheDocument();
+		await waitFor(() =>
+			expect(screen.getAllByRole('option')).toHaveLength(1)
+		);
 
-		expect(screen.queryByText('no-results-found')).not.toBeInTheDocument();
+		expect(screen.getByRole('option')).toBe(queryCurrentItem());
+
+		expect(
+			screen.queryByText('there-are-no-results')
+		).not.toBeInTheDocument();
 	});
 
 	it('shows the search empty state when nothing matches the search', async () => {
@@ -196,7 +242,7 @@ describe('VersionHistory', () => {
 		renderComponent();
 
 		await waitFor(() =>
-			expect(screen.getAllByRole('option')).toHaveLength(2)
+			expect(screen.getAllByRole('option')).toHaveLength(3)
 		);
 
 		await userEvent.type(screen.getByLabelText('search-form'), 'zzz');
@@ -217,27 +263,32 @@ describe('VersionHistory', () => {
 		renderComponent();
 
 		await waitFor(() =>
-			expect(screen.getAllByRole('option')).toHaveLength(2)
+			expect(screen.getAllByRole('option')).toHaveLength(3)
 		);
 
 		expect(screen.getByText('Home Halloween')).toBeInTheDocument();
-		expect(screen.getByText('Home')).toBeInTheDocument();
+		expect(screen.getAllByText('Home')).toHaveLength(2);
 	});
 
-	it('does not render a draft item when there is no draft', async () => {
+	it('renders the current page item as published when there is no draft', async () => {
 		mockLargeScreen();
 		mockVersions(VERSIONS);
 
 		renderComponent();
 
 		await waitFor(() =>
-			expect(screen.getAllByRole('option')).toHaveLength(2)
+			expect(screen.getAllByRole('option')).toHaveLength(3)
 		);
 
-		expect(queryDraftItem()).toBeUndefined();
+		const [first] = screen.getAllByRole('option');
+
+		expect(first).toBe(queryCurrentItem());
+		expect(first).toHaveTextContent('Home');
+		expect(first).toHaveTextContent('current-page');
+		expect(first).toHaveTextContent('published');
 	});
 
-	it('renders the draft on top when there is a draft', async () => {
+	it('renders the current page item as draft when there is a draft', async () => {
 		mockLargeScreen();
 		mockVersions(VERSIONS);
 
@@ -249,26 +300,13 @@ describe('VersionHistory', () => {
 
 		const [first] = screen.getAllByRole('option');
 
-		expect(first).toBe(queryDraftItem());
+		expect(first).toBe(queryCurrentItem());
 		expect(first).toHaveTextContent('Home');
+		expect(first).toHaveTextContent('current-page');
 		expect(first).toHaveTextContent('draft');
 	});
 
-	it('renders the draft even when the page has no versions', async () => {
-		mockLargeScreen();
-
-		renderComponent({hasDraft: true});
-
-		await waitFor(() =>
-			expect(screen.getAllByRole('option')).toHaveLength(1)
-		);
-
-		expect(
-			screen.queryByText('there-are-no-results')
-		).not.toBeInTheDocument();
-	});
-
-	it('filters out the draft when it does not match the search', async () => {
+	it('filters out the current page item when it does not match the search', async () => {
 		mockLargeScreen();
 		mockVersions(VERSIONS);
 
@@ -281,42 +319,26 @@ describe('VersionHistory', () => {
 		await userEvent.type(screen.getByLabelText('search-form'), 'Halloween');
 
 		expect(screen.getAllByRole('option')).toHaveLength(1);
-		expect(queryDraftItem()).toBeUndefined();
+		expect(queryCurrentItem()).toBeUndefined();
 	});
 
-	it('selects the draft by default when there is a draft', async () => {
-		mockLargeScreen();
-		mockVersions(VERSIONS);
-
-		renderComponent({hasDraft: true});
-
-		await waitFor(() =>
-			expect(screen.getAllByRole('option')).toHaveLength(3)
-		);
-
-		const [draft, ...rest] = screen.getAllByRole('option');
-
-		expect(draft).toHaveClass('active');
-
-		for (const item of rest) {
-			expect(item).not.toHaveClass('active');
-		}
-	});
-
-	it('selects the first version by default when there is no draft', async () => {
+	it('selects the current page item by default', async () => {
 		mockLargeScreen();
 		mockVersions(VERSIONS);
 
 		renderComponent();
 
 		await waitFor(() =>
-			expect(screen.getAllByRole('option')).toHaveLength(2)
+			expect(screen.getAllByRole('option')).toHaveLength(3)
 		);
 
-		const [first, second] = screen.getAllByRole('option');
+		const [current, ...rest] = screen.getAllByRole('option');
 
-		expect(first).toHaveClass('active');
-		expect(second).not.toHaveClass('active');
+		expect(current).toHaveClass('active');
+
+		for (const item of rest) {
+			expect(item).not.toHaveClass('active');
+		}
 	});
 
 	it('selects an item when it is clicked', async () => {
@@ -329,17 +351,17 @@ describe('VersionHistory', () => {
 			expect(screen.getAllByRole('option')).toHaveLength(3)
 		);
 
-		const [draft, version] = screen.getAllByRole('option');
+		const [current, version] = screen.getAllByRole('option');
 
 		await userEvent.click(version);
 
 		expect(version).toHaveClass('active');
 		expect(version).toHaveAttribute('aria-selected', 'true');
-		expect(draft).not.toHaveClass('active');
+		expect(current).not.toHaveClass('active');
 
-		await userEvent.click(draft);
+		await userEvent.click(current);
 
-		expect(draft).toHaveClass('active');
+		expect(current).toHaveClass('active');
 		expect(version).not.toHaveClass('active');
 	});
 
@@ -374,11 +396,11 @@ describe('VersionHistory', () => {
 			expect(screen.getAllByRole('option')).toHaveLength(3)
 		);
 
-		const [draft, second, third] = screen.getAllByRole('option');
+		const [current, second, third] = screen.getAllByRole('option');
 
-		draft.focus();
+		current.focus();
 
-		expect(draft).toHaveFocus();
+		expect(current).toHaveFocus();
 
 		await userEvent.keyboard('{ArrowDown}');
 
@@ -458,7 +480,7 @@ describe('VersionHistory', () => {
 		).toBeInTheDocument();
 
 		expect(screen.getByText('draft')).toBeInTheDocument();
-		expect(screen.getByText('published')).toBeInTheDocument();
+		expect(screen.getAllByText('published')).toHaveLength(2);
 	});
 
 	it('filters the versions by name and by modifier', async () => {
@@ -468,7 +490,7 @@ describe('VersionHistory', () => {
 		renderComponent();
 
 		await waitFor(() =>
-			expect(screen.getAllByRole('option')).toHaveLength(2)
+			expect(screen.getAllByRole('option')).toHaveLength(3)
 		);
 
 		const search = screen.getByLabelText('search-form');
@@ -489,5 +511,198 @@ describe('VersionHistory', () => {
 
 		expect(screen.queryAllByRole('option')).toHaveLength(0);
 		expect(screen.getByText('no-results-found')).toBeInTheDocument();
+	});
+
+	it('only renders the actions menu for versions with a delete action', async () => {
+		mockLargeScreen();
+		mockVersions(DELETABLE_VERSIONS);
+
+		renderComponent();
+
+		await waitFor(() =>
+			expect(screen.getAllByRole('option')).toHaveLength(3)
+		);
+
+		const [current, deletable, notDeletable] =
+			screen.getAllByRole('option');
+
+		expect(
+			within(deletable).getByRole('button', {name: 'show-options'})
+		).toBeInTheDocument();
+
+		expect(
+			within(current).queryByRole('button', {name: 'show-options'})
+		).not.toBeInTheDocument();
+
+		expect(
+			within(notDeletable).queryByRole('button', {name: 'show-options'})
+		).not.toBeInTheDocument();
+	});
+
+	it('selects the first item after deleting the selected version', async () => {
+		mockLargeScreen();
+		mockVersions(DELETABLE_VERSIONS);
+
+		renderComponent();
+
+		await waitFor(() =>
+			expect(screen.getAllByRole('option')).toHaveLength(3)
+		);
+
+		const [current, deletable] = screen.getAllByRole('option');
+
+		await userEvent.click(deletable);
+
+		expect(deletable).toHaveClass('active');
+		expect(current).not.toHaveClass('active');
+
+		await userEvent.click(
+			within(deletable).getByRole('button', {name: 'show-options'})
+		);
+
+		await userEvent.click(
+			screen.getByRole('menuitem', {name: 'delete-version'})
+		);
+
+		await waitFor(() =>
+			expect(screen.getAllByRole('option')).toHaveLength(2)
+		);
+
+		expect(screen.queryByText('Home Halloween')).not.toBeInTheDocument();
+
+		const [first] = screen.getAllByRole('option');
+
+		expect(first).toBe(queryCurrentItem());
+		expect(first).toHaveClass('active');
+	});
+
+	it('only offers the restore action for versions with a restore action', async () => {
+		mockLargeScreen();
+		mockVersions(RESTORABLE_VERSIONS);
+
+		renderComponent();
+
+		await waitFor(() =>
+			expect(screen.getAllByRole('option')).toHaveLength(3)
+		);
+
+		const [current, restorable, notRestorable] =
+			screen.getAllByRole('option');
+
+		expect(
+			within(current).queryByRole('button', {name: 'show-options'})
+		).not.toBeInTheDocument();
+
+		expect(
+			within(notRestorable).queryByRole('button', {name: 'show-options'})
+		).not.toBeInTheDocument();
+
+		await openActions(restorable);
+
+		expect(
+			screen.getByRole('menuitem', {name: 'restore-version'})
+		).toBeInTheDocument();
+
+		expect(
+			screen.queryByRole('menuitem', {name: 'delete-version'})
+		).not.toBeInTheDocument();
+	});
+
+	it('restores the version once the confirmation is accepted', async () => {
+		mockLargeScreen();
+		mockVersions(RESTORABLE_VERSIONS);
+
+		renderComponent();
+
+		await waitFor(() =>
+			expect(screen.getAllByRole('option')).toHaveLength(3)
+		);
+
+		const [, restorable] = screen.getAllByRole('option');
+
+		await openActions(restorable);
+
+		await userEvent.click(
+			screen.getByRole('menuitem', {name: 'restore-version'})
+		);
+
+		expect(mockOpenConfirmModal).toHaveBeenCalledTimes(1);
+
+		await waitFor(() =>
+			expect(mockFetch).toHaveBeenCalledWith(
+				'/restore/HOME_V_2',
+				expect.objectContaining({method: 'POST'})
+			)
+		);
+	});
+
+	it('does not restore the version when the confirmation is dismissed', async () => {
+		mockLargeScreen();
+		mockVersions(RESTORABLE_VERSIONS);
+		mockOpenConfirmModal.mockResolvedValue(false);
+
+		renderComponent();
+
+		await waitFor(() =>
+			expect(screen.getAllByRole('option')).toHaveLength(3)
+		);
+
+		const [, restorable] = screen.getAllByRole('option');
+
+		await openActions(restorable);
+
+		await userEvent.click(
+			screen.getByRole('menuitem', {name: 'restore-version'})
+		);
+
+		await waitFor(() =>
+			expect(mockOpenConfirmModal).toHaveBeenCalledTimes(1)
+		);
+
+		expect(mockFetch).not.toHaveBeenCalledWith(
+			'/restore/HOME_V_2',
+			expect.anything()
+		);
+	});
+
+	it('shows an error toast when the restore fails', async () => {
+		mockLargeScreen();
+
+		mockFetch.mockImplementation((url: string) =>
+			Promise.resolve(
+				url === '/restore/HOME_V_2'
+					? {
+							json: () =>
+								Promise.resolve({title: 'restore-failed'}),
+							ok: false,
+						}
+					: {
+							json: () =>
+								Promise.resolve({items: RESTORABLE_VERSIONS}),
+							ok: true,
+						}
+			)
+		);
+
+		renderComponent();
+
+		await waitFor(() =>
+			expect(screen.getAllByRole('option')).toHaveLength(3)
+		);
+
+		const [, restorable] = screen.getAllByRole('option');
+
+		await openActions(restorable);
+
+		await userEvent.click(
+			screen.getByRole('menuitem', {name: 'restore-version'})
+		);
+
+		await waitFor(() =>
+			expect(mockOpenToast).toHaveBeenCalledWith({
+				message: 'restore-failed',
+				type: 'danger',
+			})
+		);
 	});
 });

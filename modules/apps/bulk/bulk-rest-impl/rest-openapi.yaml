@@ -53,7 +53,9 @@ components:
                     ResetPermissionObjectBulkSelectionAction: "#/components/schemas/ResetPermissionObjectBulkSelectionAction"
                     RestoreObjectBulkSelectionAction: "#/components/schemas/RestoreObjectBulkSelectionAction"
                     StatusObjectBulkSelectionAction: "#/components/schemas/StatusObjectBulkSelectionAction"
+                    UpdateExpirationDateObjectBulkSelectionAction: "#/components/schemas/UpdateExpirationDateObjectBulkSelectionAction"
                     UpdateObjectValuesBulkSelectionAction: "#/components/schemas/UpdateObjectValuesBulkSelectionAction"
+                    UpdateReviewDateObjectBulkSelectionAction: "#/components/schemas/UpdateReviewDateObjectBulkSelectionAction"
                 propertyName: type
             properties:
                 bulkActionItems:
@@ -82,7 +84,9 @@ components:
                         -   RestoreObjectBulkSelectionAction
                         -   StatusObjectBulkSelectionAction
                         -   EditObjectCategoriesBulkSelectionAction
+                        -   UpdateExpirationDateObjectBulkSelectionAction
                         -   UpdateObjectValuesBulkSelectionAction
+                        -   UpdateReviewDateObjectBulkSelectionAction
                     type: string
         BulkActionItem:
             properties:
@@ -332,6 +336,13 @@ components:
                 taxonomyVocabularyId:
                     format: int64
                     type: integer
+        UpdateExpirationDateObjectBulkSelectionAction:
+            allOf:
+                -   $ref: "#/components/schemas/BulkAction"
+                -   properties:
+                        expirationDate:
+                            format: date-time
+                            type: string
         UpdateObjectValuesBulkSelectionAction:
             allOf:
                 -   $ref: "#/components/schemas/BulkAction"
@@ -340,6 +351,13 @@ components:
                             additionalProperties:
                                 type: object
                             type: object
+        UpdateReviewDateObjectBulkSelectionAction:
+            allOf:
+                -   $ref: "#/components/schemas/BulkAction"
+                -   properties:
+                        reviewDate:
+                            format: date-time
+                            type: string
 info:
     description:
         "A Java client JAR is available for use with the group ID 'com.liferay', artifact ID 'com.liferay.bulk.rest.client', and version '3.0.43'."

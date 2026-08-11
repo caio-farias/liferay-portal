@@ -16,6 +16,7 @@ import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.sql.dsl.expression.Predicate;
 import com.liferay.petra.string.CharPool;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.search.Document;
@@ -26,7 +27,7 @@ import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.search.spi.model.index.contributor.ModelDocumentContributor;
-import com.liferay.site.cmp.site.initializer.internal.util.CMPLinkedObjectEntryUtil;
+import com.liferay.site.cmp.site.initializer.internal.util.CMPObjectEntryUtil;
 
 /**
  * @author Pedro Leite
@@ -71,6 +72,12 @@ public class CMPObjectEntryModelDocumentContributor
 	private void _contribute(Document document, ObjectEntry objectEntry)
 		throws PortalException {
 
+		if (!FeatureFlagManagerUtil.isEnabled(
+				objectEntry.getCompanyId(), "LPD-58677")) {
+
+			return;
+		}
+
 		ObjectEntryFolder rootObjectEntryFolder = _getRootObjectEntryFolder(
 			_objectEntryFolderLocalService.fetchObjectEntryFolder(
 				objectEntry.getObjectEntryFolderId()));
@@ -93,7 +100,7 @@ public class CMPObjectEntryModelDocumentContributor
 		}
 
 		long[] cmpTaskObjectEntryIds =
-			CMPLinkedObjectEntryUtil.getLinkedObjectEntryIds(
+			CMPObjectEntryUtil.getLinkedObjectEntryIds(
 				_filterFactory, _groupLocalService, "L_CMP_TASK_LINK",
 				_objectDefinitionLocalService, objectEntry,
 				_objectEntryLocalService,
@@ -111,7 +118,7 @@ public class CMPObjectEntryModelDocumentContributor
 
 		return ArrayUtil.unique(
 			ArrayUtil.append(
-				CMPLinkedObjectEntryUtil.getLinkedObjectEntryIds(
+				CMPObjectEntryUtil.getLinkedObjectEntryIds(
 					_filterFactory, _groupLocalService, "L_CMP_PROJECT_LINK",
 					_objectDefinitionLocalService, objectEntry,
 					_objectEntryLocalService,

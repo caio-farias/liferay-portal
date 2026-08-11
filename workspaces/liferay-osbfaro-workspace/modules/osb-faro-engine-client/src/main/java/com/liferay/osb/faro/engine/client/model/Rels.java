@@ -37,6 +37,8 @@ public interface Rels {
 
 	public static final String ACCOUNT_NAMES = "account-names";
 
+	public static final String ACCOUNT_OVERVIEW = "account-overview";
+
 	public static final String ACCOUNTS = "accounts";
 
 	public static final String ACCOUNTS_DISTRIBUTION = "accounts-distribution";
@@ -204,12 +206,6 @@ public interface Rels {
 	public static final String INDIVIDUAL_SEGMENT_MEMBERSHIPS =
 		"individual-segment-memberships";
 
-	public static final String INDIVIDUAL_SEGMENT_REAL_TIME_MEMBERSHIP_METRIC =
-		"individual-segment-real-time-membership-metric";
-
-	public static final String INDIVIDUAL_SEGMENT_REAL_TIME_MEMBERSHIPS =
-		"individual-segment-real-time-memberships";
-
 	public static final String INDIVIDUAL_SEGMENTS = "individual-segments";
 
 	public static final String INDIVIDUAL_TRANSFORMATION =
@@ -275,11 +271,10 @@ public interface Rels {
 
 	public static final String PROJECT_USAGE_METRICS = "project-usage-metrics";
 
-	public static final String PROJECTS_DATA_SOURCE_COUNTS =
-		"projects-data-source-counts";
-
 	public static final String PROJECTS_LAST_SEEN_DATE =
 		"projects-last-seen-date";
+
+	public static final String PROJECTS_METRICS = "projects-metrics";
 
 	public static final String REPORTS_EXPORT_CSV_COUNT =
 		"reports-export-csv-count";

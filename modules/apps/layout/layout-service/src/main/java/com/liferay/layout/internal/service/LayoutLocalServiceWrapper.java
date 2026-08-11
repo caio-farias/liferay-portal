@@ -56,6 +56,7 @@ import com.liferay.portal.kernel.model.ResourcePermission;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.portal.kernel.module.service.Snapshot;
 import com.liferay.portal.kernel.portlet.PortletIdCodec;
 import com.liferay.portal.kernel.portlet.PortletPreferencesFactory;
 import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
@@ -93,6 +94,7 @@ import com.liferay.segments.service.SegmentsExperienceLocalService;
 import com.liferay.sites.kernel.util.Sites;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -147,8 +149,7 @@ public class LayoutLocalServiceWrapper
 			targetSegmentsExperiencesIds);
 
 		if (sourceLayout.getClassPK() == targetLayout.getPlid()) {
-			_layoutContentVersionCreator.createLayoutContentVersion(
-				sourceLayout);
+			_createLayoutContentVersion(sourceLayout);
 		}
 
 		return layout;
@@ -236,10 +237,20 @@ public class LayoutLocalServiceWrapper
 			TransactionInvokerUtil.invoke(
 				_transactionConfig,
 				() -> {
+					LayoutPageTemplateStructure layoutPageTemplateStructure =
+						_layoutPageTemplateStructureLocalService.
+							fetchLayoutPageTemplateStructure(
+								layout.getGroupId(), layout.getPlid());
+
+					String oldData = layoutPageTemplateStructure.getData(
+						segmentsExperienceId);
+
 					_layoutPageTemplateStructureLocalService.
 						updateLayoutPageTemplateStructureData(
 							user.getUserId(), layout.getGroupId(),
 							layout.getPlid(), segmentsExperienceId, data);
+
+					_deleteOrphanFragmentEntryLinks(oldData, data);
 
 					return null;
 				});
@@ -433,13 +444,30 @@ public class LayoutLocalServiceWrapper
 					targetLayout.getGroupId(), targetLayout.getPlid());
 
 		if (targetLayoutPageTemplateStructure == null) {
+			long targetDefaultSegmentsExperienceId =
+				_segmentsExperienceLocalService.
+					fetchDefaultSegmentsExperienceId(targetLayout.getPlid());
+
+			if (targetDefaultSegmentsExperienceId ==
+					SegmentsExperienceConstants.ID_DEFAULT) {
+
+				SegmentsExperience defaultSegmentsExperience =
+					_segmentsExperienceLocalService.
+						addDefaultSegmentsExperience(
+							targetLayout.getExternalReferenceCode() +
+								LayoutConstants.
+									EXTERNAL_REFERENCE_CODE_SUFFIX_DEFAULT,
+							user.getUserId(), targetLayout.getPlid(),
+							ServiceContextThreadLocal.getServiceContext());
+
+				targetDefaultSegmentsExperienceId =
+					defaultSegmentsExperience.getSegmentsExperienceId();
+			}
+
 			_layoutPageTemplateStructureLocalService.
 				addLayoutPageTemplateStructure(
 					user.getUserId(), targetLayout.getGroupId(),
-					targetLayout.getPlid(),
-					_segmentsExperienceLocalService.
-						fetchDefaultSegmentsExperienceId(
-							targetLayout.getPlid()),
+					targetLayout.getPlid(), targetDefaultSegmentsExperienceId,
 					null, ServiceContextThreadLocal.getServiceContext());
 		}
 
@@ -791,6 +819,21 @@ public class LayoutLocalServiceWrapper
 		}
 	}
 
+	private void _createLayoutContentVersion(Layout sourceLayout) {
+		LayoutContentVersionCreator layoutContentVersionCreator =
+			_layoutContentVersionCreatorSnapshot.get();
+
+		if (layoutContentVersionCreator == null) {
+			if (_log.isDebugEnabled()) {
+				_log.debug("Layout content version creator is null");
+			}
+
+			return;
+		}
+
+		layoutContentVersionCreator.createLayoutContentVersion(sourceLayout);
+	}
+
 	private void _deleteLayoutClassedModelUsages(
 		long[] classNameIds,
 		List<LayoutClassedModelUsage> sourceLayoutLayoutClassedModelUsages,
@@ -810,6 +853,28 @@ public class LayoutLocalServiceWrapper
 				_layoutClassedModelUsageLocalService.
 					deleteLayoutClassedModelUsage(
 						targetLayoutClassedModelUsage);
+			}
+		}
+	}
+
+	private void _deleteOrphanFragmentEntryLinks(
+		String oldData, String newData) {
+
+		Set<Long> oldFragmentEntryLinkIds = _getFragmentEntryLinkIds(oldData);
+		Set<Long> newFragmentEntryLinkIds = _getFragmentEntryLinkIds(newData);
+
+		for (Long fragmentEntryLinkId : oldFragmentEntryLinkIds) {
+			if (newFragmentEntryLinkIds.contains(fragmentEntryLinkId)) {
+				continue;
+			}
+
+			FragmentEntryLink fragmentEntryLink =
+				_fragmentEntryLinkLocalService.fetchFragmentEntryLink(
+					fragmentEntryLinkId);
+
+			if (fragmentEntryLink != null) {
+				_fragmentEntryLinkLocalService.deleteFragmentEntryLink(
+					fragmentEntryLink);
 			}
 		}
 	}
@@ -855,6 +920,19 @@ public class LayoutLocalServiceWrapper
 		}
 
 		return null;
+	}
+
+	private Set<Long> _getFragmentEntryLinkIds(String data) {
+		if (Validator.isNull(data)) {
+			return Collections.emptySet();
+		}
+
+		LayoutStructure layoutStructure = LayoutStructure.of(data);
+
+		Map<Long, LayoutStructureItem> fragmentLayoutStructureItems =
+			layoutStructure.getFragmentLayoutStructureItems();
+
+		return fragmentLayoutStructureItems.keySet();
 	}
 
 	private Map<Long, FragmentEntryLink> _getFragmentEntryLinksMap(
@@ -1396,6 +1474,10 @@ public class LayoutLocalServiceWrapper
 	private static final Log _log = LogFactoryUtil.getLog(
 		LayoutLocalServiceWrapper.class);
 
+	private static final Snapshot<LayoutContentVersionCreator>
+		_layoutContentVersionCreatorSnapshot = new Snapshot<>(
+			LayoutLocalServiceWrapper.class, LayoutContentVersionCreator.class,
+			null, true);
 	private static final TransactionConfig _transactionConfig =
 		TransactionConfig.Factory.create(
 			Propagation.REQUIRED, new Class<?>[] {Exception.class});
@@ -1431,9 +1513,6 @@ public class LayoutLocalServiceWrapper
 	@Reference
 	private LayoutClassedModelUsageLocalService
 		_layoutClassedModelUsageLocalService;
-
-	@Reference
-	private LayoutContentVersionCreator _layoutContentVersionCreator;
 
 	@Reference
 	private LayoutFriendlyURLEntryHelper _layoutFriendlyURLEntryHelper;

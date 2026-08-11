@@ -24,6 +24,7 @@ interface ExecItemActionArgs {
 		| 'Edit'
 		| 'Expire'
 		| 'Export for Translation'
+		| 'Import Translation'
 		| 'Move'
 		| 'Move To'
 		| 'Share'
@@ -291,6 +292,10 @@ export class AssetsPage {
 		...args: Parameters<DataSetPage['changeVisualizationMode']>
 	) {
 		await this.dataSetFragmentPage.changeVisualizationMode(...args);
+	}
+
+	async search(...args: Parameters<DataSetPage['search']>) {
+		await this.dataSetFragmentPage.search(...args);
 	}
 
 	async selectItems(titles: string[]) {

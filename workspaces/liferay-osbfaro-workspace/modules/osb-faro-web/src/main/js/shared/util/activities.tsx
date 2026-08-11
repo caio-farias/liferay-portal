@@ -4,6 +4,7 @@ import {DEFAULT_ACTIVITY_MAX} from 'shared/api/activities';
 import getEventDashboardUrl, {
 	EventDashboardContext,
 } from './getEventDashboardUrl';
+import {getCustomDateFormat} from 'shared/util/date';
 import {getSafeDecodedURIComponent} from './util';
 import {
 	AssetTypes,
@@ -12,6 +13,7 @@ import {
 } from 'shared/util/constants';
 import {RangeSelectors} from 'shared/types';
 import {sub} from 'shared/util/lang';
+import {toLocale} from 'shared/util/numbers';
 import {UserSession, UserSessionEvent} from 'shared/queries/UserSessionQuery';
 
 export const CHART_ACTIVITY_ID = 'activities';
@@ -157,7 +159,7 @@ export const buildLegendItems = ({
 			DEFAULT_ACTIVITY_MAX,
 		]) as string,
 		title: sub(Liferay.Language.get('total-activity-count-x'), [
-			activityCount.toLocaleString(),
+			toLocale(activityCount),
 		]) as string,
 	},
 ];
@@ -360,7 +362,7 @@ export const formatGroupingTime = (
 
 	return time.isSame(moment(), 'day')
 		? Liferay.Language.get('today')
-		: time.utc().format('ll');
+		: time.utc().format(getCustomDateFormat());
 };
 
 /**

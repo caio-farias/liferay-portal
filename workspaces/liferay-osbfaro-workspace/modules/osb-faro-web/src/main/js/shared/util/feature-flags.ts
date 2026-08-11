@@ -16,13 +16,11 @@
 export const FEATURE_FLAGS_STORAGE_KEY = 'faro:feature-flags';
 
 export type FeatureFlagKey =
-	| 'ENABLE_ACCOUNT_OVERVIEW'
 	| 'ENABLE_ASSET_CARD'
 	| 'ENABLE_BLOCKLIST_KEYWORDS'
 	| 'ENABLE_COMMERCE'
 	| 'ENABLE_DELETE_DATA_SOURCE_BUTTON'
-	| 'ENABLE_FORM_ABANDONMENT'
-	| 'ENABLE_REAL_TIME_SEGMENTS';
+	| 'ENABLE_FORM_ABANDONMENT';
 
 export interface FeatureFlagDefinition {
 	defaultValue: boolean;
@@ -30,13 +28,11 @@ export interface FeatureFlagDefinition {
 }
 
 export const FEATURE_FLAGS: FeatureFlagDefinition[] = [
-	{defaultValue: false, key: 'ENABLE_ACCOUNT_OVERVIEW'},
 	{defaultValue: false, key: 'ENABLE_ASSET_CARD'},
 	{defaultValue: false, key: 'ENABLE_BLOCKLIST_KEYWORDS'},
 	{defaultValue: false, key: 'ENABLE_COMMERCE'},
 	{defaultValue: true, key: 'ENABLE_DELETE_DATA_SOURCE_BUTTON'},
 	{defaultValue: false, key: 'ENABLE_FORM_ABANDONMENT'},
-	{defaultValue: false, key: 'ENABLE_REAL_TIME_SEGMENTS'},
 ];
 
 const DEFAULTS = FEATURE_FLAGS.reduce(
@@ -95,10 +91,6 @@ export function setFeatureFlag(key: FeatureFlagKey, value: boolean): void {
  * panel requires a reload because these are evaluated only once, on import.
  */
 
-export const ENABLE_ACCOUNT_OVERVIEW = isFeatureFlagEnabled(
-	'ENABLE_ACCOUNT_OVERVIEW'
-);
-
 export const ENABLE_ASSET_CARD = isFeatureFlagEnabled('ENABLE_ASSET_CARD');
 
 export const ENABLE_BLOCKLIST_KEYWORDS = isFeatureFlagEnabled(
@@ -113,8 +105,4 @@ export const ENABLE_DELETE_DATA_SOURCE_BUTTON = isFeatureFlagEnabled(
 
 export const ENABLE_FORM_ABANDONMENT = isFeatureFlagEnabled(
 	'ENABLE_FORM_ABANDONMENT'
-);
-
-export const ENABLE_REAL_TIME_SEGMENTS = isFeatureFlagEnabled(
-	'ENABLE_REAL_TIME_SEGMENTS'
 );

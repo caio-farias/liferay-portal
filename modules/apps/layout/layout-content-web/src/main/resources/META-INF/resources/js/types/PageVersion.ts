@@ -3,9 +3,15 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-export type VersionStatus = 'Approved' | 'Draft';
+export type Status = 'approved' | 'draft';
+
+type Action = {
+	href: string;
+	method: string;
+};
 
 export type PageVersion = {
+	actions?: Partial<Record<'delete' | 'restore', Action>>;
 	creator?: {
 		externalReferenceCode?: string;
 		image?: string;
@@ -15,7 +21,7 @@ export type PageVersion = {
 	dateModified: string;
 	externalReferenceCode: string;
 	name: string;
-	status: VersionStatus;
+	status: Status;
 	statusDate: string;
 	version: number;
 };

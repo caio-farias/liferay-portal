@@ -30,7 +30,9 @@ import {
 	BULK_ACTION_RESTORE,
 	BULK_ACTION_STATUS,
 	BULK_ACTION_TAGS,
+	BULK_ACTION_UPDATE_EXPIRATION_DATE,
 	BULK_ACTION_UPDATE_OBJECT_VALUES,
+	BULK_ACTION_UPDATE_REVIEW_DATE,
 } from './constants';
 
 type MessageType = 'danger' | 'info' | 'success' | 'warning';
@@ -431,6 +433,30 @@ const BULK_ACTION_MESSAGES: BulkActionMessage = {
 			),
 		},
 	},
+	[BULK_ACTION_UPDATE_EXPIRATION_DATE]: {
+		info: {
+			all: Liferay.Language.get(
+				'expiration-date-update-action-started-for-all-assets'
+			),
+			plural: Liferay.Language.get(
+				'expiration-date-update-action-started-for-x-assets'
+			),
+			singular: Liferay.Language.get(
+				'expiration-date-update-action-started-for-one-asset'
+			),
+		},
+		success: {
+			all: Liferay.Language.get(
+				'expiration-date-was-successfully-updated-for-all-assets'
+			),
+			plural: Liferay.Language.get(
+				'expiration-date-was-successfully-updated-for-x-assets'
+			),
+			singular: Liferay.Language.get(
+				'expiration-date-was-successfully-updated-for-one-asset'
+			),
+		},
+	},
 	[BULK_ACTION_UPDATE_OBJECT_VALUES]: {
 		info: {
 			all: Liferay.Language.get('replacing-x-with-x'),
@@ -441,6 +467,30 @@ const BULK_ACTION_MESSAGES: BulkActionMessage = {
 			all: Liferay.Language.get('replaced-x-with-x'),
 			plural: Liferay.Language.get('replaced-x-with-x-in-x-assets'),
 			singular: Liferay.Language.get('replaced-x-with-x-for-one-asset'),
+		},
+	},
+	[BULK_ACTION_UPDATE_REVIEW_DATE]: {
+		info: {
+			all: Liferay.Language.get(
+				'review-date-update-action-started-for-all-assets'
+			),
+			plural: Liferay.Language.get(
+				'review-date-update-action-started-for-x-assets'
+			),
+			singular: Liferay.Language.get(
+				'review-date-update-action-started-for-one-asset'
+			),
+		},
+		success: {
+			all: Liferay.Language.get(
+				'review-date-was-successfully-updated-for-all-assets'
+			),
+			plural: Liferay.Language.get(
+				'review-date-was-successfully-updated-for-x-assets'
+			),
+			singular: Liferay.Language.get(
+				'review-date-was-successfully-updated-for-one-asset'
+			),
 		},
 	},
 };

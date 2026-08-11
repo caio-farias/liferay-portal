@@ -6,7 +6,10 @@
 package com.liferay.site.cmp.site.initializer.internal.model.listener.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.depot.constants.DepotConstants;
 import com.liferay.depot.constants.DepotRolesConstants;
+import com.liferay.depot.model.DepotEntry;
+import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.object.constants.ObjectActionKeys;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.service.ObjectEntryLocalService;
@@ -23,10 +26,13 @@ import com.liferay.portal.kernel.service.ResourceActionLocalService;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
+import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
+import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
@@ -67,6 +73,16 @@ public class ObjectEntryModelListenerTest {
 	@Before
 	public void setUp() throws Exception {
 		CMPTestUtil.getOrAddGroup(ObjectEntryModelListenerTest.class);
+
+		_depotEntry = _depotEntryLocalService.addDepotEntry(
+			HashMapBuilder.put(
+				LocaleUtil.getDefault(), RandomTestUtil.randomString()
+			).build(),
+			HashMapBuilder.put(
+				LocaleUtil.getDefault(), RandomTestUtil.randomString()
+			).build(),
+			DepotConstants.TYPE_SPACE,
+			ServiceContextTestUtil.getServiceContext());
 	}
 
 	@Test
@@ -103,7 +119,8 @@ public class ObjectEntryModelListenerTest {
 			ObjectActionKeys.OBJECT_ENTRY_HISTORY);
 		_assertResourceActions(
 			cmpProjectObjectEntry, DepotRolesConstants.PROJECT_MEMBER,
-			ActionKeys.ADD_DISCUSSION, ActionKeys.VIEW);
+			ActionKeys.ADD_DISCUSSION, ActionKeys.VIEW,
+			ObjectActionKeys.OBJECT_ENTRY_HISTORY);
 
 		ObjectEntry cmpProjectLinkObjectEntry =
 			CMPTestUtil.addCMPProjectLinkObjectEntry(cmpProjectObjectEntry);
@@ -133,7 +150,8 @@ public class ObjectEntryModelListenerTest {
 			ObjectActionKeys.OBJECT_ENTRY_HISTORY);
 		_assertResourceActions(
 			cmpTaskObjectEntry, DepotRolesConstants.PROJECT_CONTRIBUTOR,
-			ActionKeys.ADD_DISCUSSION, ActionKeys.UPDATE, ActionKeys.VIEW);
+			ActionKeys.ADD_DISCUSSION, ActionKeys.UPDATE, ActionKeys.VIEW,
+			ObjectActionKeys.OBJECT_ENTRY_HISTORY);
 		_assertResourceActions(
 			cmpTaskObjectEntry, DepotRolesConstants.PROJECT_MANAGER,
 			ActionKeys.ADD_DISCUSSION, ActionKeys.DELETE,
@@ -143,7 +161,8 @@ public class ObjectEntryModelListenerTest {
 			ObjectActionKeys.OBJECT_ENTRY_HISTORY);
 		_assertResourceActions(
 			cmpTaskObjectEntry, DepotRolesConstants.PROJECT_MEMBER,
-			ActionKeys.ADD_DISCUSSION, ActionKeys.VIEW);
+			ActionKeys.ADD_DISCUSSION, ActionKeys.VIEW,
+			ObjectActionKeys.OBJECT_ENTRY_HISTORY);
 
 		ObjectEntry cmpTaskLinkObjectEntry =
 			CMPTestUtil.addCMPTaskLinkObjectEntry(cmpTaskObjectEntry);
@@ -193,6 +212,63 @@ public class ObjectEntryModelListenerTest {
 			cmpProjectObjectEntry.getGroupId(), user2.getUserId());
 	}
 
+	@Test
+	public void testOnBeforeRemove() throws Exception {
+
+		// Deleting a CMS object entry deletes its links
+
+		ObjectEntry cmsBasicWebContentObjectEntry =
+			CMPTestUtil.addCMSBasicWebContentObjectEntry(
+				_depotEntry, RandomTestUtil.randomString());
+
+		ObjectEntry cmpProjectObjectEntry =
+			CMPTestUtil.addCMPProjectObjectEntry();
+
+		ObjectEntry cmpProjectLinkObjectEntry =
+			CMPTestUtil.addCMPProjectLinkObjectEntry(
+				cmpProjectObjectEntry, cmsBasicWebContentObjectEntry);
+
+		ObjectEntry cmpTaskObjectEntry = CMPTestUtil.addCMPTaskObjectEntry(
+			cmpProjectObjectEntry);
+
+		ObjectEntry cmpTaskLinkObjectEntry =
+			CMPTestUtil.addCMPTaskLinkObjectEntry(
+				cmpTaskObjectEntry, cmsBasicWebContentObjectEntry);
+
+		Assert.assertNotNull(
+			_objectEntryLocalService.fetchObjectEntry(
+				cmpProjectLinkObjectEntry.getObjectEntryId()));
+		Assert.assertNotNull(
+			_objectEntryLocalService.fetchObjectEntry(
+				cmpTaskLinkObjectEntry.getObjectEntryId()));
+
+		_objectEntryLocalService.deleteObjectEntry(
+			cmsBasicWebContentObjectEntry.getObjectEntryId());
+
+		Assert.assertNull(
+			_objectEntryLocalService.fetchObjectEntry(
+				cmpProjectLinkObjectEntry.getObjectEntryId()));
+		Assert.assertNull(
+			_objectEntryLocalService.fetchObjectEntry(
+				cmpTaskLinkObjectEntry.getObjectEntryId()));
+
+		// Deleting a non-CMS object entry keeps its links
+
+		cmpProjectObjectEntry = CMPTestUtil.addCMPProjectObjectEntry();
+
+		cmpTaskObjectEntry = CMPTestUtil.addCMPTaskObjectEntry();
+
+		cmpTaskLinkObjectEntry = CMPTestUtil.addCMPTaskLinkObjectEntry(
+			cmpTaskObjectEntry, cmpProjectObjectEntry);
+
+		_objectEntryLocalService.deleteObjectEntry(
+			cmpProjectObjectEntry.getObjectEntryId());
+
+		Assert.assertNotNull(
+			_objectEntryLocalService.fetchObjectEntry(
+				cmpTaskLinkObjectEntry.getObjectEntryId()));
+	}
+
 	private void _assertResourceActions(
 			ObjectEntry objectEntry, String roleName, String... actionIds)
 		throws Exception {
@@ -235,6 +311,12 @@ public class ObjectEntryModelListenerTest {
 		Assert.assertTrue(
 			userGroupRoleNames.containsAll(expectedUserGroupRoleNames));
 	}
+
+	@DeleteAfterTestRun
+	private DepotEntry _depotEntry;
+
+	@Inject
+	private DepotEntryLocalService _depotEntryLocalService;
 
 	@Inject
 	private GroupLocalService _groupLocalService;

@@ -282,7 +282,6 @@ export enum RangeKeyTimeRanges {
 
 export enum SegmentActivationScheduleTypes {
 	Batch = 'BATCH',
-	RealTime = 'REAL_TIME',
 }
 
 export enum SegmentActivationFrequencyTypes {
@@ -492,6 +491,12 @@ export const TIME_RANGE_LABELS = {
 	[RangeKeyTimeRanges.LastYear]: Liferay.Language.get('last-year'),
 	[RangeKeyTimeRanges.Yesterday]: Liferay.Language.get('yesterday'),
 };
+
+/**
+ * Fills the trend row on cards without a trend so that it keeps its height,
+ * leaving the value aligned with the sibling cards that do render a trend.
+ */
+export const TREND_PLACEHOLDER = '\u00A0';
 
 export const TWO_DAYS = '172800000';
 

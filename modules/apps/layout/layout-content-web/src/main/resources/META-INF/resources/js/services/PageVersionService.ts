@@ -4,14 +4,36 @@
  */
 
 import {config} from '../config';
-import {PageVersion} from '../types/PageVersion';
+import {PageVersion, Status} from '../types/PageVersion';
 import ApiHelper from './ApiHelper';
 
+type PageVersionResponse = Omit<PageVersion, 'status'> & {
+	status: Capitalize<Status>;
+};
+
+async function deletePageVersion(url: string) {
+	return ApiHelper.del(url);
+}
+
 async function getPageVersions(signal?: AbortSignal) {
-	return await ApiHelper.get<{items: PageVersion[]}>(
+	const {data, error} = await ApiHelper.get<{items: PageVersionResponse[]}>(
 		config.pageSpecificationVersionsURL,
 		signal
 	);
+
+	return {
+		data: data && {
+			items: data.items.map((item) => ({
+				...item,
+				status: item.status.toLowerCase() as Status,
+			})),
+		},
+		error,
+	};
 }
 
-export default {getPageVersions};
+async function restorePageVersion(url: string) {
+	return ApiHelper.post<void>(url);
+}
+
+export default {deletePageVersion, getPageVersions, restorePageVersion};

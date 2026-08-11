@@ -34,6 +34,13 @@ async function handleRequest<T>(
 			};
 		}
 
+		if (response.status === 204) {
+			return {
+				data: null as unknown as T,
+				error: null,
+			};
+		}
+
 		return {
 			data: await response.json(),
 			error: null,
@@ -45,6 +52,20 @@ async function handleRequest<T>(
 			error: (error as Error).message || UNEXPECTED_ERROR_MESSAGE,
 		};
 	}
+}
+
+async function del(url: string, signal?: AbortSignal) {
+	return handleRequest<void>(() =>
+		fetch(url, {
+			headers: new Headers({
+				'Accept': 'application/json',
+				'Accept-Language': Liferay.ThemeDisplay.getBCP47LanguageId(),
+				'Content-Type': 'application/json',
+			}),
+			method: 'DELETE',
+			signal,
+		})
+	);
 }
 
 async function get<T>(url: string, signal?: AbortSignal) {
@@ -61,4 +82,18 @@ async function get<T>(url: string, signal?: AbortSignal) {
 	);
 }
 
-export default {get};
+async function post<T>(url: string, signal?: AbortSignal) {
+	return handleRequest<T>(() =>
+		fetch(url, {
+			headers: new Headers({
+				'Accept': 'application/json',
+				'Accept-Language': Liferay.ThemeDisplay.getBCP47LanguageId(),
+				'Content-Type': 'application/json',
+			}),
+			method: 'POST',
+			signal,
+		})
+	);
+}
+
+export default {del, get, post};

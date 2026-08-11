@@ -4,6 +4,7 @@
  */
 
 import {Locator, Page, expect, mergeTests} from '@playwright/test';
+import {readFileSync} from 'fs';
 import path from 'path';
 
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
@@ -149,6 +150,11 @@ const createStructureWithAllFields = async ({
 		if (type === 'Select from List') {
 			await structureBuilderPage.changeFieldSettings({
 				picklist: picklist.name,
+			});
+		}
+		else if (type === 'Select Related Content') {
+			await structureBuilderPage.changeFieldSettings({
+				relatedContent: 'Basic Document',
 			});
 		}
 		else if (type === 'Upload') {
@@ -549,6 +555,7 @@ test(
 		structureBuilderPage,
 	}) => {
 		const displayPageTemplateName = getRandomString();
+		const fileTitle = `File ${getRandomString()}`;
 		const spaceName = `Space ${getRandomString()}`;
 		const title = getRandomString();
 		const unsavedChangesAlert = page.getByText(
@@ -584,6 +591,26 @@ test(
 					spaceName,
 					spaceSummaryPage,
 				});
+			});
+
+			await test.step('Create a basic document to relate content to', async () => {
+				await apiHelpers.objectEntry.postObjectEntry(
+					{
+						file: {
+							fileBase64: readFileSync(
+								path.join(
+									__dirname,
+									'/dependencies/file_upload_image_1.jpg'
+								)
+							).toString('base64'),
+							name: `${fileTitle}.jpg`,
+						},
+						objectEntryFolderExternalReferenceCode: 'L_FILES',
+						title: fileTitle,
+					},
+					'cms/basic-documents',
+					spaceName
+				);
 			});
 
 			await test.step('Create a content from the new structure', async () => {
@@ -642,7 +669,9 @@ test(
 				},
 				{
 					action: async () => {
-						const trigger = form.getByLabel('Open Options Menu');
+						const trigger = form
+							.getByLabel('Open Options Menu')
+							.nth(1);
 
 						await trigger.scrollIntoViewIfNeeded();
 
@@ -719,6 +748,24 @@ test(
 					action: () =>
 						fill(form.locator('input[type="tel"]'), '2125551234'),
 					label: 'Phone Number',
+				},
+				{
+					action: async () => {
+						const trigger = form.getByRole('combobox', {
+							name: 'Select Related Content',
+						});
+
+						await trigger.scrollIntoViewIfNeeded();
+
+						await clickAndExpectToBeVisible({
+							autoClick: true,
+							target: page.getByRole('option', {
+								name: fileTitle,
+							}),
+							trigger,
+						});
+					},
+					label: 'Select Related Content',
 				},
 			];
 
@@ -939,7 +986,7 @@ test(
 					trigger: page.getByLabel('Select Display Page'),
 				});
 
-				const iframe = page.frameLocator('iframe');
+				const iframe = page.frameLocator('iframe[title="Preview"]');
 
 				await expect(iframe.getByText(englishTitle)).toBeVisible();
 			});
@@ -947,7 +994,7 @@ test(
 			await test.step('Switch to Spanish and verify the preview updates', async () => {
 				await localizationSelectPage.switchLanguage('es-ES');
 
-				const iframe = page.frameLocator('iframe');
+				const iframe = page.frameLocator('iframe[title="Preview"]');
 
 				await expect(iframe.getByText(spanishTitle)).toBeVisible();
 				await expect(iframe.getByText(englishTitle)).not.toBeVisible();
@@ -980,7 +1027,7 @@ test(
 					trigger: page.getByLabel('Select Display Page'),
 				});
 
-				const iframe = page.frameLocator('iframe');
+				const iframe = page.frameLocator('iframe[title="Preview"]');
 
 				await expect(iframe.getByText(catalanTitle)).toBeVisible();
 				await expect(iframe.getByText(spanishTitle)).not.toBeVisible();

@@ -110,7 +110,7 @@ export default async function handleSaveStructure({
 			return;
 		}
 		else {
-			dispatch({status: 'draft', type: 'set-structure-status'});
+			dispatch({type: 'save-structure'});
 			dispatch({type: 'clear-errors'});
 		}
 	}
@@ -118,7 +118,7 @@ export default async function handleSaveStructure({
 	openToast({
 		message: Liferay.Util.sub(
 			Liferay.Language.get('x-was-saved-successfully'),
-			localizedLabel
+			Liferay.Util.escapeHTML(localizedLabel)
 		),
 		type: 'success',
 	});

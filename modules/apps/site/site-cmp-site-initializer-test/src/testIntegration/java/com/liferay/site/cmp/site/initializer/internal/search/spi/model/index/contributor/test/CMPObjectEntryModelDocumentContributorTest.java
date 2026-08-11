@@ -18,7 +18,6 @@ import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.model.ObjectEntryFolder;
 import com.liferay.object.model.ObjectFolder;
-import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectDefinitionSettingLocalService;
 import com.liferay.object.service.ObjectEntryFolderLocalService;
 import com.liferay.object.service.ObjectEntryLocalService;
@@ -26,7 +25,7 @@ import com.liferay.object.service.ObjectFolderLocalService;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.feature.flag.constants.FeatureFlagConstants;
 import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Indexer;
@@ -36,16 +35,14 @@ import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
-import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.props.test.util.PropsTemporarySwapper;
 import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.site.cmp.site.initializer.test.util.CMPTestUtil;
-
-import java.io.Serializable;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -81,49 +78,108 @@ public class CMPObjectEntryModelDocumentContributorTest {
 			RandomTestUtil.randomLocaleStringMap(), DepotConstants.TYPE_SPACE,
 			ServiceContextTestUtil.getServiceContext());
 
-		ObjectFolder objectFolder =
-			_objectFolderLocalService.getObjectFolderByExternalReferenceCode(
-				ObjectFolderConstants.
-					EXTERNAL_REFERENCE_CODE_CONTENT_STRUCTURES,
-				TestPropsValues.getCompanyId());
-
-		_objectDefinition = ObjectDefinitionTestUtil.publishObjectDefinition(
-			ObjectDefinitionTestUtil.getRandomName(),
-			Collections.singletonList(
-				new TextObjectFieldBuilder(
-				).indexed(
-					true
-				).indexedAsKeyword(
-					true
-				).labelMap(
-					RandomTestUtil.randomLocaleStringMap()
-				).name(
-					StringUtil.randomId()
-				).build()),
-			objectFolder.getObjectFolderId(),
-			ObjectDefinitionConstants.SCOPE_DEPOT, TestPropsValues.getUserId());
-
-		_objectDefinitionSettingLocalService.addObjectDefinitionSetting(
-			_objectDefinition.getUserId(),
-			_objectDefinition.getObjectDefinitionId(),
-			ObjectDefinitionSettingConstants.NAME_ACCEPT_ALL_GROUPS,
-			StringPool.TRUE);
+		_objectDefinition1 = _publishObjectDefinition();
 	}
 
 	@Test
 	public void testContribute() throws Exception {
+		_testContribute(_objectDefinition1);
+
+		try (PropsTemporarySwapper propsTemporarySwapper =
+				new PropsTemporarySwapper(
+					FeatureFlagConstants.getKey("LPD-58677"),
+					Boolean.FALSE.toString())) {
+
+			_objectDefinition2 = _publishObjectDefinition();
+		}
+
+		_testContribute(_objectDefinition2);
+
+		_testContributeWithFeatureFlagDisabled();
+	}
+
+	private ObjectEntry _addLinkedObjectEntry(ObjectDefinition objectDefinition)
+		throws Exception {
+
 		ObjectEntryFolder objectEntryFolder =
 			_objectEntryFolderLocalService.
 				fetchObjectEntryFolderByExternalReferenceCode(
 					ObjectEntryFolderConstants.EXTERNAL_REFERENCE_CODE_CONTENTS,
 					_depotEntry.getGroupId(), TestPropsValues.getCompanyId());
 
-		ObjectEntry linkedObjectEntry = _objectEntryLocalService.addObjectEntry(
+		return _objectEntryLocalService.addObjectEntry(
 			_depotEntry.getGroupId(), TestPropsValues.getUserId(),
-			_objectDefinition.getObjectDefinitionId(),
+			objectDefinition.getObjectDefinitionId(),
 			objectEntryFolder.getObjectEntryFolderId(), null,
 			Collections.emptyMap(),
 			ServiceContextTestUtil.getServiceContext(_depotEntry.getGroupId()));
+	}
+
+	private void _assertFieldValues(
+			String fieldName, ObjectEntry linkedObjectEntry,
+			ObjectEntry... objectEntries)
+		throws Exception {
+
+		Indexer<ObjectEntry> indexer = IndexerRegistryUtil.getIndexer(
+			linkedObjectEntry.getModelClassName());
+
+		Document document = indexer.getDocument(linkedObjectEntry);
+
+		Field field = document.getField(fieldName);
+
+		if (objectEntries.length == 0) {
+			Assert.assertNull(field);
+
+			return;
+		}
+
+		Assert.assertEquals(
+			ListUtil.sort(
+				TransformUtil.transformToList(
+					objectEntries,
+					objectEntry -> String.valueOf(
+						objectEntry.getObjectEntryId()))),
+			ListUtil.sort(Arrays.asList(field.getValues())));
+	}
+
+	private ObjectDefinition _publishObjectDefinition() throws Exception {
+		ObjectFolder objectFolder =
+			_objectFolderLocalService.getObjectFolderByExternalReferenceCode(
+				ObjectFolderConstants.
+					EXTERNAL_REFERENCE_CODE_CONTENT_STRUCTURES,
+				TestPropsValues.getCompanyId());
+
+		ObjectDefinition objectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				ObjectDefinitionTestUtil.getRandomName(),
+				Collections.singletonList(
+					new TextObjectFieldBuilder(
+					).indexed(
+						true
+					).indexedAsKeyword(
+						true
+					).labelMap(
+						RandomTestUtil.randomLocaleStringMap()
+					).name(
+						StringUtil.randomId()
+					).build()),
+				objectFolder.getObjectFolderId(),
+				ObjectDefinitionConstants.SCOPE_DEPOT,
+				TestPropsValues.getUserId());
+
+		_objectDefinitionSettingLocalService.addObjectDefinitionSetting(
+			objectDefinition.getUserId(),
+			objectDefinition.getObjectDefinitionId(),
+			ObjectDefinitionSettingConstants.NAME_ACCEPT_ALL_GROUPS,
+			StringPool.TRUE);
+
+		return objectDefinition;
+	}
+
+	private void _testContribute(ObjectDefinition objectDefinition)
+		throws Exception {
+
+		ObjectEntry linkedObjectEntry = _addLinkedObjectEntry(objectDefinition);
 
 		_assertFieldValues("cmpProjectObjectEntryIds", linkedObjectEntry);
 		_assertFieldValues("cmpTaskObjectEntryIds", linkedObjectEntry);
@@ -131,8 +187,9 @@ public class CMPObjectEntryModelDocumentContributorTest {
 		ObjectEntry cmpProjectObjectEntry1 =
 			CMPTestUtil.addCMPProjectObjectEntry();
 
-		ObjectEntry cmpProjectLinkObjectEntry = _addCMPProjectLinkObjectEntry(
-			cmpProjectObjectEntry1, linkedObjectEntry);
+		ObjectEntry cmpProjectLinkObjectEntry =
+			CMPTestUtil.addCMPProjectLinkObjectEntry(
+				cmpProjectObjectEntry1, linkedObjectEntry);
 
 		_assertFieldValues(
 			"cmpProjectObjectEntryIds", linkedObjectEntry,
@@ -143,7 +200,7 @@ public class CMPObjectEntryModelDocumentContributorTest {
 		ObjectEntry cmpProjectObjectEntry2 =
 			CMPTestUtil.addCMPProjectObjectEntry();
 
-		_addCMPProjectLinkObjectEntry(
+		CMPTestUtil.addCMPProjectLinkObjectEntry(
 			cmpProjectObjectEntry2, linkedObjectEntry);
 
 		_assertFieldValues(
@@ -163,8 +220,9 @@ public class CMPObjectEntryModelDocumentContributorTest {
 		ObjectEntry cmpTaskObjectEntry1 = CMPTestUtil.addCMPTaskObjectEntry(
 			cmpProjectObjectEntry3);
 
-		ObjectEntry cmpTaskLinkObjectEntry1 = _addCMPTaskLinkObjectEntry(
-			cmpTaskObjectEntry1, linkedObjectEntry);
+		ObjectEntry cmpTaskLinkObjectEntry1 =
+			CMPTestUtil.addCMPTaskLinkObjectEntry(
+				cmpTaskObjectEntry1, linkedObjectEntry);
 
 		_assertFieldValues(
 			"cmpProjectObjectEntryIds", linkedObjectEntry,
@@ -175,8 +233,9 @@ public class CMPObjectEntryModelDocumentContributorTest {
 		ObjectEntry cmpTaskObjectEntry2 = CMPTestUtil.addCMPTaskObjectEntry(
 			cmpProjectObjectEntry3);
 
-		ObjectEntry cmpTaskLinkObjectEntry2 = _addCMPTaskLinkObjectEntry(
-			cmpTaskObjectEntry2, linkedObjectEntry);
+		ObjectEntry cmpTaskLinkObjectEntry2 =
+			CMPTestUtil.addCMPTaskLinkObjectEntry(
+				cmpTaskObjectEntry2, linkedObjectEntry);
 
 		_assertFieldValues(
 			"cmpProjectObjectEntryIds", linkedObjectEntry,
@@ -203,94 +262,27 @@ public class CMPObjectEntryModelDocumentContributorTest {
 		_assertFieldValues("cmpTaskObjectEntryIds", linkedObjectEntry);
 	}
 
-	private ObjectEntry _addCMPProjectLinkObjectEntry(
-			ObjectEntry cmpProjectObjectEntry, ObjectEntry linkedObjectEntry)
-		throws Exception {
+	private void _testContributeWithFeatureFlagDisabled() throws Exception {
+		ObjectEntry cmpProjectObjectEntry =
+			CMPTestUtil.addCMPProjectObjectEntry();
 
-		ObjectDefinition objectDefinition =
-			_objectDefinitionLocalService.
-				getObjectDefinitionByExternalReferenceCode(
-					"L_CMP_PROJECT_LINK", TestPropsValues.getCompanyId());
+		ObjectEntry linkedObjectEntry = _addLinkedObjectEntry(
+			_objectDefinition1);
 
-		return _objectEntryLocalService.addObjectEntry(
-			cmpProjectObjectEntry.getGroupId(),
-			cmpProjectObjectEntry.getUserId(),
-			objectDefinition.getObjectDefinitionId(), 0, null,
-			HashMapBuilder.<String, Serializable>put(
-				"classExternalReferenceCode",
-				linkedObjectEntry.getExternalReferenceCode()
-			).put(
-				"className", linkedObjectEntry.getModelClassName()
-			).put(
-				"groupExternalReferenceCode",
-				() -> {
-					Group group = _depotEntry.getGroup();
+		CMPTestUtil.addCMPProjectLinkObjectEntry(
+			cmpProjectObjectEntry, linkedObjectEntry);
 
-					return group.getExternalReferenceCode();
-				}
-			).put(
-				"r_cmpProjectToCMPProjectLinks_c_cmpProjectId",
-				cmpProjectObjectEntry.getObjectEntryId()
-			).build(),
-			ServiceContextTestUtil.getServiceContext());
-	}
+		_assertFieldValues(
+			"cmpProjectObjectEntryIds", linkedObjectEntry,
+			cmpProjectObjectEntry);
 
-	private ObjectEntry _addCMPTaskLinkObjectEntry(
-			ObjectEntry cmpTaskObjectEntry, ObjectEntry linkedObjectEntry)
-		throws Exception {
+		try (PropsTemporarySwapper propsTemporarySwapper =
+				new PropsTemporarySwapper(
+					FeatureFlagConstants.getKey("LPD-58677"),
+					Boolean.FALSE.toString())) {
 
-		ObjectDefinition objectDefinition =
-			_objectDefinitionLocalService.
-				getObjectDefinitionByExternalReferenceCode(
-					"L_CMP_TASK_LINK", TestPropsValues.getCompanyId());
-
-		return _objectEntryLocalService.addObjectEntry(
-			cmpTaskObjectEntry.getGroupId(), cmpTaskObjectEntry.getUserId(),
-			objectDefinition.getObjectDefinitionId(), 0, null,
-			HashMapBuilder.<String, Serializable>put(
-				"classExternalReferenceCode",
-				linkedObjectEntry.getExternalReferenceCode()
-			).put(
-				"className", linkedObjectEntry.getModelClassName()
-			).put(
-				"groupExternalReferenceCode",
-				() -> {
-					Group group = _depotEntry.getGroup();
-
-					return group.getExternalReferenceCode();
-				}
-			).put(
-				"r_cmpTaskToCMPTaskLinks_c_cmpTaskId",
-				cmpTaskObjectEntry.getObjectEntryId()
-			).build(),
-			ServiceContextTestUtil.getServiceContext());
-	}
-
-	private void _assertFieldValues(
-			String fieldName, ObjectEntry linkedObjectEntry,
-			ObjectEntry... objectEntries)
-		throws Exception {
-
-		Indexer<ObjectEntry> indexer = IndexerRegistryUtil.getIndexer(
-			_objectDefinition.getClassName());
-
-		Document document = indexer.getDocument(linkedObjectEntry);
-
-		Field field = document.getField(fieldName);
-
-		if (objectEntries.length == 0) {
-			Assert.assertNull(field);
-
-			return;
+			_assertFieldValues("cmpProjectObjectEntryIds", linkedObjectEntry);
 		}
-
-		Assert.assertEquals(
-			ListUtil.sort(
-				TransformUtil.transformToList(
-					objectEntries,
-					objectEntry -> String.valueOf(
-						objectEntry.getObjectEntryId()))),
-			ListUtil.sort(Arrays.asList(field.getValues())));
 	}
 
 	@DeleteAfterTestRun
@@ -300,10 +292,10 @@ public class CMPObjectEntryModelDocumentContributorTest {
 	private DepotEntryLocalService _depotEntryLocalService;
 
 	@DeleteAfterTestRun
-	private ObjectDefinition _objectDefinition;
+	private ObjectDefinition _objectDefinition1;
 
-	@Inject
-	private ObjectDefinitionLocalService _objectDefinitionLocalService;
+	@DeleteAfterTestRun
+	private ObjectDefinition _objectDefinition2;
 
 	@Inject
 	private ObjectDefinitionSettingLocalService

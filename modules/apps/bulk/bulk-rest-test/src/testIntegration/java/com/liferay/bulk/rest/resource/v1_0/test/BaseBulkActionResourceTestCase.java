@@ -33,7 +33,9 @@ import com.liferay.bulk.rest.client.dto.v1_0.PermissionObjectBulkSelectionAction
 import com.liferay.bulk.rest.client.dto.v1_0.ResetPermissionObjectBulkSelectionAction;
 import com.liferay.bulk.rest.client.dto.v1_0.RestoreObjectBulkSelectionAction;
 import com.liferay.bulk.rest.client.dto.v1_0.StatusObjectBulkSelectionAction;
+import com.liferay.bulk.rest.client.dto.v1_0.UpdateExpirationDateObjectBulkSelectionAction;
 import com.liferay.bulk.rest.client.dto.v1_0.UpdateObjectValuesBulkSelectionAction;
+import com.liferay.bulk.rest.client.dto.v1_0.UpdateReviewDateObjectBulkSelectionAction;
 import com.liferay.bulk.rest.client.http.HttpInvoker;
 import com.liferay.bulk.rest.client.pagination.Page;
 import com.liferay.bulk.rest.client.resource.v1_0.BulkActionResource;
@@ -47,6 +49,7 @@ import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
+import com.liferay.portal.kernel.test.util.JAXRSWhiteboardTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
@@ -105,6 +108,8 @@ public abstract class BaseBulkActionResourceTestCase {
 	public static void setUpClass() throws Exception {
 		_format = FastDateFormatFactoryUtil.getSimpleDateFormat(
 			"yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+		JAXRSWhiteboardTestUtil.ensureReady();
 	}
 
 	@Before
@@ -728,6 +733,22 @@ public abstract class BaseBulkActionResourceTestCase {
 				continue;
 			}
 
+			if (Objects.equals("expirationDate", additionalAssertFieldName)) {
+				if (!(bulkAction instanceof
+						UpdateExpirationDateObjectBulkSelectionAction)) {
+
+					continue;
+				}
+
+				if (((UpdateExpirationDateObjectBulkSelectionAction)bulkAction).
+						getExpirationDate() == null) {
+
+					valid = false;
+				}
+
+				continue;
+			}
+
 			if (Objects.equals("values", additionalAssertFieldName)) {
 				if (!(bulkAction instanceof
 						UpdateObjectValuesBulkSelectionAction)) {
@@ -737,6 +758,22 @@ public abstract class BaseBulkActionResourceTestCase {
 
 				if (((UpdateObjectValuesBulkSelectionAction)bulkAction).
 						getValues() == null) {
+
+					valid = false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals("reviewDate", additionalAssertFieldName)) {
+				if (!(bulkAction instanceof
+						UpdateReviewDateObjectBulkSelectionAction)) {
+
+					continue;
+				}
+
+				if (((UpdateReviewDateObjectBulkSelectionAction)bulkAction).
+						getReviewDate() == null) {
 
 					valid = false;
 				}
@@ -1534,6 +1571,27 @@ public abstract class BaseBulkActionResourceTestCase {
 				continue;
 			}
 
+			if (Objects.equals("expirationDate", additionalAssertFieldName)) {
+				if (!(bulkAction1 instanceof
+						UpdateExpirationDateObjectBulkSelectionAction) ||
+					!(bulkAction2 instanceof
+						UpdateExpirationDateObjectBulkSelectionAction)) {
+
+					continue;
+				}
+
+				if (!Objects.deepEquals(
+						((UpdateExpirationDateObjectBulkSelectionAction)
+							bulkAction1).getExpirationDate(),
+						((UpdateExpirationDateObjectBulkSelectionAction)
+							bulkAction2).getExpirationDate())) {
+
+					return false;
+				}
+
+				continue;
+			}
+
 			if (Objects.equals("values", additionalAssertFieldName)) {
 				if (!(bulkAction1 instanceof
 						UpdateObjectValuesBulkSelectionAction) ||
@@ -1548,6 +1606,27 @@ public abstract class BaseBulkActionResourceTestCase {
 							getValues(),
 						((UpdateObjectValuesBulkSelectionAction)bulkAction2).
 							getValues())) {
+
+					return false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals("reviewDate", additionalAssertFieldName)) {
+				if (!(bulkAction1 instanceof
+						UpdateReviewDateObjectBulkSelectionAction) ||
+					!(bulkAction2 instanceof
+						UpdateReviewDateObjectBulkSelectionAction)) {
+
+					continue;
+				}
+
+				if (!Objects.deepEquals(
+						((UpdateReviewDateObjectBulkSelectionAction)
+							bulkAction1).getReviewDate(),
+						((UpdateReviewDateObjectBulkSelectionAction)
+							bulkAction2).getReviewDate())) {
 
 					return false;
 				}
@@ -2057,12 +2136,36 @@ public abstract class BaseBulkActionResourceTestCase {
 				return bulkAction;
 			},
 			() -> {
+				UpdateExpirationDateObjectBulkSelectionAction bulkAction =
+					new UpdateExpirationDateObjectBulkSelectionAction();
+
+				bulkAction.setExpirationDate(RandomTestUtil.nextDate());
+
+				bulkAction.setType(
+					BulkAction.Type.create(
+						"UpdateExpirationDateObjectBulkSelectionAction"));
+
+				return bulkAction;
+			},
+			() -> {
 				UpdateObjectValuesBulkSelectionAction bulkAction =
 					new UpdateObjectValuesBulkSelectionAction();
 
 				bulkAction.setType(
 					BulkAction.Type.create(
 						"UpdateObjectValuesBulkSelectionAction"));
+
+				return bulkAction;
+			},
+			() -> {
+				UpdateReviewDateObjectBulkSelectionAction bulkAction =
+					new UpdateReviewDateObjectBulkSelectionAction();
+
+				bulkAction.setReviewDate(RandomTestUtil.nextDate());
+
+				bulkAction.setType(
+					BulkAction.Type.create(
+						"UpdateReviewDateObjectBulkSelectionAction"));
 
 				return bulkAction;
 			});
@@ -2309,4 +2412,4 @@ public abstract class BaseBulkActionResourceTestCase {
 		_bulkActionResource;
 
 }
-// LIFERAY-REST-BUILDER-HASH:410759925
+// LIFERAY-REST-BUILDER-HASH:-769022986
