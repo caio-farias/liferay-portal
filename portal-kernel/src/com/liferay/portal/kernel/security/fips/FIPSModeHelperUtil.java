@@ -42,7 +42,7 @@ import org.xml.sax.InputSource;
  */
 public class FIPSModeHelperUtil {
 
-	public static Map<String, Element> getJGroupsProfileElements(
+	public static Map<String, Element> getJGroupsProfileElementsMap(
 		String channelPropertiesLocation) {
 
 		String channelPropertiesXML;

@@ -82,7 +82,7 @@ public class FIPSModeHelperUtilTest {
 	}
 
 	@Test
-	public void testGetJGroupsProfileElements() throws Exception {
+	public void testGetJGroupsProfileElementsMap() throws Exception {
 		Path path = Files.createTempFile(null, ".xml");
 
 		try {
@@ -92,7 +92,7 @@ public class FIPSModeHelperUtilTest {
 			Files.write(path, channelPropertiesXML.getBytes());
 
 			Map<String, Element> elementsMap =
-				FIPSModeHelperUtil.getJGroupsProfileElements(
+				FIPSModeHelperUtil.getJGroupsProfileElementsMap(
 					String.valueOf(path));
 
 			Assert.assertEquals(
@@ -108,7 +108,7 @@ public class FIPSModeHelperUtilTest {
 
 			_assertSecurityException(
 				"Unable to parse the JGroups channel properties",
-				() -> FIPSModeHelperUtil.getJGroupsProfileElements(
+				() -> FIPSModeHelperUtil.getJGroupsProfileElementsMap(
 					String.valueOf(path)));
 		}
 		finally {
@@ -117,7 +117,7 @@ public class FIPSModeHelperUtilTest {
 
 		_assertSecurityException(
 			"Unable to read the JGroups channel properties",
-			() -> FIPSModeHelperUtil.getJGroupsProfileElements(
+			() -> FIPSModeHelperUtil.getJGroupsProfileElementsMap(
 				RandomTestUtil.randomString()));
 	}
 

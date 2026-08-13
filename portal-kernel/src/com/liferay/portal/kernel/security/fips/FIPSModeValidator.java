@@ -339,7 +339,7 @@ public class FIPSModeValidator {
 		String channelPropertiesLocation) {
 
 		Map<String, Element> elementsMap =
-			FIPSModeHelperUtil.getJGroupsProfileElements(
+			FIPSModeHelperUtil.getJGroupsProfileElementsMap(
 				channelPropertiesLocation);
 
 		_validateJGroupsProfileAuthElement(
