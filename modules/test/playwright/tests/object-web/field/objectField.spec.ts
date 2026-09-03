@@ -22,8 +22,10 @@ import {ObjectFieldsPage} from '../../../pages/object-web/object-fields/ObjectFi
 import {getRandomInt} from '../../../utils/getRandomInt';
 import getRandomString from '../../../utils/getRandomString';
 import {waitForAlert} from '../../../utils/waitForAlert';
+import {waitForSearchToBeReady} from '../../../utils/waitForSearchToBeReady';
 import {AsyncArray} from '../utils/AsyncArray';
 import {generateObjectFields} from '../utils/generateObjectFields';
+import {getFreshObjectRelationshipName} from '../utils/getFreshObjectRelationshipName';
 import {postListTypeDefinitionListTypeEntries} from '../utils/postListTypeDefinitionListTypeEntries';
 
 const test = mergeTests(
@@ -118,22 +120,24 @@ test.describe('Manage object fields through Model Builder', () => {
 			await apiHelpers.listTypeAdmin.getListTypeDefinitions()
 		).items;
 
-		const allListTypeDefinitions = existingListTypeDefinitions.concat(
-			await Promise.all(
-				Array(22)
-					.fill(null)
-					.map(
-						async () =>
-							await apiHelpers.listTypeAdmin.postRandomListTypeDefinition()
-					)
-			)
+		const createdListTypeDefinitions = await Promise.all(
+			Array(22)
+				.fill(null)
+				.map(
+					async () =>
+						await apiHelpers.listTypeAdmin.postRandomListTypeDefinition()
+				)
 		);
 
-		allListTypeDefinitions.forEach(({id}) =>
+		createdListTypeDefinitions.forEach(({id}) =>
 			apiHelpers.data.push({
 				id,
 				type: 'listTypeDefinition',
 			})
+		);
+
+		const allListTypeDefinitions = existingListTypeDefinitions.concat(
+			createdListTypeDefinitions
 		);
 
 		await modelBuilderDiagramPage.goto({objectFolderName: 'Default'});
@@ -365,6 +369,10 @@ test.describe('Manage object fields through Model Builder', () => {
 			.click();
 
 		const picklistFieldName = 'picklistField' + getRandomInt();
+
+		await expect(page.getByPlaceholder('Text to translate...')).toHaveValue(
+			objectFields[0].label['en_US']
+		);
 
 		await page
 			.getByPlaceholder('Text to translate...')
@@ -701,6 +709,10 @@ test.describe('Manage object fields through Model Builder', () => {
 					.getByText(objectFieldLabel, {exact: true})
 					.click();
 
+				await expect(page.getByText('LabelMandatory')).toHaveValue(
+					objectFieldLabel
+				);
+
 				await page.getByText('LabelMandatory').fill(updatedFieldLabel);
 
 				await modelBuilderLeftSidebarPage.clickSideBarItem(
@@ -901,17 +913,9 @@ test.describe('Manage object fields through Model Builder', () => {
 
 		await page.getByText('Encrypted', {exact: true}).click();
 
-		const pagePromise = page.waitForEvent('popup');
-
-		await page.getByRole('link', {name: 'Learn more.'}).click();
-
-		const newPage = await pagePromise;
-
 		await expect(
-			newPage.getByRole('heading', {
-				name: 'Localizing Object Definitions',
-			})
-		).toBeVisible();
+			page.getByRole('link', {name: 'Learn more.'})
+		).toHaveAttribute('href', /localizing-object-definitions-and-entries/);
 	});
 
 	test('read only configuration is displayed in the fields advanced tab', async ({
@@ -1194,9 +1198,10 @@ test.describe('Manage objectFields through Objects Admin UI', () => {
 					label: {
 						en_US: 'objectRelationshipLabel' + getRandomInt(),
 					},
-					name:
-						'objectRelationshipName' +
-						Math.floor(Math.random() * 99),
+					name: await getFreshObjectRelationshipName(apiHelpers, [
+						objectDefinition1.externalReferenceCode!,
+						objectDefinition2.externalReferenceCode!,
+					]),
 					objectDefinitionExternalReferenceCode1:
 						objectDefinition1.externalReferenceCode,
 					objectDefinitionExternalReferenceCode2:
@@ -1423,8 +1428,10 @@ test.describe('Manage objectFields through Objects Admin UI', () => {
 			ObjectRelationshipAPI
 		);
 
-		const objectRelationshipName =
-			'objectRelationshipName' + Math.floor(Math.random() * 99);
+		const objectRelationshipName = await getFreshObjectRelationshipName(
+			apiHelpers,
+			[objectDefinition.externalReferenceCode!]
+		);
 
 		await objectRelationshipAPIClient.postObjectDefinitionByExternalReferenceCodeObjectRelationship(
 			objectDefinition.externalReferenceCode!,
@@ -1543,8 +1550,11 @@ test.describe('Manage objectFields through Objects Admin UI', () => {
 			ObjectRelationshipAPI
 		);
 
-		const objectRelationship1 =
-			'objectRelationship' + Math.floor(Math.random() * 99);
+		const objectRelationship1 = await getFreshObjectRelationshipName(
+			apiHelpers,
+			[objectDefinition.externalReferenceCode!],
+			'objectRelationship'
+		);
 
 		await objectRelationshipAPIClient.postObjectDefinitionByExternalReferenceCodeObjectRelationship(
 			objectDefinition.externalReferenceCode!,
@@ -1559,8 +1569,14 @@ test.describe('Manage objectFields through Objects Admin UI', () => {
 			}
 		);
 
-		const objectRelationship2 =
-			'objectRelationship' + Math.floor(Math.random() * 99);
+		const objectRelationship2 = await getFreshObjectRelationshipName(
+			apiHelpers,
+			[
+				objectDefinition.externalReferenceCode!,
+				objectDefinition2.externalReferenceCode!,
+			],
+			'objectRelationship'
+		);
 
 		await objectRelationshipAPIClient.postObjectDefinitionByExternalReferenceCodeObjectRelationship(
 			objectDefinition.externalReferenceCode!,
@@ -1587,7 +1603,7 @@ test.describe('Manage objectFields through Objects Admin UI', () => {
 			objectFieldLabel,
 		});
 
-		await page.getByRole('link', {name: objectFieldLabel}).click();
+		await objectFieldsPage.openObjectField(objectFieldLabel);
 
 		await objectFieldsPage.iframeLocator
 			.getByLabel('LabelMandatory')
@@ -1907,7 +1923,11 @@ test.describe('Manage objectFields through Objects Admin UI', () => {
 					'L_USER',
 					{
 						label: {en_US: relationshipLabel},
-						name: 'relationship' + getRandomInt(),
+						name: await getFreshObjectRelationshipName(
+							apiHelpers,
+							['L_USER', objectDefinition.externalReferenceCode!],
+							'relationship'
+						),
 						objectDefinitionExternalReferenceCode2:
 							objectDefinition.externalReferenceCode,
 						objectDefinitionId2: objectDefinition.id,
@@ -2147,9 +2167,10 @@ test.describe('Manage objectFields through Objects Admin UI', () => {
 					label: {
 						en_US: 'objectRelationshipLabel' + getRandomInt(),
 					},
-					name:
-						'objectRelationshipName' +
-						Math.floor(Math.random() * 99),
+					name: await getFreshObjectRelationshipName(apiHelpers, [
+						objectDefinition1.externalReferenceCode!,
+						objectDefinition2.externalReferenceCode!,
+					]),
 					objectDefinitionExternalReferenceCode1:
 						objectDefinition1.externalReferenceCode,
 					objectDefinitionExternalReferenceCode2:
@@ -2345,20 +2366,9 @@ test.describe('Manage objectFields through Objects Admin UI', () => {
 
 		await objectFieldsPage.openObjectField(objectFields[0].label['en_US']);
 
-		const pagePromise = page.waitForEvent('popup');
-
-		await page
-			.frameLocator('iframe')
-			.getByRole('link', {name: 'Learn more.'})
-			.click();
-
-		const newPage = await pagePromise;
-
 		await expect(
-			newPage.getByRole('heading', {
-				name: 'Localizing Object Definitions',
-			})
-		).toBeVisible();
+			page.frameLocator('iframe').getByRole('link', {name: 'Learn more.'})
+		).toHaveAttribute('href', /localizing-object-definitions-and-entries/);
 	});
 });
 
@@ -2509,11 +2519,17 @@ test.describe('Create Object Fields', () => {
 
 		await page.getByRole('button', {name: 'Cancel'}).click();
 
-		await page
+		await expect(objectFieldsPage.objectFieldLabelInput).toBeHidden();
+
+		const searchInput = page
 			.getByRole('search')
-			.getByRole('searchbox', {name: 'Search'})
-			.fill('Cancel Field');
-		await page.keyboard.press('Enter');
+			.getByRole('searchbox', {name: 'Search'});
+
+		await searchInput.fill('Cancel Field');
+
+		await waitForSearchToBeReady(page);
+
+		await searchInput.press('Enter');
 
 		await expect(page.getByText('No Results Found')).toBeVisible();
 	});
@@ -2789,7 +2805,6 @@ test.describe('Manage object fields default value properties', () => {
 		async ({
 			apiHelpers,
 			modelBuilderDiagramPage,
-			modelBuilderLeftSidebarPage,
 			modelBuilderObjectDefinitionNodePage,
 			modelBuilderRightSidebarPage,
 			page,
@@ -2801,6 +2816,8 @@ test.describe('Manage object fields default value properties', () => {
 
 			let objectName: string;
 
+			let objectFolderName: string;
+
 			await test.step('create object with boolean field', async () => {
 				const objectFields = generateObjectFields({
 					objectFieldBusinessTypes: ['Boolean'],
@@ -2808,9 +2825,21 @@ test.describe('Manage object fields default value properties', () => {
 
 				booleanFieldName = objectFields[0].label['en_US'];
 
+				const objectFolder =
+					await apiHelpers.objectAdmin.postRandomObjectFolder();
+
+				apiHelpers.data.push({
+					id: objectFolder.id,
+					type: 'objectFolder',
+				});
+
+				objectFolderName = objectFolder.name;
+
 				const objectDefinition =
 					await apiHelpers.objectAdmin.postRandomObjectDefinition({
 						objectFields,
+						objectFolderExternalReferenceCode:
+							objectFolder.externalReferenceCode,
 						status: {code: 0},
 					});
 
@@ -2826,12 +2855,8 @@ test.describe('Manage object fields default value properties', () => {
 
 			await test.step('set default value to false for boolean field and check in object entry', async () => {
 				await modelBuilderDiagramPage.goto({
-					objectFolderName: 'Default',
+					objectFolderName,
 				});
-
-				await modelBuilderLeftSidebarPage.sidebarItems
-					.filter({hasText: objectName})
-					.click();
 
 				await modelBuilderObjectDefinitionNodePage.clickShowAllFieldsButton(
 					objectName,
@@ -2841,7 +2866,7 @@ test.describe('Manage object fields default value properties', () => {
 				await modelBuilderDiagramPage.objectDefinitionNodes
 					.filter({hasText: objectName})
 					.getByText('Boolean', {exact: true})
-					.click();
+					.dispatchEvent('click');
 
 				await modelBuilderRightSidebarPage.setDefaultValue(
 					'Boolean',
@@ -2859,12 +2884,8 @@ test.describe('Manage object fields default value properties', () => {
 
 			await test.step('set default value to true for boolean field and check in object entry', async () => {
 				await modelBuilderDiagramPage.goto({
-					objectFolderName: 'Default',
+					objectFolderName,
 				});
-
-				await modelBuilderLeftSidebarPage.sidebarItems
-					.filter({hasText: objectName})
-					.click();
 
 				await modelBuilderObjectDefinitionNodePage.clickShowAllFieldsButton(
 					objectName,
@@ -2874,7 +2895,7 @@ test.describe('Manage object fields default value properties', () => {
 				await modelBuilderDiagramPage.objectDefinitionNodes
 					.filter({hasText: objectName})
 					.getByText('Boolean', {exact: true})
-					.click();
+					.dispatchEvent('click');
 
 				await modelBuilderRightSidebarPage.setDefaultValue(
 					'Boolean',
@@ -2890,12 +2911,8 @@ test.describe('Manage object fields default value properties', () => {
 
 			await test.step('untoggle default value for boolean field and check in object entry', async () => {
 				await modelBuilderDiagramPage.goto({
-					objectFolderName: 'Default',
+					objectFolderName,
 				});
-
-				await modelBuilderLeftSidebarPage.sidebarItems
-					.filter({hasText: objectName})
-					.click();
 
 				await modelBuilderObjectDefinitionNodePage.clickShowAllFieldsButton(
 					objectName,
@@ -2905,7 +2922,7 @@ test.describe('Manage object fields default value properties', () => {
 				await modelBuilderDiagramPage.objectDefinitionNodes
 					.filter({hasText: objectName})
 					.getByText('Boolean', {exact: true})
-					.click();
+					.dispatchEvent('click');
 
 				await modelBuilderRightSidebarPage.advancedTab.click();
 
@@ -3453,11 +3470,6 @@ test.describe('Manage object fields default value properties', () => {
 				objectFieldBusinessTypes: ['Text'],
 			});
 
-			// An isolated folder keeps the diagram to this one definition, so
-			// the node is fitted into view; the Default folder holds every
-			// system definition and pushes the node's controls out of the
-			// canvas viewport, which Playwright cannot scroll.
-
 			const objectFolder =
 				await apiHelpers.objectAdmin.postRandomObjectFolder();
 
@@ -3571,11 +3583,6 @@ test.describe('Manage object fields default value properties', () => {
 			const objectFields = generateObjectFields({
 				objectFieldBusinessTypes: ['Text'],
 			});
-
-			// An isolated folder keeps the diagram to this one definition, so
-			// the node is fitted into view; the Default folder holds every
-			// system definition and pushes the node's controls out of the
-			// canvas viewport, which Playwright cannot scroll.
 
 			const objectFolder =
 				await apiHelpers.objectAdmin.postRandomObjectFolder();

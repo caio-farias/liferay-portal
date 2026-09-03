@@ -8,6 +8,8 @@ package com.liferay.jenkins.results.parser.monitor;
 import com.liferay.jenkins.results.parser.JenkinsResultsParserUtil;
 
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author Brittney Nguyen
@@ -24,20 +26,16 @@ public abstract class BaseMonitor implements Monitor {
 		return _monitorConfig;
 	}
 
+	@Override
+	public void prepareCycle() {
+	}
+
 	protected BaseMonitor(MonitorConfig monitorConfig) {
 		_monitorConfig = monitorConfig;
 	}
 
 	protected int getAttemptTimeoutMillis() {
-		long timeoutSeconds = _monitorConfig.getTimeoutSeconds();
-
-		if (timeoutSeconds <= 0) {
-			timeoutSeconds = _SECONDS_TIMEOUT_DEFAULT;
-		}
-
-		timeoutSeconds = Math.min(timeoutSeconds, Integer.MAX_VALUE / 1000);
-
-		return (int)((timeoutSeconds * 1000) / 3);
+		return (int)(_getTimeoutMillis() / 3);
 	}
 
 	protected String getInvalidValueMessage(
@@ -76,6 +74,15 @@ public abstract class BaseMonitor implements Monitor {
 		return longValue;
 	}
 
+	protected long getOverdueGraceSeconds(
+		long cadenceSeconds, Map<String, String> thresholds) {
+
+		return getLongValue(
+			"threshold",
+			Math.max(_SECONDS_OVERDUE_GRACE_MINIMUM, cadenceSeconds / 4),
+			"overdue.grace", thresholds);
+	}
+
 	protected String getRequiredParameter(
 		String name, Map<String, String> parameters) {
 
@@ -89,12 +96,62 @@ public abstract class BaseMonitor implements Monitor {
 		return value;
 	}
 
+	protected String getRequiredURLParameter(
+		String name, Map<String, String> parameters, String... urlPrefixes) {
+
+		for (String urlPrefix : urlPrefixes) {
+			if (!urlPrefix.contains("://")) {
+				throw new IllegalArgumentException(
+					"Invalid URL prefix: " + urlPrefix);
+			}
+		}
+
+		String url = getRequiredParameter(name, parameters);
+
+		Matcher matcher = _userInfoPattern.matcher(url);
+
+		if (matcher.matches()) {
+			throw new IllegalArgumentException(
+				getInvalidValueMessage("parameter", name, "[REDACTED]"));
+		}
+
+		for (String urlPrefix : urlPrefixes) {
+			if (url.startsWith(urlPrefix) &&
+				(url.length() > urlPrefix.length())) {
+
+				return url;
+			}
+		}
+
+		throw new IllegalArgumentException(
+			getInvalidValueMessage("parameter", name, url));
+	}
+
+	protected int getSingleAttemptTimeoutMillis() {
+		long timeoutMillis = _getTimeoutMillis();
+
+		return (int)((timeoutMillis - (timeoutMillis / 10)) / 2);
+	}
+
 	private String _getKey(String category, String name) {
 		return JenkinsResultsParserUtil.combine(
 			"monitor[", _monitorConfig.getId(), "].", category, "[", name, "]");
 	}
 
-	private static final long _SECONDS_TIMEOUT_DEFAULT = 60;
+	private long _getTimeoutMillis() {
+		long timeoutSeconds = _monitorConfig.getTimeoutSeconds();
+
+		if (timeoutSeconds <= 0) {
+			timeoutSeconds = MonitorConfig.SECONDS_TIMEOUT_DEFAULT;
+		}
+
+		return timeoutSeconds * 1000;
+	}
+
+	private static final long _SECONDS_OVERDUE_GRACE_MINIMUM = 30 * 60;
+
+	private static final Pattern _userInfoPattern = Pattern.compile(
+		"(//|[^/?#]*://)?[^/?#]*@.*");
 
 	private final MonitorConfig _monitorConfig;
 

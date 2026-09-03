@@ -10,7 +10,7 @@
  */
 
 module.exports = {
-	hash: '02af141ac4c76a96102d8ea45680fb91bcfb31519feede94f6d0b17167594c64',
+	hash: '467ac0099519ff22879ec914974a02f77fa1feaeaee4a747559b71725855a662',
 	imports: {
 		'@liferay/accessibility-menu-web': [],
 		'@liferay/accessibility-settings-state-web': [],
@@ -230,6 +230,7 @@ module.exports = {
 		'@liferay/layout-type-controller-panel': [],
 		'@liferay/layout-utility-page-terms-of-use': [],
 		'@liferay/liferay-cms-theme': [],
+		'@liferay/liferay-prism-theme': [],
 		'@liferay/locked-items-web': [],
 		'@liferay/login-web': [],
 		'@liferay/map-common': [],
@@ -261,6 +262,7 @@ module.exports = {
 		'@liferay/portal-workflow-taglib': [],
 		'@liferay/product-analytics-web': [],
 		'@liferay/product-navigation-control-menu-theme-contributor': [],
+		'@liferay/product-navigation-omni-search-web': [],
 		'@liferay/product-navigation-product-menu-theme-contributor': [],
 		'@liferay/product-navigation-site-administration': [],
 		'@liferay/product-navigation-user-personal-bar-web': [],
@@ -590,5 +592,6 @@ module.exports = {
 		],
 		'prop-types': ['*', 'bigint', 'default'],
 		'qrcode': ['create', 'toCanvas', 'toString', 'toDataURL'],
+		'ua-parser-js': ['UAParser'],
 	},
 };

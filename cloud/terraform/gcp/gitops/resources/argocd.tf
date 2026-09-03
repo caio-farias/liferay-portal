@@ -224,7 +224,7 @@ resource "kubernetes_manifest" "infrastructure_provider_application" {
 				merge(
 					{
 						helm={
-							parameters=[
+							parameters=concat([
 								{
 									name="crossplaneGsaEmail"
 									value=google_service_account.cloudplatform_gsa.email
@@ -257,7 +257,15 @@ resource "kubernetes_manifest" "infrastructure_provider_application" {
 									name="global.gcp.vpcName"
 									value=local.vpc_name
 								},
-							]
+								{
+									name="liferay-dxp-operator.marketplace.csi.volumeAttributes.ip"
+									value=local.filestore_ip
+								},
+								{
+									name="liferay-dxp-operator.marketplace.csi.volumeHandle"
+									value="modeInstance/${local.filestore_zone}/${var.deployment_name}-marketplace/marketplace"
+								},
+							], local.dxp_operator_parameters)
 							valueFiles=[
 								"$values/${var.infrastructure_git_repo_config.source_paths.system}/${var.infrastructure_git_repo_config.source_paths.infrastructure_provider_values_filename}",
 							]
@@ -366,6 +374,14 @@ resource "kubernetes_manifest" "liferay_applicationset" {
 											value=var.liferay_git_repo_config.target.slugEnvironmentId
 										},
 										{
+											name="${local.liferay_helm_chart_config.values_scope_prefix}marketplace.csi.volumeAttributes.ip"
+											value=local.filestore_ip
+										},
+										{
+											name="${local.liferay_helm_chart_config.values_scope_prefix}marketplace.csi.volumeHandle"
+											value="modeInstance/${local.filestore_zone}/${var.deployment_name}-marketplace/marketplace"
+										},
+										{
 											name="${local.liferay_helm_chart_config.values_scope_prefix}network.gatewayName"
 											value=local.gateway_name
 										},
@@ -412,6 +428,11 @@ resource "kubernetes_manifest" "liferay_applicationset" {
 							jsonPointers=["/data"]
 							kind="Secret"
 							name="liferay-default"
+						},
+						{
+							group="apps"
+							kind="StatefulSet"
+							managedFieldsManagers=["liferay-dxp-operator"]
 						},
 					]
 					syncPolicy={

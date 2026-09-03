@@ -67,6 +67,9 @@ import com.liferay.object.system.SystemObjectDefinitionManagerRegistry;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
+import com.liferay.portal.kernel.json.JSONFactory;
+import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.lazy.referencing.LazyReferencingThreadLocal;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -113,6 +116,7 @@ import java.io.Serializable;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -763,6 +767,9 @@ public class ObjectDefinitionResourceImpl
 			serviceBuilderObjectValidationRules = new ArrayList<>(
 				_objectValidationRuleLocalService.getObjectValidationRules(
 					objectDefinitionId));
+		List<com.liferay.object.model.ObjectView> serviceBuilderObjectViews =
+			new ArrayList<>(
+				_objectViewLocalService.getObjectViews(objectDefinitionId));
 
 		if (serviceBuilderObjectDefinition.isModifiableAndSystem() &&
 			ObjectDefinitionUtil.isInvokerBundleAllowed()) {
@@ -932,7 +939,20 @@ public class ObjectDefinitionResourceImpl
 		ObjectView[] objectViews = objectDefinition.getObjectViews();
 
 		if (objectViews != null) {
-			_objectViewLocalService.deleteObjectViews(objectDefinitionId);
+			Set<String> deleteObjectViewsERCs = SetUtil.asymmetricDifference(
+				transform(
+					serviceBuilderObjectViews,
+					com.liferay.object.model.ObjectView::
+						getExternalReferenceCode),
+				transform(
+					ListUtil.fromArray(objectViews),
+					ObjectView::getExternalReferenceCode));
+
+			for (String deleteObjectViewsERC : deleteObjectViewsERCs) {
+				_objectViewLocalService.deleteObjectView(
+					_objectViewLocalService.fetchObjectView(
+						deleteObjectViewsERC, objectDefinitionId));
+			}
 		}
 
 		_addObjectDefinitionResources(
@@ -996,6 +1016,54 @@ public class ObjectDefinitionResourceImpl
 
 		existingObjectDefinition.setObjectDefinitionSettings(
 			objectDefinition::getObjectDefinitionSettings);
+
+		if (objectDefinition.getObjectFields() != null) {
+			Map<String, ObjectField> externalReferenceCodeObjectFieldsMap =
+				new HashMap<>();
+			Map<String, ObjectField> nameObjectFieldsMap = new HashMap<>();
+
+			for (ObjectField existingObjectField :
+					existingObjectDefinition.getObjectFields()) {
+
+				externalReferenceCodeObjectFieldsMap.put(
+					existingObjectField.getExternalReferenceCode(),
+					existingObjectField);
+				nameObjectFieldsMap.put(
+					existingObjectField.getName(), existingObjectField);
+			}
+
+			existingObjectDefinition.setObjectFields(
+				() -> transformToArray(
+					ListUtil.fromArray(objectDefinition.getObjectFields()),
+					objectField -> {
+						ObjectField existingObjectField =
+							externalReferenceCodeObjectFieldsMap.get(
+								objectField.getExternalReferenceCode());
+
+						if (existingObjectField == null) {
+							existingObjectField = nameObjectFieldsMap.get(
+								objectField.getName());
+
+							if (existingObjectField == null) {
+								return objectField;
+							}
+						}
+
+						JSONObject jsonObject = JSONUtil.merge(
+							_jsonFactory.createJSONObject(
+								existingObjectField.toString()),
+							_jsonFactory.createJSONObject(
+								objectField.toString()));
+
+						ObjectField patchedObjectField =
+							ObjectField.unsafeToDTO(jsonObject.toString());
+
+						patchedObjectField.setId(existingObjectField::getId);
+
+						return patchedObjectField;
+					},
+					ObjectField.class));
+		}
 	}
 
 	private void _addListTypeDefinition(ObjectDefinition objectDefinition)
@@ -1224,6 +1292,18 @@ public class ObjectDefinitionResourceImpl
 			).build();
 
 			for (ObjectView objectView : objectViews) {
+				com.liferay.object.model.ObjectView serviceBuilderObjectView =
+					_objectViewLocalService.fetchObjectView(
+						objectView.getExternalReferenceCode(),
+						objectDefinitionId);
+
+				if (serviceBuilderObjectView != null) {
+					objectViewResource.putObjectView(
+						serviceBuilderObjectView.getObjectViewId(), objectView);
+
+					continue;
+				}
+
 				objectViewResource.postObjectDefinitionObjectView(
 					objectDefinitionId, objectView);
 			}
@@ -1579,6 +1659,9 @@ public class ObjectDefinitionResourceImpl
 
 	@Reference
 	private GroupLocalService _groupLocalService;
+
+	@Reference
+	private JSONFactory _jsonFactory;
 
 	@Reference
 	private ListTypeDefinitionLocalService _listTypeDefinitionLocalService;

@@ -9,6 +9,7 @@ import {ILearnResourceContext} from 'frontend-js-components-web';
 import React from 'react';
 
 import Dashboards from '../../../../src/main/resources/META-INF/resources/js/main_view/dashboard/Dashboards';
+import {GovernanceAdditionalProps} from '../../../../src/main/resources/META-INF/resources/js/main_view/dashboard/governance/types';
 import {DashboardAdditionalProps} from '../../../../src/main/resources/META-INF/resources/js/main_view/dashboard/performance/types';
 
 jest.mock(
@@ -16,6 +17,14 @@ jest.mock(
 	() => ({
 		__esModule: true,
 		default: () => 'breadcrumb',
+	})
+);
+
+jest.mock(
+	'../../../../src/main/resources/META-INF/resources/js/common/components/EnterpriseOnlyPlaceholder',
+	() => ({
+		__esModule: true,
+		default: () => 'enterprise-only-placeholder',
 	})
 );
 
@@ -43,15 +52,20 @@ jest.mock(
 	})
 );
 
-function renderDashboards({cmsAdmin = true}: {cmsAdmin?: boolean} = {}) {
+function renderDashboards({
+	cmsAdmin = true,
+	freeTier = false,
+}: {cmsAdmin?: boolean; freeTier?: boolean} = {}) {
 	return render(
 		<Dashboards
-			additionalProps={{} as DashboardAdditionalProps}
+			additionalProps={
+				{} as DashboardAdditionalProps & GovernanceAdditionalProps
+			}
 			admin={false}
 			analyticsEnabled={true}
 			cmsAdmin={cmsAdmin}
 			constants={{}}
-			freeTier={false}
+			freeTier={freeTier}
 			learnResources={{} as ILearnResourceContext}
 		/>
 	);
@@ -98,6 +112,22 @@ describe('Dashboards', () => {
 		).not.toBeInTheDocument();
 
 		expect(screen.getByText('inventory-dashboard')).toBeInTheDocument();
+	});
+
+	it('shows the enterprise placeholder instead of any dashboard on the free tier', () => {
+		renderDashboards({freeTier: true});
+
+		expect(
+			screen.getByText('enterprise-only-placeholder')
+		).toBeInTheDocument();
+
+		expect(
+			screen.queryByRole('button', {name: 'governance'})
+		).not.toBeInTheDocument();
+
+		expect(
+			screen.queryByText('governance-dashboard')
+		).not.toBeInTheDocument();
 	});
 
 	it('hides the performance tab when its feature flag is disabled', () => {

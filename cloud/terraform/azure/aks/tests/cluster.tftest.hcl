@@ -31,8 +31,20 @@ run "should_apply_default_node_pool_settings" {
 		error_message="The default node pool must use ephemeral OS disks"
 	}
 	assert {
-		condition=azurerm_kubernetes_cluster.main.default_node_pool[0].vm_size == "Standard_D4ds_v4"
-		error_message="The default node pool must default to the Standard_D4ds_v4 VM size"
+		condition=azurerm_kubernetes_cluster.main.default_node_pool[0].upgrade_settings[0].drain_timeout_in_minutes == 0
+		error_message="The default node pool must pin the Azure default drain timeout"
+	}
+	assert {
+		condition=azurerm_kubernetes_cluster.main.default_node_pool[0].upgrade_settings[0].max_surge == "10%"
+		error_message="The default node pool must pin the Azure default max surge of 10%"
+	}
+	assert {
+		condition=azurerm_kubernetes_cluster.main.default_node_pool[0].upgrade_settings[0].node_soak_duration_in_minutes == 0
+		error_message="The default node pool must pin the Azure default node soak duration"
+	}
+	assert {
+		condition=azurerm_kubernetes_cluster.main.default_node_pool[0].vm_size == "Standard_D8s_v3"
+		error_message="The default node pool must default to the Standard_D8s_v3 VM size"
 	}
 	command=plan
 }
@@ -129,6 +141,14 @@ run "should_harden_cluster_defaults" {
 	assert {
 		condition=azurerm_kubernetes_cluster.main.node_os_upgrade_channel == "NodeImage"
 		error_message="The node OS upgrade channel must be NodeImage"
+	}
+	assert {
+		condition=azurerm_kubernetes_cluster.main.node_provisioning_profile[0].default_node_pools == "None"
+		error_message="Node auto-provisioning must not generate default node pools"
+	}
+	assert {
+		condition=azurerm_kubernetes_cluster.main.node_provisioning_profile[0].mode == "Auto"
+		error_message="Node auto-provisioning must be enabled"
 	}
 	assert {
 		condition=azurerm_kubernetes_cluster.main.oidc_issuer_enabled == true

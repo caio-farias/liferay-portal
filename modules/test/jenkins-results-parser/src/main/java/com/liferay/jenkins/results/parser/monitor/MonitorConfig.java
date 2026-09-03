@@ -14,6 +14,10 @@ import java.util.Map;
  */
 public class MonitorConfig {
 
+	public static final long SECONDS_TIMEOUT_DEFAULT = 60;
+
+	public static final long SECONDS_TIMEOUT_MAXIMUM = Integer.MAX_VALUE / 1000;
+
 	public MonitorConfig(
 		String id, long intervalSeconds, Map<String, String> parameters,
 		Severity severity, Map<String, String> thresholds, long timeoutSeconds,
@@ -24,7 +28,7 @@ public class MonitorConfig {
 		_parameters = _newUnmodifiableMap(parameters);
 		_severity = severity;
 		_thresholds = _newUnmodifiableMap(thresholds);
-		_timeoutSeconds = timeoutSeconds;
+		_timeoutSeconds = Math.min(timeoutSeconds, SECONDS_TIMEOUT_MAXIMUM);
 		_type = type;
 	}
 

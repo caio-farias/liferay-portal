@@ -8,12 +8,15 @@ package com.liferay.site.cmp.site.initializer.internal.model.listener.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.depot.constants.DepotConstants;
 import com.liferay.depot.constants.DepotRolesConstants;
+import com.liferay.depot.exception.DepotEntryStagedException;
 import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryLocalService;
+import com.liferay.exportimport.kernel.service.StagingLocalService;
 import com.liferay.object.constants.ObjectActionKeys;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.portal.kernel.exception.ModelListenerException;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.ResourceAction;
 import com.liferay.portal.kernel.model.ResourceConstants;
@@ -27,6 +30,7 @@ import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
+import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
@@ -35,6 +39,7 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.MapUtil;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
@@ -180,6 +185,91 @@ public class ObjectEntryModelListenerTest {
 		_assertResourceActions(
 			cmpTaskLinkObjectEntry, DepotRolesConstants.PROJECT_MEMBER,
 			ActionKeys.VIEW);
+	}
+
+	@Test
+	public void testOnAfterRemove() throws Exception {
+
+		// Deleting a CMP project with a staged asset library rolls back
+
+		ObjectEntry cmpProjectObjectEntry =
+			CMPTestUtil.addCMPProjectObjectEntry(
+				WorkflowConstants.ACTION_PUBLISH);
+
+		long groupId = cmpProjectObjectEntry.getGroupId();
+
+		GroupTestUtil.enableLocalStaging(_groupLocalService.getGroup(groupId));
+
+		try {
+			_objectEntryLocalService.deleteObjectEntry(
+				cmpProjectObjectEntry.getObjectEntryId());
+
+			Assert.fail();
+		}
+		catch (ModelListenerException modelListenerException) {
+			Assert.assertTrue(
+				modelListenerException.getCause() instanceof
+					DepotEntryStagedException);
+		}
+
+		Assert.assertNotNull(
+			_depotEntryLocalService.fetchGroupDepotEntry(groupId));
+		Assert.assertNotNull(
+			_objectEntryLocalService.fetchObjectEntry(
+				cmpProjectObjectEntry.getObjectEntryId()));
+
+		_stagingLocalService.disableStaging(
+			_groupLocalService.getGroup(groupId),
+			ServiceContextTestUtil.getServiceContext());
+
+		_objectEntryLocalService.deleteObjectEntry(
+			cmpProjectObjectEntry.getObjectEntryId());
+
+		// Deleting a draft CMP project deletes its asset library
+
+		cmpProjectObjectEntry = CMPTestUtil.addCMPProjectObjectEntry();
+
+		Assert.assertEquals(
+			WorkflowConstants.STATUS_DRAFT, cmpProjectObjectEntry.getStatus());
+
+		groupId = cmpProjectObjectEntry.getGroupId();
+
+		Assert.assertNotNull(
+			_depotEntryLocalService.fetchGroupDepotEntry(groupId));
+
+		_objectEntryLocalService.deleteObjectEntry(
+			cmpProjectObjectEntry.getObjectEntryId());
+
+		Assert.assertNull(
+			_depotEntryLocalService.fetchGroupDepotEntry(groupId));
+		Assert.assertNull(_groupLocalService.fetchGroup(groupId));
+
+		// Deleting an approved CMP project deletes its asset library and tasks
+
+		cmpProjectObjectEntry = CMPTestUtil.addCMPProjectObjectEntry(
+			WorkflowConstants.ACTION_PUBLISH);
+
+		Assert.assertEquals(
+			WorkflowConstants.STATUS_APPROVED,
+			cmpProjectObjectEntry.getStatus());
+
+		groupId = cmpProjectObjectEntry.getGroupId();
+
+		Assert.assertNotNull(
+			_depotEntryLocalService.fetchGroupDepotEntry(groupId));
+
+		ObjectEntry cmpTaskObjectEntry = CMPTestUtil.addCMPTaskObjectEntry(
+			cmpProjectObjectEntry);
+
+		_objectEntryLocalService.deleteObjectEntry(
+			cmpProjectObjectEntry.getObjectEntryId());
+
+		Assert.assertNull(
+			_depotEntryLocalService.fetchGroupDepotEntry(groupId));
+		Assert.assertNull(_groupLocalService.fetchGroup(groupId));
+		Assert.assertNull(
+			_objectEntryLocalService.fetchObjectEntry(
+				cmpTaskObjectEntry.getObjectEntryId()));
 	}
 
 	@Test
@@ -332,5 +422,8 @@ public class ObjectEntryModelListenerTest {
 
 	@Inject
 	private RoleLocalService _roleLocalService;
+
+	@Inject
+	private StagingLocalService _stagingLocalService;
 
 }

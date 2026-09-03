@@ -5,6 +5,7 @@
 
 package com.liferay.fragment.web.internal.display.context;
 
+import com.liferay.design.library.util.DesignLibraryUtil;
 import com.liferay.fragment.configuration.FragmentServiceConfiguration;
 import com.liferay.fragment.constants.FragmentPortletKeys;
 import com.liferay.fragment.contributor.FragmentCollectionContributorRegistry;
@@ -18,7 +19,7 @@ import com.liferay.fragment.web.internal.info.field.type.CaptchaInfoFieldType;
 import com.liferay.fragment.web.internal.info.field.type.FormButtonInfoFieldType;
 import com.liferay.fragment.web.internal.info.field.type.LocalizationSelectInfoFieldType;
 import com.liferay.fragment.web.internal.info.field.type.StepperInfoFieldType;
-import com.liferay.fragment.web.internal.util.DesignLibraryUtil;
+import com.liferay.info.field.type.AssigneeInfoFieldType;
 import com.liferay.info.field.type.BooleanInfoFieldType;
 import com.liferay.info.field.type.DateInfoFieldType;
 import com.liferay.info.field.type.DateTimeInfoFieldType;
@@ -671,11 +672,12 @@ public class EditFragmentEntryDisplayContext {
 	}
 
 	private static final InfoFieldType[] _INFO_FIELD_TYPES = {
-		BooleanInfoFieldType.INSTANCE, CaptchaInfoFieldType.INSTANCE,
-		DateInfoFieldType.INSTANCE, DateTimeInfoFieldType.INSTANCE,
-		EmailInfoFieldType.INSTANCE, FileInfoFieldType.INSTANCE,
-		FormButtonInfoFieldType.INSTANCE, FriendlyURLInfoFieldType.INSTANCE,
-		HTMLInfoFieldType.INSTANCE, LocalizationSelectInfoFieldType.INSTANCE,
+		AssigneeInfoFieldType.INSTANCE, BooleanInfoFieldType.INSTANCE,
+		CaptchaInfoFieldType.INSTANCE, DateInfoFieldType.INSTANCE,
+		DateTimeInfoFieldType.INSTANCE, EmailInfoFieldType.INSTANCE,
+		FileInfoFieldType.INSTANCE, FormButtonInfoFieldType.INSTANCE,
+		FriendlyURLInfoFieldType.INSTANCE, HTMLInfoFieldType.INSTANCE,
+		LocalizationSelectInfoFieldType.INSTANCE,
 		LongTextInfoFieldType.INSTANCE, MultiselectInfoFieldType.INSTANCE,
 		NumberInfoFieldType.INSTANCE, PhoneNumberInfoFieldType.INSTANCE,
 		RelationshipInfoFieldType.INSTANCE, SelectInfoFieldType.INSTANCE,

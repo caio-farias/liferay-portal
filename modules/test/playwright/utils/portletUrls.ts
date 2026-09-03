@@ -33,6 +33,7 @@ export const PORTLET_URLS = {
 	cmsPicklistBuilder: 'web/cms/picklist-builder',
 	cmsRecycleBin: 'web/cms/recycle-bin',
 	cmsSharedWithMe: 'web/cms/shared-with-me',
+	cmsSpaceSettings: 'web/cms/e/space-settings',
 	cmsStructureBuilder: 'web/cms/structure-builder',
 	cmsStructures: 'web/cms/structures',
 	cmsTags: 'web/cms/categorization/view-tags',
@@ -107,7 +108,7 @@ export const PORTLET_URLS = {
 	roleSelector:
 		'/~/control_panel/manage?p_p_id=com_liferay_roles_selector_web_portlet_RolesSelectorPortlet',
 	scriptManagement:
-		'/~/control_panel/manage?p_p_id=com_liferay_configuration_admin_web_portlet_SystemSettingsPortlet&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_com_liferay_configuration_admin_web_portlet_SystemSettingsPortlet_mvcRenderCommandName=%2Fconfiguration_admin%2Fview_configuration_screen&_com_liferay_configuration_admin_web_portlet_SystemSettingsPortlet_configurationScreenKey=script-management',
+		'/~/control_panel/manage?p_p_id=com_liferay_configuration_admin_web_portlet_SystemSettingsPortlet&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_com_liferay_configuration_admin_web_portlet_SystemSettingsPortlet_mvcRenderCommandName=%2Fconfiguration_admin%2Fedit_configuration&_com_liferay_configuration_admin_web_portlet_SystemSettingsPortlet_factoryPid=com.liferay.portal.security.script.management.configuration.ScriptManagementConfiguration&_com_liferay_configuration_admin_web_portlet_SystemSettingsPortlet_pid=com.liferay.portal.security.script.management.configuration.ScriptManagementConfiguration',
 	segments:
 		'/~/control_panel/manage?p_p_id=com_liferay_segments_web_internal_portlet_SegmentsPortlet',
 	selectSites: '/~/control_panel/manage/-/sites/sites/select_site',

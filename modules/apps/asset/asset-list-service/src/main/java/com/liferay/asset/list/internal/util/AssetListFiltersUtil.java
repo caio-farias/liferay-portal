@@ -6,10 +6,7 @@
 package com.liferay.asset.list.internal.util;
 
 import com.liferay.object.constants.ObjectFieldConstants;
-import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectField;
-import com.liferay.object.service.ObjectDefinitionLocalServiceUtil;
-import com.liferay.object.service.ObjectFieldLocalServiceUtil;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.json.JSONArray;
@@ -28,7 +25,7 @@ import com.liferay.portal.kernel.search.TermRangeQuery;
 import com.liferay.portal.kernel.search.WildcardQuery;
 import com.liferay.portal.kernel.util.FastDateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -37,6 +34,7 @@ import java.text.Format;
 
 import java.util.Calendar;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -59,20 +57,19 @@ public class AssetListFiltersUtil {
 		for (int i = 0; i < filtersJSONArray.length(); i++) {
 			JSONObject jsonObject = filtersJSONArray.getJSONObject(i);
 
-			NestedQuery nestedQuery = _toNestedQuery(
-				companyId, jsonObject, locale);
+			Query query = _toQuery(companyId, jsonObject, locale);
 
-			if (nestedQuery == null) {
+			if (query == null) {
 				continue;
 			}
 
 			if (_isNegatedOperator(
 					jsonObject.getString("operatorName", "contains"))) {
 
-				booleanQuery.add(nestedQuery, BooleanClauseOccur.MUST_NOT);
+				booleanQuery.add(query, BooleanClauseOccur.MUST_NOT);
 			}
 			else {
-				booleanQuery.add(nestedQuery, BooleanClauseOccur.MUST);
+				booleanQuery.add(query, BooleanClauseOccur.MUST);
 
 				hasMustClause = true;
 			}
@@ -91,74 +88,32 @@ public class AssetListFiltersUtil {
 		};
 	}
 
-	private static ObjectDefinition _fetchObjectDefinition(
-		long classNameId, long companyId) {
+	private static String _getCommonFieldName(
+		Locale locale, String propertyName) {
 
-		if (classNameId <= 0) {
+		if (!_commonFieldTypesMap.containsKey(propertyName)) {
 			return null;
 		}
 
-		return ObjectDefinitionLocalServiceUtil.
-			fetchObjectDefinitionByClassName(
-				companyId, PortalUtil.getClassName(classNameId));
+		if (_localizedCommonFieldNames.contains(propertyName)) {
+			return Field.getLocalizedName(locale, "localized_" + propertyName);
+		}
+
+		return propertyName;
 	}
 
-	private static ObjectField _fetchObjectField(
-		long classNameId, long companyId, String name) {
-
-		ObjectDefinition objectDefinition = _fetchObjectDefinition(
-			classNameId, companyId);
-
-		if (objectDefinition == null) {
-			return null;
-		}
-
-		return ObjectFieldLocalServiceUtil.fetchObjectField(
-			objectDefinition.getObjectDefinitionId(), name);
+	private static String _getCommonFieldType(String propertyName) {
+		return _commonFieldTypesMap.get(propertyName);
 	}
 
-	private static String _getSubfield(Locale locale, ObjectField objectField) {
-		if (objectField.isIndexedAsKeyword()) {
-			return "nestedFieldArray.value_keyword";
+	private static boolean _isCommonFieldRow(JSONObject jsonObject) {
+		if ((jsonObject.getLong("classNameId") <= 0) &&
+			(jsonObject.getLong("classTypeId") <= 0)) {
+
+			return true;
 		}
 
-		String dbType = objectField.getDBType();
-
-		if (ObjectFieldConstants.DB_TYPE_BIG_DECIMAL.equals(dbType) ||
-			ObjectFieldConstants.DB_TYPE_DOUBLE.equals(dbType)) {
-
-			return "nestedFieldArray.value_double";
-		}
-
-		if (ObjectFieldConstants.DB_TYPE_BOOLEAN.equals(dbType)) {
-			return "nestedFieldArray.value_boolean";
-		}
-
-		if (ObjectFieldConstants.DB_TYPE_DATE.equals(dbType) ||
-			ObjectFieldConstants.DB_TYPE_DATE_TIME.equals(dbType)) {
-
-			return "nestedFieldArray.value_date";
-		}
-
-		if (ObjectFieldConstants.DB_TYPE_INTEGER.equals(dbType)) {
-			return "nestedFieldArray.value_integer";
-		}
-
-		if (ObjectFieldConstants.DB_TYPE_LONG.equals(dbType)) {
-			return "nestedFieldArray.value_long";
-		}
-
-		if (objectField.isLocalized()) {
-			return Field.getLocalizedName(locale, "nestedFieldArray.value");
-		}
-
-		String indexedLanguageId = objectField.getIndexedLanguageId();
-
-		if (Validator.isNotNull(indexedLanguageId)) {
-			return "nestedFieldArray.value_" + indexedLanguageId;
-		}
-
-		return "nestedFieldArray.value_text";
+		return false;
 	}
 
 	private static boolean _isDateTimeField(ObjectField objectField) {
@@ -209,6 +164,78 @@ public class AssetListFiltersUtil {
 		return format.format(calendar.getTime());
 	}
 
+	private static Query _toCommonFieldQuery(
+		JSONObject jsonObject, Locale locale, String propertyName) {
+
+		if (Validator.isNull(propertyName)) {
+			return null;
+		}
+
+		String commonFieldName = _getCommonFieldName(locale, propertyName);
+		String commonFieldType = _getCommonFieldType(propertyName);
+
+		if ((commonFieldName == null) || (commonFieldType == null)) {
+			return null;
+		}
+
+		String operatorName = GetterUtil.getString(
+			jsonObject.getString("operatorName"), "contains");
+
+		return _toCommonFieldValueQuery(
+			commonFieldName, jsonObject,
+			_localizedCommonFieldNames.contains(propertyName), operatorName,
+			commonFieldType);
+	}
+
+	private static Query _toCommonFieldValueQuery(
+		String field, JSONObject jsonObject, boolean localized,
+		String operatorName, String type) {
+
+		if (operatorName.equals("between") || operatorName.equals("ge") ||
+			operatorName.equals("gt") || operatorName.equals("le") ||
+			operatorName.equals("lt")) {
+
+			return _toTermRangeQuery(
+				type.equals(_TYPE_DATE), false, field, jsonObject,
+				operatorName);
+		}
+
+		String value = jsonObject.getString("value");
+
+		if (Validator.isNull(value)) {
+			return null;
+		}
+
+		if (type.equals(_TYPE_DATE) &&
+			(operatorName.equals("eq") || operatorName.equals("not-eq"))) {
+
+			return new TermRangeQuery(
+				field, _toDateTerm(false, false, value),
+				_toDateTerm(false, true, value), true, true);
+		}
+
+		if (type.equals(_TYPE_DECIMAL) || type.equals(_TYPE_INTEGER)) {
+			return new TermQuery(field, value);
+		}
+
+		if (localized) {
+			return new MatchQuery(field, value);
+		}
+
+		if (Objects.equals(field, Field.USER_NAME)) {
+			value = StringUtil.toLowerCase(value);
+		}
+
+		if (operatorName.equals("contains") ||
+			operatorName.equals("not-contains")) {
+
+			return new WildcardQuery(
+				field, StringPool.STAR + value + StringPool.STAR);
+		}
+
+		return new TermQuery(field, value);
+	}
+
 	private static String _toDateTerm(
 		boolean dateTimeField, boolean upperBound, String value) {
 
@@ -238,10 +265,6 @@ public class AssetListFiltersUtil {
 	private static NestedQuery _toNestedQuery(
 		long companyId, JSONObject jsonObject, Locale locale) {
 
-		if (jsonObject == null) {
-			return null;
-		}
-
 		String propertyName = jsonObject.getString("propertyName");
 		String value = jsonObject.getString("value");
 
@@ -249,7 +272,7 @@ public class AssetListFiltersUtil {
 			return null;
 		}
 
-		ObjectField objectField = _fetchObjectField(
+		ObjectField objectField = AssetListObjectFieldUtil.fetchObjectField(
 			jsonObject.getLong("classNameId"), companyId, propertyName);
 
 		if (objectField == null) {
@@ -258,7 +281,8 @@ public class AssetListFiltersUtil {
 
 		String operatorName = jsonObject.getString("operatorName", "contains");
 
-		String subfield = _getSubfield(locale, objectField);
+		String subfield = AssetListObjectFieldUtil.getFilterSubfield(
+			locale, objectField);
 
 		Query query = _toValueQuery(
 			jsonObject, objectField, operatorName, subfield, value);
@@ -314,20 +338,38 @@ public class AssetListFiltersUtil {
 		return booleanQuery;
 	}
 
+	private static Query _toQuery(
+		long companyId, JSONObject jsonObject, Locale locale) {
+
+		if (jsonObject == null) {
+			return null;
+		}
+
+		if (_isCommonFieldRow(jsonObject)) {
+			return _toCommonFieldQuery(
+				jsonObject, locale, jsonObject.getString("propertyName"));
+		}
+
+		return _toNestedQuery(companyId, jsonObject, locale);
+	}
+
 	private static Query _toRangeQuery(
 		JSONObject filterJSONObject, ObjectField objectField,
 		String operatorName, String subfield) {
 
 		boolean dateField = subfield.endsWith(".value_date");
 
-		boolean dateTimeField = false;
+		return _toTermRangeQuery(
+			dateField, dateField && _isDateTimeField(objectField), subfield,
+			filterJSONObject, operatorName);
+	}
 
-		if (dateField && _isDateTimeField(objectField)) {
-			dateTimeField = true;
-		}
+	private static Query _toTermRangeQuery(
+		boolean dateField, boolean dateTime, String field,
+		JSONObject jsonObject, String operatorName) {
 
 		if (operatorName.equals("between")) {
-			JSONArray valueJSONArray = filterJSONObject.getJSONArray("value");
+			JSONArray valueJSONArray = jsonObject.getJSONArray("value");
 
 			if ((valueJSONArray == null) || (valueJSONArray.length() < 2)) {
 				return null;
@@ -339,15 +381,14 @@ public class AssetListFiltersUtil {
 				valueJSONArray.getString(1), null);
 
 			if (dateField) {
-				lowerTerm = _toDateTerm(dateTimeField, false, lowerTerm);
-				upperTerm = _toDateTerm(dateTimeField, true, upperTerm);
+				lowerTerm = _toDateTerm(dateTime, false, lowerTerm);
+				upperTerm = _toDateTerm(dateTime, true, upperTerm);
 			}
 
-			return new TermRangeQuery(
-				subfield, lowerTerm, upperTerm, true, true);
+			return new TermRangeQuery(field, lowerTerm, upperTerm, true, true);
 		}
 
-		String value = filterJSONObject.getString("value");
+		String value = jsonObject.getString("value");
 
 		if (Validator.isNull(value)) {
 			return null;
@@ -355,30 +396,30 @@ public class AssetListFiltersUtil {
 
 		if (operatorName.equals("ge")) {
 			String lowerTerm =
-				dateField ? _toDateTerm(dateTimeField, false, value) : value;
+				dateField ? _toDateTerm(dateTime, false, value) : value;
 
-			return new TermRangeQuery(subfield, lowerTerm, null, true, false);
+			return new TermRangeQuery(field, lowerTerm, null, true, false);
 		}
 
 		if (operatorName.equals("gt")) {
 			String lowerTerm =
-				dateField ? _toDateTerm(dateTimeField, true, value) : value;
+				dateField ? _toDateTerm(dateTime, true, value) : value;
 
-			return new TermRangeQuery(subfield, lowerTerm, null, false, false);
+			return new TermRangeQuery(field, lowerTerm, null, false, false);
 		}
 
 		if (operatorName.equals("le")) {
 			String upperTerm =
-				dateField ? _toDateTerm(dateTimeField, true, value) : value;
+				dateField ? _toDateTerm(dateTime, true, value) : value;
 
-			return new TermRangeQuery(subfield, null, upperTerm, false, true);
+			return new TermRangeQuery(field, null, upperTerm, false, true);
 		}
 
 		if (operatorName.equals("lt")) {
 			String upperTerm =
-				dateField ? _toDateTerm(dateTimeField, false, value) : value;
+				dateField ? _toDateTerm(dateTime, false, value) : value;
 
-			return new TermRangeQuery(subfield, null, upperTerm, false, false);
+			return new TermRangeQuery(field, null, upperTerm, false, false);
 		}
 
 		return null;
@@ -437,6 +478,42 @@ public class AssetListFiltersUtil {
 		return new MatchQuery(subfield, value);
 	}
 
+	private static final String _TYPE_DATE = "date";
+
+	private static final String _TYPE_DECIMAL = "decimal";
+
+	private static final String _TYPE_INTEGER = "integer";
+
+	private static final String _TYPE_TEXT = "text";
+
+	private static final Map<String, String> _commonFieldTypesMap =
+		HashMapBuilder.put(
+			Field.CREATE_DATE, _TYPE_DATE
+		).put(
+			Field.DISPLAY_DATE, _TYPE_DATE
+		).put(
+			Field.EXPIRATION_DATE, _TYPE_DATE
+		).put(
+			Field.MODIFIED_DATE, _TYPE_DATE
+		).put(
+			Field.PRIORITY, _TYPE_DECIMAL
+		).put(
+			Field.PUBLISH_DATE, _TYPE_DATE
+		).put(
+			Field.REVIEW_DATE, _TYPE_DATE
+		).put(
+			Field.STATUS, _TYPE_INTEGER
+		).put(
+			Field.TITLE, _TYPE_TEXT
+		).put(
+			Field.USER_NAME, _TYPE_TEXT
+		).put(
+			"externalReferenceCode", _TYPE_TEXT
+		).put(
+			"viewCount", _TYPE_INTEGER
+		).build();
+	private static final Set<String> _localizedCommonFieldNames =
+		SetUtil.fromArray(Field.TITLE);
 	private static final Set<String> _relativeDateValues = SetUtil.fromArray(
 		"last-year", "next-month", "now", "past-24-hours", "past-day",
 		"past-month", "past-week", "past-year");

@@ -50,6 +50,7 @@ import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.systemevent.SystemEvent;
 import com.liferay.portal.kernel.util.CalendarFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.GroupThreadLocal;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.uuid.PortalUUIDUtil;
@@ -203,12 +204,24 @@ public class CommerceCatalogLocalServiceImpl
 
 		// Group
 
-		_groupLocalService.deleteGroup(groupId);
+		if (!GroupThreadLocal.isDeleteInProcess()) {
+			_groupLocalService.deleteGroup(groupId);
+		}
 
 		// Resources
 
 		_resourceLocalService.deleteResource(
 			commerceCatalog, ResourceConstants.SCOPE_INDIVIDUAL);
+
+		// Commerce product configuration lists
+
+		for (CPConfigurationList cpConfigurationList :
+				_cpConfigurationListLocalService.getCPConfigurationLists(
+					groupId, commerceCatalog.getCompanyId())) {
+
+			_cpConfigurationListLocalService.deleteCPConfigurationList(
+				cpConfigurationList, true);
+		}
 
 		return commerceCatalog;
 	}
@@ -327,7 +340,6 @@ public class CommerceCatalogLocalServiceImpl
 		return commerceCatalogPersistence.findByAccountEntryId(accountEntryId);
 	}
 
-	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public CommerceCatalog getOrAddEmptyCommerceCatalog(
 			String externalReferenceCode, long companyId, long userId)
@@ -400,16 +412,12 @@ public class CommerceCatalogLocalServiceImpl
 		commerceCatalog.setName(name);
 		commerceCatalog.setCommerceCurrencyCode(commerceCurrencyCode);
 		commerceCatalog.setCatalogDefaultLanguageId(catalogDefaultLanguageId);
-
-		if (commerceCatalog.getStatus() == WorkflowConstants.STATUS_EMPTY) {
-			commerceCatalog.setStatus(
-				_emptyModelManager.solveEmptyModel(
-					commerceCatalog.getExternalReferenceCode(),
-					commerceCatalog.getModelClassName(),
-					commerceCatalog.getCompanyId(), 0,
-					commerceCatalog.getStatus(),
-					() -> WorkflowConstants.STATUS_APPROVED));
-		}
+		commerceCatalog.setStatus(
+			_emptyModelManager.solveEmptyModel(
+				commerceCatalog.getExternalReferenceCode(),
+				commerceCatalog.getModelClassName(),
+				commerceCatalog.getCompanyId(), 0, commerceCatalog.getStatus(),
+				() -> WorkflowConstants.STATUS_APPROVED));
 
 		return commerceCatalogPersistence.update(commerceCatalog);
 	}
@@ -538,6 +546,10 @@ public class CommerceCatalogLocalServiceImpl
 
 		AccountEntry accountEntry = _accountEntryLocalService.getAccountEntry(
 			accountEntryId);
+
+		if (accountEntry.getStatus() == WorkflowConstants.STATUS_EMPTY) {
+			return;
+		}
 
 		if (!StringUtil.equals(
 				accountEntry.getType(),

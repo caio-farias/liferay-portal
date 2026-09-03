@@ -66,6 +66,11 @@ exports[`List rendering should match the snapshot 1`] = `
             data-testid="dropdown-range-key"
           >
             <span
+              data-testid="dropdown-range-key-bordered"
+            >
+              true
+            </span>
+            <span
               data-testid="current-range-key"
             >
               30
@@ -81,6 +86,36 @@ exports[`List rendering should match the snapshot 1`] = `
               Change to Custom Range
             </button>
           </div>
+          <span
+            class="align-self-stretch border-left mx-3"
+          />
+          <div
+            data-testid="download-csv"
+          >
+            <div
+              data-testid="download-csv-type"
+            >
+              asset
+            </div>
+            <div
+              data-testid="download-csv-bordered"
+            >
+              true
+            </div>
+            <div
+              data-testid="download-csv-range-selectors"
+            >
+              {"rangeEnd":null,"rangeKey":"30","rangeStart":null}
+            </div>
+            <button
+              data-testid="download-csv-call-get-fds-query"
+            >
+              Call getFDSQuery
+            </button>
+            <div
+              data-testid="download-csv-fds-query-result"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -95,10 +130,23 @@ exports[`List rendering should match the snapshot 1`] = `
           data-testid="fds-component"
           id="assetTable"
         >
+          <button
+            data-testid="fds-run-transformer"
+          >
+            Run Transformer
+          </button>
+          <div
+            data-testid="fds-transformer-result"
+          />
           <div
             data-testid="fds-sorts"
           >
             null
+          </div>
+          <div
+            data-testid="fds-fields"
+          >
+            [{"contentRenderer":"assetTitleRenderer","fieldName":"assetTitle","label":"Title","sortable":true,"truncate":true},{"fieldName":"assetType","label":"Type","sortable":true},{"contentRenderer":"assetMetricRenderer","fieldName":"viewsMetric","label":"Views","sortable":true},{"contentRenderer":"assetMetricRenderer","fieldName":"impressionsMetric","label":"Impressions","sortable":true},{"contentRenderer":"assetMetricRenderer","fieldName":"downloadsMetric","label":"Downloads","sortable":true}]
           </div>
           <div
             data-testid="fds-empty-state"
@@ -134,12 +182,12 @@ exports[`List rendering should match the snapshot 1`] = `
           <div
             data-testid="fds-filters"
           >
-            [{"apiURL":"/o/faro/contacts/23/account/search?channelId=123&filter=(rangeKey eq '30')","autocompleteEnabled":true,"entityFieldType":"string","id":"accountIds","itemKey":"id","itemLabel":"accountName","label":"Accounts","multiple":true,"type":"selection"},{"apiURL":"/o/faro/contacts/23/individual_segment/search?channelId=123&rangeKey=30","autocompleteEnabled":true,"entityFieldType":"string","id":"segmentIds","itemKey":"id","itemLabel":"name","label":"Segments","multiple":true,"type":"selection"},{"apiURL":"/o/faro/contacts/23/asset-summary-types?channelId=123&rangeKey=30","autocompleteEnabled":true,"entityFieldType":"string","id":"assetType","itemKey":"name","itemLabel":"name","label":"Type","multiple":true,"type":"selection"},{"apiURL":"/o/faro/contacts/23/asset-summary-tags?channelId=123&rangeKey=30","autocompleteEnabled":true,"entityFieldType":"string","id":"tags/id","itemKey":"id","itemLabel":"name","label":"Tags","multiple":true,"type":"selection"},{"apiURL":"/o/faro/contacts/23/asset-summary-categories?channelId=123&rangeKey=30","autocompleteEnabled":true,"entityFieldType":"string","id":"categories/id","itemKey":"id","itemLabel":"name","label":"Categories","multiple":true,"type":"selection"},{"apiURL":"/o/faro/contacts/23/asset-summary-mime-types?channelId=123&rangeKey=30","autocompleteEnabled":true,"entityFieldType":"string","id":"mimeType","itemKey":"id","itemLabel":"name","label":"File Type","multiple":true,"type":"selection"}]
+            [{"apiURL":"/o/faro/contacts/23/account/search?channelId=123&filter=(rangeKey eq '30')","autocompleteEnabled":true,"entityFieldType":"string","id":"accountIds","itemKey":"id","itemLabel":"accountName","label":"Accounts","multiple":true,"type":"selection"},{"apiURL":"/o/faro/contacts/23/individual_segment/search?channelId=123&rangeKey=30","autocompleteEnabled":true,"entityFieldType":"string","id":"segmentIds","itemKey":"id","itemLabel":"name","label":"Segments","multiple":true,"type":"selection"},{"apiURL":"/o/faro/contacts/23/asset-summary-types?channelId=123&rangeKey=30","autocompleteEnabled":true,"entityFieldType":"string","id":"assetType","itemKey":"name","itemLabel":"name","label":"Type","multiple":true,"type":"selection"},{"entityFieldType":"string","id":"objectType","items":[{"label":"Content","value":"content"},{"label":"File","value":"file"}],"label":"Object Type","multiple":false,"type":"selection"},{"apiURL":"/o/faro/contacts/23/asset-summary-tags?channelId=123&rangeKey=30","autocompleteEnabled":true,"entityFieldType":"string","id":"tags/id","itemKey":"id","itemLabel":"name","label":"Tags","multiple":true,"type":"selection"},{"apiURL":"/o/faro/contacts/23/asset-summary-categories?channelId=123&rangeKey=30","autocompleteEnabled":true,"entityFieldType":"string","id":"categories/id","itemKey":"id","itemLabel":"name","label":"Categories","multiple":true,"type":"selection"},{"apiURL":"/o/faro/contacts/23/asset-summary-mime-types?channelId=123&rangeKey=30","autocompleteEnabled":true,"entityFieldType":"string","id":"mimeType","itemKey":"id","itemLabel":"name","label":"File Type","multiple":true,"type":"selection"}]
           </div>
           <div
             data-testid="fds-grouped-filters"
           >
-            [{"filters":["assetType","tags/id","categories/id","mimeType"],"label":"Filter By"},{"filters":["accountIds","segmentIds"],"label":"Filter by People"}]
+            [{"filters":["assetType","objectType","tags/id","categories/id","mimeType"],"label":"Filter By"},{"filters":["accountIds","segmentIds"],"label":"Filter by People"}]
           </div>
           <button
             data-testid="trigger-info-panel"

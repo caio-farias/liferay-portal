@@ -39,6 +39,7 @@ export class ExportImportPage {
 	readonly nameInput: Locator;
 	readonly newButton: Locator;
 	readonly page: Page;
+	readonly relaunchMenuItem: Locator;
 	readonly removeFilterButton: Locator;
 	readonly replicateSelectedDeletionsCheckbox: Locator;
 	readonly searchButton: Locator;
@@ -102,6 +103,7 @@ export class ExportImportPage {
 			.getByRole('button', {exact: true, name: 'New'})
 			.first();
 		this.page = page;
+		this.relaunchMenuItem = page.getByRole('menuitem', {name: 'Relaunch'});
 		this.removeFilterButton = page.getByLabel('Remove Filter');
 		this.replicateSelectedDeletionsCheckbox = page.getByRole('checkbox', {
 			name: 'Replicate Selected Deletions',
@@ -162,13 +164,14 @@ export class ExportImportPage {
 	async excludeReportFilter() {
 		await this.filterButton.click();
 		await this.excludeSwitch.check();
-		await this.showResultsButton.click();
 
 		const responsePromise = this.page.waitForResponse(
 			(response) =>
 				response.url().includes('report-entries') &&
 				response.status() === 200
 		);
+
+		await this.showResultsButton.click();
 
 		await responsePromise;
 	}
@@ -220,7 +223,7 @@ export class ExportImportPage {
 		await this.page.waitForLoadState('networkidle');
 	}
 
-	async getReportColumnValues(headerName: string): Promise<string[]> {
+	async getColumnValues(headerName: string): Promise<string[]> {
 		const header = this.page.getByRole('columnheader', {
 			exact: true,
 			name: headerName,
@@ -251,6 +254,22 @@ export class ExportImportPage {
 		);
 	}
 
+	async goToImportDataSelection({
+		folderPath,
+		name,
+	}: {
+		folderPath: string;
+		name: string;
+	}) {
+		await this.nameInput.fill(name);
+
+		await this.selectFile(folderPath);
+
+		await this.completedLabel.waitFor();
+
+		await this.continueButton.click();
+	}
+
 	async goToImportDetails(name: string) {
 		await clickAndExpectToBeVisible({
 			target: this.viewReportEntriesMenuItem,
@@ -264,20 +283,20 @@ export class ExportImportPage {
 		folderPath,
 		includeDeletions = false,
 		name,
+		selectData,
 		taskStatus = 'success',
 	}: {
 		folderPath: string;
 		includeDeletions?: boolean;
 		name: string;
+		selectData?: () => Promise<void>;
 		taskStatus?: taskStatus;
 	}) {
-		await this.nameInput.fill(name);
+		await this.goToImportDataSelection({folderPath, name});
 
-		await this.selectFile(folderPath);
-
-		await this.completedLabel.waitFor();
-
-		await this.continueButton.click();
+		if (selectData) {
+			await selectData();
+		}
 
 		if (includeDeletions) {
 			await this.replicateSelectedDeletionsCheckbox.check();
@@ -333,7 +352,7 @@ export class ExportImportPage {
 		);
 	}
 
-	async sortReportBy(headerName: string) {
+	async sortBy(headerName: string) {
 		await this.page
 			.getByRole('columnheader', {exact: true, name: headerName})
 			.getByRole('button')

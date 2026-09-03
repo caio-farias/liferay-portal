@@ -179,7 +179,9 @@ public abstract class BaseWorkspaceGitRepository
 
 	@Override
 	public GitWorkingDirectory getGitWorkingDirectory() {
-		if (isSnapshot() && !_isDotGitDirArchiveRequired()) {
+		if (_isGitArchiveEnabled() && isSnapshot() &&
+			!_isDotGitDirArchiveRequired()) {
+
 			throw new RuntimeException(
 				"Using Git archive, unable to get Git working directory");
 		}
@@ -251,43 +253,41 @@ public abstract class BaseWorkspaceGitRepository
 	public List<List<LocalGitCommit>> partitionLocalGitCommits(
 		List<LocalGitCommit> localGitCommits, int count) {
 
-		if (count <= 0) {
+		if (count <= 1) {
 			throw new IllegalArgumentException("Invalid count " + count);
 		}
 
-		if ((localGitCommits == null) || localGitCommits.isEmpty()) {
+		if (localGitCommits == null) {
 			return Collections.emptyList();
 		}
 
 		int localGitCommitsSize = localGitCommits.size();
 
 		if (count > localGitCommitsSize) {
-			List<List<LocalGitCommit>> partitionedLocalGitCommits =
-				new ArrayList<>(localGitCommitsSize);
+			List<List<LocalGitCommit>> localGitCommitsLists = new ArrayList<>(
+				localGitCommitsSize);
 
 			for (LocalGitCommit localGitCommit : localGitCommits) {
-				partitionedLocalGitCommits.add(
-					Lists.newArrayList(localGitCommit));
+				localGitCommitsLists.add(Lists.newArrayList(localGitCommit));
 			}
 
-			return partitionedLocalGitCommits;
+			return localGitCommitsLists;
 		}
 
-		List<List<LocalGitCommit>> partitionedLocalGitCommits = new ArrayList<>(
+		List<List<LocalGitCommit>> localGitCommitsLists = new ArrayList<>(
 			count);
 
-		LocalGitCommit lastLocalGitCommit = localGitCommits.remove(
-			localGitCommits.size() - 1);
+		localGitCommitsLists.addAll(
+			JenkinsResultsParserUtil.partitionByCount(
+				localGitCommits.subList(0, localGitCommitsSize - 1),
+				count - 1));
 
-		if (!localGitCommits.isEmpty()) {
-			partitionedLocalGitCommits.addAll(
-				JenkinsResultsParserUtil.partitionByCount(
-					localGitCommits, count - 1));
-		}
+		LocalGitCommit lastLocalGitCommit = localGitCommits.get(
+			localGitCommitsSize - 1);
 
-		partitionedLocalGitCommits.add(Lists.newArrayList(lastLocalGitCommit));
+		localGitCommitsLists.add(Lists.newArrayList(lastLocalGitCommit));
 
-		return partitionedLocalGitCommits;
+		return localGitCommitsLists;
 	}
 
 	@Override
@@ -915,7 +915,7 @@ public abstract class BaseWorkspaceGitRepository
 
 		sb.setLength(0);
 
-		sb.append("rm -rf ");
+		sb.append("rm -fr ");
 
 		GitWorkingDirectory gitWorkingDirectory = getGitWorkingDirectory();
 
@@ -1061,7 +1061,7 @@ public abstract class BaseWorkspaceGitRepository
 
 		sb.setLength(0);
 
-		sb.append("rm -rf ");
+		sb.append("rm -fr ");
 		sb.append(clonedWorkingDirectory);
 
 		commands.add(sb.toString());
@@ -1222,7 +1222,7 @@ public abstract class BaseWorkspaceGitRepository
 
 		try {
 			Process process = JenkinsResultsParserUtil.executeBashCommands(
-				"rm -rf " + getDirectory());
+				"rm -fr " + getDirectory());
 
 			JenkinsResultsParserUtil.readInputStream(process.getInputStream());
 
@@ -1258,7 +1258,7 @@ public abstract class BaseWorkspaceGitRepository
 				JenkinsResultsParserUtil.combine(
 					"tar -xzf ", archiveFile.getCanonicalPath(), " -C ",
 					baseGitRepositoryDir.getCanonicalPath()),
-				"rm -rf " + archiveFile.getCanonicalPath());
+				"rm -fr " + archiveFile.getCanonicalPath());
 
 			if (process.exitValue() != 0) {
 				String errorText = JenkinsResultsParserUtil.readInputStream(

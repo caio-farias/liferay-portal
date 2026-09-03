@@ -11,15 +11,15 @@ import com.liferay.osb.faro.provisioning.client.model.OSBAccountEntry;
 import com.liferay.osb.faro.provisioning.client.model.OSBAccountEntryBuilder;
 import com.liferay.osb.faro.provisioning.client.model.OSBOfferingEntry;
 import com.liferay.osb.faro.provisioning.client.model.display.main.FaroSubscriptionDisplay;
-import com.liferay.portal.test.rule.LiferayUnitTestRule;
+import com.liferay.portal.json.JSONFactoryImpl;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
 import org.junit.Assert;
-import org.junit.ClassRule;
-import org.junit.Rule;
+import org.junit.Before;
 import org.junit.Test;
 
 import org.mockito.Mockito;
@@ -29,17 +29,19 @@ import org.mockito.Mockito;
  */
 public class OSBAccountEntryUtilTest {
 
-	@ClassRule
-	@Rule
-	public static final LiferayUnitTestRule liferayUnitTestRule =
-		LiferayUnitTestRule.INSTANCE;
+	@Before
+	public void setUp() {
+		JSONFactoryUtil jsonFactoryUtil = new JSONFactoryUtil();
+
+		jsonFactoryUtil.setJSONFactory(new JSONFactoryImpl());
+	}
 
 	@Test
 	public void testBuildFromPayload() {
 		OSBOfferingEntry osbOfferingEntry = new OSBOfferingEntry();
 
 		osbOfferingEntry.setProductEntryId(
-			ProductConstants.ENTERPRISE_PRODUCT_ENTRY_ID);
+			ProductConstants.PRODUCT_ENTRY_ID_ENTERPRISE);
 		osbOfferingEntry.setQuantity(1);
 
 		OSBAccountEntry osbAccountEntry = OSBAccountEntryBuilder.setName(
@@ -59,7 +61,7 @@ public class OSBAccountEntryUtilTest {
 		OSBOfferingEntry rebuiltOSBOfferingEntry = offeringEntries.get(0);
 
 		Assert.assertEquals(
-			ProductConstants.ENTERPRISE_PRODUCT_ENTRY_ID,
+			ProductConstants.PRODUCT_ENTRY_ID_ENTERPRISE,
 			rebuiltOSBOfferingEntry.getProductEntryId());
 	}
 
@@ -68,7 +70,7 @@ public class OSBAccountEntryUtilTest {
 		OSBOfferingEntry osbOfferingEntry = new OSBOfferingEntry();
 
 		osbOfferingEntry.setProductEntryId(
-			ProductConstants.ENTERPRISE_PRODUCT_ENTRY_ID);
+			ProductConstants.PRODUCT_ENTRY_ID_ENTERPRISE);
 		osbOfferingEntry.setQuantity(1);
 		osbOfferingEntry.setStartDate(new Date());
 		osbOfferingEntry.setStatus(
@@ -101,7 +103,7 @@ public class OSBAccountEntryUtilTest {
 		OSBOfferingEntry rebuiltOSBOfferingEntry = offeringEntries.get(0);
 
 		Assert.assertEquals(
-			ProductConstants.ENTERPRISE_PRODUCT_ENTRY_ID,
+			ProductConstants.PRODUCT_ENTRY_ID_ENTERPRISE,
 			rebuiltOSBOfferingEntry.getProductEntryId());
 		Assert.assertEquals(1, rebuiltOSBOfferingEntry.getQuantity());
 		Assert.assertEquals(

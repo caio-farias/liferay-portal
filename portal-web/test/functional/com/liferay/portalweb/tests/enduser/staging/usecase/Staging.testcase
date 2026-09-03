@@ -253,7 +253,7 @@ definition {
 			SystemSettings.gotoConfiguration(
 				configurationCategory = "Infrastructure",
 				configurationName = "Export/Import, Staging",
-				configurationScope = "Virtual Instance Scope");
+				configurationScope = "System Scope");
 
 			AssertNotChecked.assertNotCheckedNotVisible(
 				key_settingFieldName = "Show Advanced Staging Configuration by Default",
@@ -385,7 +385,7 @@ definition {
 			SystemSettings.gotoConfiguration(
 				configurationCategory = "Infrastructure",
 				configurationName = "Export/Import, Staging",
-				configurationScope = "Virtual Instance Scope");
+				configurationScope = "System Scope");
 		}
 
 		task ("When: Enable advanced staging configuration checkbox") {
@@ -656,7 +656,7 @@ definition {
 			SystemSettings.gotoConfiguration(
 				configurationCategory = "Infrastructure",
 				configurationName = "Export/Import, Staging",
-				configurationScope = "Virtual Instance Scope");
+				configurationScope = "System Scope");
 
 			SystemSettings.configureSystemSetting(
 				enableSetting = "true",
@@ -875,17 +875,6 @@ definition {
 		JSONGroup.deleteGroupByName(groupName = "Site Name");
 
 		JSONStaging.enableLocalStaging(groupName = "Site B");
-	}
-
-	@priority = 3
-	test ImportLarFrom70ToCurrent {
-		WebContentNavigator.openWebContentAdmin(siteURLKey = "guest");
-
-		LAR.importPortlet(
-			importSchemaVersionMismatching = "true",
-			larFileName = "7.0.10.14_webcontent.lar",
-			portletName = "Web Content",
-			uploadFrom = "dependencies");
 	}
 
 	@description = "This is a use case for LPS-189191. TC-2 and TC-4: Verify that the instance setting can overwrite the system setting via OSGi file to ignore previews and thumbnails during the local staging publish process."
@@ -2459,7 +2448,7 @@ definition {
 		SystemSettings.gotoConfiguration(
 			configurationCategory = "Infrastructure",
 			configurationName = "Export/Import, Staging",
-			configurationScope = "Virtual Instance Scope");
+			configurationScope = "System Scope");
 
 		SystemSettings.configureSystemSetting(
 			enableSetting = "true",

@@ -8,6 +8,7 @@ import React from 'react';
 import {APPLY_OBJECT_FIELD_VALUES_EVENT} from '../events';
 import {Message} from '../types';
 import {AIChat} from '../useAIChat';
+import buildContentTypeMessage from '../utils/buildContentTypeMessage';
 import {ResolvedMessage} from '../utils/resolveMessage';
 import AIAssistantMessageBalloon from './AIAssistantMessageBalloon';
 import CategorizationMessageBalloon from './CategorizationMessageBalloon';
@@ -17,6 +18,7 @@ import FieldValueMessageBalloon from './FieldValueMessageBalloon';
 import ImageMessageBalloon from './ImageMessageBalloon';
 import QuickRepliesMessageBalloon from './QuickRepliesMessageBalloon';
 import SelectComponentMessageBalloon from './SelectComponentMessageBalloon';
+import SpaceSelectorMessageBalloon from './SpaceSelectorMessageBalloon';
 import TranslateContentMessageBalloon from './TranslateContentMessageBalloon';
 import UserMessageBalloon from './UserMessageBalloon';
 
@@ -55,8 +57,11 @@ const MESSAGE_BALLOON_RENDERERS: MessageBalloonRenderers = {
 			}
 		/>
 	),
-	'categorization': (context, {categorization}) => (
-		<CategorizationMessageBalloon {...categorization} />
+	'categorization': ({chat}, {categorization}) => (
+		<CategorizationMessageBalloon
+			{...categorization}
+			setBalloonGenerating={chat.setBalloonGenerating}
+		/>
 	),
 	'content-drafts': ({item}) => (
 		<ContentsMessageBalloon message={item.text} />
@@ -67,6 +72,7 @@ const MESSAGE_BALLOON_RENDERERS: MessageBalloonRenderers = {
 			contextRef={chat.runtimeContextRef}
 			message={item.text}
 			sendMessage={chat.sendMessage}
+			setIsGenerating={chat.setIsGenerating}
 		/>
 	),
 	'field-values': ({chat, index}, {fieldValues}) => {
@@ -105,6 +111,7 @@ const MESSAGE_BALLOON_RENDERERS: MessageBalloonRenderers = {
 					objectEntryFolderExternalReferenceCode:
 						chatContext.objectEntryFolderExternalReferenceCode,
 				}}
+				scrollToBottom={chat.scrollToBottom}
 			/>
 		);
 	},
@@ -118,6 +125,20 @@ const MESSAGE_BALLOON_RENDERERS: MessageBalloonRenderers = {
 		<SelectComponentMessageBalloon
 			component={component}
 			setIsGenerating={chat.setIsGenerating}
+		/>
+	),
+	'space-selector': ({chat, item}, {contentTypes, spaces}) => (
+		<SpaceSelectorMessageBalloon
+			contextRef={chat.runtimeContextRef}
+			message={item.text}
+			onSelectSpace={(space) =>
+				chat.setMessages((previousMessages) => [
+					...previousMessages,
+					{sender: 'user', text: space.name},
+					buildContentTypeMessage(contentTypes),
+				])
+			}
+			spaces={spaces}
 		/>
 	),
 	'translate': ({chat}, {translate}) => (

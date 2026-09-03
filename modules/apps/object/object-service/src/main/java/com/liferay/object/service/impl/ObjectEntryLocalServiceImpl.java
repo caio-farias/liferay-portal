@@ -208,8 +208,6 @@ import com.liferay.portal.kernel.module.service.Snapshot;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.search.BaseModelSearchResult;
 import com.liferay.portal.kernel.search.Field;
-import com.liferay.portal.kernel.search.Indexable;
-import com.liferay.portal.kernel.search.IndexableType;
 import com.liferay.portal.kernel.search.Indexer;
 import com.liferay.portal.kernel.search.IndexerRegistryUtil;
 import com.liferay.portal.kernel.search.ReindexCacheThreadLocal;
@@ -1262,7 +1260,7 @@ public class ObjectEntryLocalServiceImpl
 		ObjectField titleObjectField = objectFieldBag.getObjectField(
 			objectDefinition.getTitleObjectFieldId());
 
-		if (!titleObjectField.isIndexed() &&
+		if ((titleObjectField != null) && !titleObjectField.isIndexed() &&
 			!Objects.equals(
 				titleObjectField.getName(), "externalReferenceCode") &&
 			!Objects.equals(titleObjectField.getName(), "id")) {
@@ -1572,7 +1570,6 @@ public class ObjectEntryLocalServiceImpl
 		return objectEntryPersistence.dslQueryCount(dslQuery);
 	}
 
-	@Indexable(type = IndexableType.REINDEX)
 	@Transactional(propagation = Propagation.REQUIRED)
 	public ObjectEntry getOrAddEmptyObjectEntry(
 			String externalReferenceCode, long groupId, long userId,
@@ -1608,6 +1605,8 @@ public class ObjectEntryLocalServiceImpl
 				true, objectDefinition, _objectFieldLocalService),
 			new HashMap<>(), objectEntry.getObjectEntryId(), false,
 			new HashMap<>());
+
+		_reindex(objectEntry);
 
 		return objectEntry;
 	}
@@ -2022,7 +2021,6 @@ public class ObjectEntryLocalServiceImpl
 			true, false);
 	}
 
-	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public ObjectEntry moveObjectEntryToTrash(
 			long userId, ObjectEntry objectEntry, ServiceContext serviceContext)
@@ -2091,7 +2089,6 @@ public class ObjectEntryLocalServiceImpl
 		}
 	}
 
-	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public ObjectEntry restoreObjectEntryFromTrash(
 			long userId, ObjectEntry objectEntry, ServiceContext serviceContext)
@@ -2229,7 +2226,6 @@ public class ObjectEntryLocalServiceImpl
 			assetLinkEntryIds, priority, null);
 	}
 
-	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public ObjectEntry updateModifiedDate(long objectEntryId, Date modifiedDate)
 		throws PortalException {
@@ -2240,6 +2236,8 @@ public class ObjectEntryLocalServiceImpl
 		objectEntry.setModifiedDate(modifiedDate);
 
 		objectEntry = objectEntryPersistence.update(objectEntry);
+
+		_reindex(objectEntry);
 
 		ObjectDefinition objectDefinition =
 			_objectDefinitionPersistence.findByPrimaryKey(
@@ -2491,7 +2489,9 @@ public class ObjectEntryLocalServiceImpl
 		_reindex(objectEntry);
 
 		if ((status == WorkflowConstants.STATUS_EXPIRED) ||
-			originalObjectEntry.isDraft() || originalObjectEntry.isPending()) {
+			originalObjectEntry.isDraft() || originalObjectEntry.isPending() ||
+			(originalObjectEntry.isScheduled() &&
+			 (status == WorkflowConstants.STATUS_APPROVED))) {
 
 			int count = _objectEntryVersionPersistence.countByObjectEntryId(
 				objectEntry.getObjectEntryId());
@@ -3790,55 +3790,70 @@ public class ObjectEntryLocalServiceImpl
 			_objectRelationshipPersistence.findByObjectDefinitionId1(
 				objectDefinitionId);
 
-		for (ObjectRelationship objectRelationship : objectRelationships) {
-			ObjectDefinition objectDefinition2 =
-				_objectDefinitionPersistence.findByPrimaryKey(
-					objectRelationship.getObjectDefinitionId2());
+		try (SafeCloseable safeCloseable =
+				ObjectEntryThreadLocal.
+					setSkipObjectDefinitionCacheWithSafeCloseable(
+						ObjectDefinitionThreadLocal.isDeleteObjectDefinitionId(
+							objectDefinitionId))) {
 
-			if (WorkflowConstants.STATUS_DRAFT ==
-					objectDefinition2.getStatus()) {
+			for (ObjectRelationship objectRelationship : objectRelationships) {
+				ObjectDefinition objectDefinition2 =
+					_objectDefinitionPersistence.findByPrimaryKey(
+						objectRelationship.getObjectDefinitionId2());
 
-				continue;
-			}
+				if (WorkflowConstants.STATUS_DRAFT ==
+						objectDefinition2.getStatus()) {
 
-			ObjectRelatedModelsProvider objectRelatedModelsProvider =
-				_objectRelatedModelsProviderRegistry.
-					getObjectRelatedModelsProvider(
-						objectDefinition2.getClassName(),
-						objectDefinition2.getCompanyId(),
-						objectRelationship.getType());
-
-			try {
-				ObjectEntryThreadLocal.setSkipObjectEntryResourcePermission(
-					true);
-
-				String deletionType = objectRelationship.getDeletionType();
-
-				if (ObjectEntryThreadLocal.isDisassociateRelatedModels()) {
-					deletionType =
-						ObjectRelationshipConstants.DELETION_TYPE_DISASSOCIATE;
+					continue;
 				}
 
-				if (moveToTrash) {
-					objectRelatedModelsProvider.moveRelatedModelToTrash(
-						PrincipalThreadLocal.getUserId(), groupId,
-						objectRelationship.getObjectRelationshipId(),
-						primaryKey, deletionType);
+				ObjectRelatedModelsProvider objectRelatedModelsProvider =
+					_objectRelatedModelsProviderRegistry.
+						getObjectRelatedModelsProvider(
+							objectDefinition2.getClassName(),
+							objectDefinition2.getCompanyId(),
+							objectRelationship.getType());
+
+				try {
+					ObjectEntryThreadLocal.setSkipObjectEntryResourcePermission(
+						true);
+
+					String deletionType = objectRelationship.getDeletionType();
+
+					if (ObjectEntryThreadLocal.isDisassociateRelatedModels() ||
+						(Objects.equals(
+							deletionType,
+							ObjectRelationshipConstants.
+								DELETION_TYPE_PREVENT) &&
+						 ObjectDefinitionThreadLocal.isDeleteObjectDefinitionId(
+							 objectDefinitionId))) {
+
+						deletionType =
+							ObjectRelationshipConstants.
+								DELETION_TYPE_DISASSOCIATE;
+					}
+
+					if (moveToTrash) {
+						objectRelatedModelsProvider.moveRelatedModelToTrash(
+							PrincipalThreadLocal.getUserId(), groupId,
+							objectRelationship.getObjectRelationshipId(),
+							primaryKey, deletionType);
+					}
+					else {
+						objectRelatedModelsProvider.deleteRelatedModel(
+							PrincipalThreadLocal.getUserId(), groupId,
+							objectRelationship.getObjectRelationshipId(),
+							primaryKey, deletionType);
+					}
 				}
-				else {
-					objectRelatedModelsProvider.deleteRelatedModel(
-						PrincipalThreadLocal.getUserId(), groupId,
-						objectRelationship.getObjectRelationshipId(),
-						primaryKey, deletionType);
+				catch (PrincipalException principalException) {
+					throw new ObjectRelationshipDeletionTypeException(
+						principalException.getMessage());
 				}
-			}
-			catch (PrincipalException principalException) {
-				throw new ObjectRelationshipDeletionTypeException(
-					principalException.getMessage());
-			}
-			finally {
-				ObjectEntryThreadLocal.setSkipObjectEntryResourcePermission(
-					false);
+				finally {
+					ObjectEntryThreadLocal.setSkipObjectEntryResourcePermission(
+						false);
+				}
 			}
 		}
 	}
@@ -7002,6 +7017,26 @@ public class ObjectEntryLocalServiceImpl
 			ServiceContext serviceContext)
 		throws PortalException {
 
+		// Without this, the workflow walks to its first task on another thread
+		// after the save returns, so a caller that looks for the task right
+		// after saving does not find it. Waiting for the walk keeps the task's
+		// creation inside the save.
+
+		Map<String, Serializable> workflowContext =
+			(Map<String, Serializable>)serviceContext.getAttribute(
+				"workflowContext");
+
+		if (workflowContext == null) {
+			workflowContext = new HashMap<>();
+		}
+
+		workflowContext.put(
+			WorkflowConstants.CONTEXT_WAIT_FOR_COMPLETION,
+			Boolean.TRUE.toString());
+
+		serviceContext.setAttribute(
+			"workflowContext", (Serializable)workflowContext);
+
 		WorkflowHandlerRegistryUtil.startWorkflowInstance(
 			objectEntry.getCompanyId(), objectEntry.getNonzeroGroupId(), userId,
 			className, objectEntry.getObjectEntryId(), objectEntry,
@@ -8377,6 +8412,15 @@ public class ObjectEntryLocalServiceImpl
 
 			for (Map.Entry<String, Serializable> entry :
 					localizedValues.entrySet()) {
+
+				if ((existingValues == null) &&
+					!_language.isAvailableLocale(groupId, entry.getKey())) {
+
+					_handle(
+						new ObjectEntryValuesException.InvalidLanguageId(
+							entry.getKey(), objectField.getName()),
+						validationErrors);
+				}
 
 				Serializable value = entry.getValue();
 

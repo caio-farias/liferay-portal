@@ -23,8 +23,10 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Portal;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -127,6 +129,11 @@ public class CommercePaymentMethodFDSDataProvider
 					themeDisplay.getLocale());
 			}
 
+			if (Validator.isNull(description)) {
+				description = commercePaymentIntegration.getDescription(
+					themeDisplay.getLocale());
+			}
+
 			paymentMethods.add(
 				new PaymentMethod(
 					description, key, name, name, key,
@@ -135,7 +142,9 @@ public class CommercePaymentMethodFDSDataProvider
 						themeDisplay.getLocale())));
 		}
 
-		return paymentMethods;
+		return ListUtil.subList(
+			paymentMethods, fdsPagination.getStartPosition(),
+			fdsPagination.getEndPosition());
 	}
 
 	@Override
@@ -143,10 +152,14 @@ public class CommercePaymentMethodFDSDataProvider
 			FDSKeywords fdsKeywords, HttpServletRequest httpServletRequest)
 		throws PortalException {
 
+		Map<String, CommercePaymentIntegration> commercePaymentIntegrations =
+			_commercePaymentIntegrationRegistry.
+				getCommercePaymentIntegrations();
 		Map<String, CommercePaymentMethod> commercePaymentMethodMap =
 			_commercePaymentMethodRegistry.getCommercePaymentMethods();
 
-		return commercePaymentMethodMap.size();
+		return commercePaymentIntegrations.size() +
+			commercePaymentMethodMap.size();
 	}
 
 	private boolean _isActive(

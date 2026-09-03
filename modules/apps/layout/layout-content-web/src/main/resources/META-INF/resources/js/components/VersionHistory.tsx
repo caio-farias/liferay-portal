@@ -16,6 +16,8 @@ import React, {useEffect, useState} from 'react';
 import {Config, initializeConfig} from '../config';
 import PageVersionService from '../services/PageVersionService';
 import {PageVersion} from '../types/PageVersion';
+import {getVersionData} from '../utils/getVersionData';
+import PagePreview from './PagePreview';
 import ResponsivePanel from './ResponsivePanel';
 import Toolbar from './Toolbar';
 import VersionList from './VersionList';
@@ -38,6 +40,13 @@ export default function VersionHistory({config}: Props) {
 	const [selectedKey, setSelectedKey] = useState<string>();
 
 	const [versions, setVersions] = useState<PageVersion[] | null>(null);
+
+	const [currentExperienceERC, setCurrentExperienceERC] = useState(
+		config.availableSegmentsExperiences[0]?.segmentsExperienceERC
+	);
+	const [currentLanguageId, setCurrentLanguageId] = useState(
+		config.defaultLanguageId
+	);
 
 	const isScreenLarge = useMediaQuery(LARGE_MEDIA_QUERY);
 
@@ -120,18 +129,20 @@ export default function VersionHistory({config}: Props) {
 			return;
 		}
 
-		const confirmed = await openConfirmModal({
-			buttonLabel: Liferay.Language.get('restore'),
-			center: true,
-			status: 'warning',
-			text: Liferay.Language.get(
-				'you-are-about-to-restore-an-older-version-of-the-page.-all-your-unsaved-changes-will-be-lost'
-			),
-			title: Liferay.Language.get('restore-version'),
-		});
+		if (config.layout.status === 'draft') {
+			const confirmed = await openConfirmModal({
+				buttonLabel: Liferay.Language.get('restore'),
+				center: true,
+				status: 'warning',
+				text: Liferay.Language.get(
+					'you-are-about-to-restore-an-older-version-of-the-page.-all-your-unsaved-changes-will-be-lost'
+				),
+				title: Liferay.Language.get('restore-version'),
+			});
 
-		if (!confirmed) {
-			return;
+			if (!confirmed) {
+				return;
+			}
 		}
 
 		const {error} = await PageVersionService.restorePageVersion(
@@ -147,6 +158,17 @@ export default function VersionHistory({config}: Props) {
 		window.location.reload();
 	};
 
+	const selectedVersion = versions?.find(
+		({externalReferenceCode}) => externalReferenceCode === selectedKey
+	);
+
+	const {experiences, languages, selectedExperience, selectedLanguageId} =
+		getVersionData({
+			currentExperienceERC,
+			currentLanguageId,
+			version: selectedVersion,
+		});
+
 	const keywords = search.trim().toLowerCase();
 
 	const matches = (...names: Array<string | undefined>) =>
@@ -157,7 +179,9 @@ export default function VersionHistory({config}: Props) {
 			? [{key: CURRENT_KEY, ...config.layout}]
 			: []),
 		...versions
-			.filter(({creator, name}) => matches(name, creator?.name))
+			.filter(({creator, name, version}) =>
+				matches(name, creator?.name, String(version))
+			)
 			.map((version) => ({
 				key: version.externalReferenceCode,
 				name: version.name,
@@ -169,8 +193,14 @@ export default function VersionHistory({config}: Props) {
 	return (
 		<>
 			<Toolbar
+				availableLanguages={languages}
+				experiences={experiences}
 				isSidePanelOpen={isPanelOpen || isScreenLarge}
+				onChangeExperience={setCurrentExperienceERC}
+				onChangeLanguage={setCurrentLanguageId}
 				openSidePanel={() => setIsPanelOpen(true)}
+				selectedExperience={selectedExperience}
+				selectedLanguageId={selectedLanguageId}
 			/>
 
 			<ResponsivePanel
@@ -195,6 +225,13 @@ export default function VersionHistory({config}: Props) {
 					/>
 				)}
 			</ResponsivePanel>
+
+			<PagePreview
+				experienceERC={selectedExperience?.segmentsExperienceERC}
+				experienceId={selectedExperience?.segmentsExperienceId}
+				languageId={selectedLanguageId}
+				versionERC={selectedVersion?.externalReferenceCode}
+			/>
 		</>
 	);
 }

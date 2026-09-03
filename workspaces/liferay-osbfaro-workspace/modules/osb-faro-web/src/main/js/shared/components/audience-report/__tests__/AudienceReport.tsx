@@ -2,18 +2,21 @@ import AudienceReport from '../AudienceReport';
 import mockStore from 'test/mock-store';
 import React from 'react';
 import {fireEvent, render} from '@testing-library/react';
-import {MemoryRouter, Route} from 'react-router-dom';
+import {InMemoryCache} from '@apollo/client';
+import {MemoryRouter, Route, Routes as RouterRoutes} from 'react-router-dom';
 import {MetricName} from 'shared/types/MetricName';
 import {
 	mockAudienceReportReq,
 	mockPreferenceReq,
+	mockSegmentReq,
 	mockTimeRangeReq,
 } from 'test/graphql-data';
 import {MockedProvider} from '@apollo/client/testing';
 import {Name} from '../types';
-import {PageAudienceReportQuery} from '../queries';
+import {PageAudienceReportQuery, PageSegmentQuery} from '../queries';
 import {Provider} from 'react-redux';
 import {RangeKeyTimeRanges} from 'shared/util/constants';
+import {typePolicies} from 'shared/apollo/cache';
 import {waitForLoadingToBeRemoved} from 'test/helpers';
 
 jest.unmock('react-dom');
@@ -57,30 +60,42 @@ const WrappedComponent = ({queryProps}: {queryProps: any}) => (
 				'/workspace/123/456/Home%20Page/https%3A%2F%2Fwww.liferay.com',
 			]}
 		>
-			<Route path="/workspace/:groupId/:channelId/:title/:touchpoint">
-				<MockedProvider
-					{...({freezeResults: false} as any)}
-					mocks={[
-						mockTimeRangeReq(),
-						mockPreferenceReq(),
-						mockAudienceReportReq({queryProps}),
-					]}
-				>
-					<AudienceReport
-						filters={{devices: [], location: []}}
-						mapper={(result: any) =>
-							result?.[queryProps.name]?.[queryProps.metricName]
-						}
-						name={Name.Page}
-						Query={PageAudienceReportQuery(queryProps)}
-						rangeSelectors={{
-							rangeEnd: '',
-							rangeKey: RangeKeyTimeRanges.Last30Days,
-							rangeStart: '',
-						}}
-					/>
-				</MockedProvider>
-			</Route>
+			<RouterRoutes>
+				<Route
+					element={
+						<MockedProvider
+							{...({freezeResults: false} as any)}
+							cache={new InMemoryCache({typePolicies})}
+							mocks={[
+								mockTimeRangeReq(),
+								mockPreferenceReq(),
+								mockAudienceReportReq({queryProps}),
+								mockSegmentReq({queryProps}),
+							]}
+						>
+							<AudienceReport
+								AudienceReportQuery={PageAudienceReportQuery(
+									queryProps
+								)}
+								filters={{devices: [], location: []}}
+								mapper={(result: any) =>
+									result?.[queryProps.name]?.[
+										queryProps.metricName
+									]
+								}
+								name={Name.Page}
+								rangeSelectors={{
+									rangeEnd: '',
+									rangeKey: RangeKeyTimeRanges.Last30Days,
+									rangeStart: '',
+								}}
+								SegmentQuery={PageSegmentQuery(queryProps)}
+							/>
+						</MockedProvider>
+					}
+					path="/workspace/:groupId/:channelId/:title/:touchpoint/*"
+				/>
+			</RouterRoutes>
 		</MemoryRouter>
 	</Provider>
 );

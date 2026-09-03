@@ -20,6 +20,10 @@ public class CMSSiteInitializerFDSNames {
 	public static final String ALL_SPACES_SECTION =
 		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME + "-allSpacesSection";
 
+	public static final String BROKEN_LINKS_SECTION =
+		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME +
+			"-brokenLinksSection";
+
 	public static final String BULK_ACTION_TASK_REPORT_SECTION =
 		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME +
 			"-bulkActionTaskReportSection";
@@ -44,6 +48,10 @@ public class CMSSiteInitializerFDSNames {
 	public static final String EXPIRED_ASSETS_SECTION =
 		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME +
 			"-expiredAssetsSection";
+
+	public static final String EXPIRING_SOON_SECTION =
+		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME +
+			"-expiringSoonSection";
 
 	public static final String FILES_SECTION =
 		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME + "-filesSection";
@@ -106,6 +114,10 @@ public class CMSSiteInitializerFDSNames {
 
 	public static final String TAG_USAGES =
 		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME + "-tagUsages";
+
+	public static final String UPCOMING_REVIEWS_SECTION =
+		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME +
+			"-upcomingReviewsSection";
 
 	public static final String VIEW_CONTENTS_FOLDER =
 		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME +

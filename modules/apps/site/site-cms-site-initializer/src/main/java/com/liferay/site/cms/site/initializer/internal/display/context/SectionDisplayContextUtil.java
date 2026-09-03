@@ -16,6 +16,7 @@ import com.liferay.frontend.data.set.model.FDSActionDropdownItemList;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.CreationMenu;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItem;
 import com.liferay.info.constants.InfoDisplayWebKeys;
+import com.liferay.info.localized.InfoLocalizedValue;
 import com.liferay.object.constants.ObjectActionKeys;
 import com.liferay.object.constants.ObjectEntryFolderConstants;
 import com.liferay.object.model.ObjectDefinition;
@@ -51,28 +52,48 @@ import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
+import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.site.cms.site.initializer.constants.CMSWorkflowConstants;
 import com.liferay.site.cms.site.initializer.internal.util.ActionUtil;
 import com.liferay.translation.constants.TranslationPortletKeys;
+import com.liferay.translation.exporter.TranslationInfoItemFieldValuesExporter;
 
 import jakarta.portlet.ActionRequest;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TimeZone;
 
 /**
  * @author Daniel Sanz
  */
 public class SectionDisplayContextUtil {
+
+	public static void addScheduleDateFDSActionDropdownItems(
+		List<FDSActionDropdownItem> fdsActionDropdownItems,
+		HttpServletRequest httpServletRequest) {
+
+		fdsActionDropdownItems.add(
+			getScheduleDateFDSActionDropdownItem(
+				"update-expiration-date", httpServletRequest));
+		fdsActionDropdownItems.add(
+			getScheduleDateFDSActionDropdownItem(
+				"update-review-date", httpServletRequest));
+	}
 
 	public static String appendGroupIds(
 		String filterString, HttpServletRequest httpServletRequest) {
@@ -208,6 +229,9 @@ public class SectionDisplayContextUtil {
 				"find-and-replace"
 			));
 
+		_addScheduleDateBulkActionDropdownItems(
+			bulkActionDropdownItems, httpServletRequest);
+
 		_addPermissionsBulkActions(bulkActionDropdownItems, httpServletRequest);
 
 		return bulkActionDropdownItems;
@@ -235,6 +259,9 @@ public class SectionDisplayContextUtil {
 			).build(
 				"download"
 			));
+
+		addScheduleDateFDSActionDropdownItems(
+			fdsActionDropdownItems, httpServletRequest);
 
 		return fdsActionDropdownItems;
 	}
@@ -272,6 +299,13 @@ public class SectionDisplayContextUtil {
 		return collaboratorURLs;
 	}
 
+	public static String getContentProgressFilterString(
+		HttpServletRequest httpServletRequest) {
+
+		return appendGroupIds(
+			appendStatus(_CMS_CONTENT_FILTER_STRING), httpServletRequest);
+	}
+
 	public static List<DropdownItem> getContentsBulkActionDropdownItems(
 		HttpServletRequest httpServletRequest) {
 
@@ -297,6 +331,9 @@ public class SectionDisplayContextUtil {
 		_addAddAssetsToProjectBulkAction(
 			bulkActionDropdownItems, httpServletRequest);
 
+		_addScheduleDateBulkActionDropdownItems(
+			bulkActionDropdownItems, httpServletRequest);
+
 		_addPermissionsBulkActions(bulkActionDropdownItems, httpServletRequest);
 
 		return bulkActionDropdownItems;
@@ -309,6 +346,9 @@ public class SectionDisplayContextUtil {
 			getFDSActionDropdownItems(httpServletRequest);
 
 		_addAddToLaunchAction(fdsActionDropdownItems, httpServletRequest);
+
+		addScheduleDateFDSActionDropdownItems(
+			fdsActionDropdownItems, httpServletRequest);
 
 		return fdsActionDropdownItems;
 	}
@@ -472,6 +512,38 @@ public class SectionDisplayContextUtil {
 		}
 
 		return depotEntryGroupIds;
+	}
+
+	public static String getExpiringSoonFilterString(
+		HttpServletRequest httpServletRequest) {
+
+		return appendGroupIds(
+			StringBundler.concat(
+				"dateExpiration gt now() and dateExpiration le ",
+				_getExpirationThresholdDateString(), " and status eq ",
+				WorkflowConstants.STATUS_APPROVED, " and ",
+				_CMS_CONTENT_FILTER_STRING),
+			httpServletRequest);
+	}
+
+	public static JSONObject getExportFileFormatJSONObject(
+		ThemeDisplay themeDisplay,
+		TranslationInfoItemFieldValuesExporter
+			translationInfoItemFieldValuesExporter) {
+
+		return JSONUtil.put(
+			"displayName",
+			() -> {
+				InfoLocalizedValue<String> labelInfoLocalizedValue =
+					translationInfoItemFieldValuesExporter.
+						getLabelInfoLocalizedValue();
+
+				return labelInfoLocalizedValue.getValue(
+					themeDisplay.getLocale());
+			}
+		).put(
+			"mimeType", translationInfoItemFieldValuesExporter.getMimeType()
+		);
 	}
 
 	public static List<FDSActionDropdownItem> getFDSActionDropdownItems(
@@ -792,6 +864,9 @@ public class SectionDisplayContextUtil {
 		_addAddAssetsToProjectBulkAction(
 			bulkActionDropdownItems, httpServletRequest);
 
+		_addScheduleDateBulkActionDropdownItems(
+			bulkActionDropdownItems, httpServletRequest);
+
 		_addPermissionsBulkActions(bulkActionDropdownItems, httpServletRequest);
 
 		return bulkActionDropdownItems;
@@ -841,6 +916,9 @@ public class SectionDisplayContextUtil {
 				"download-folder"
 			));
 
+		addScheduleDateFDSActionDropdownItems(
+			fdsActionDropdownItems, httpServletRequest);
+
 		return fdsActionDropdownItems;
 	}
 
@@ -852,6 +930,48 @@ public class SectionDisplayContextUtil {
 		}
 
 		return layout.getName(themeDisplay.getLocale(), true);
+	}
+
+	public static JSONArray getLocalesJSONArray(
+		Locale locale, Collection<Locale> locales) {
+
+		return JSONUtil.toJSONArray(
+			locales,
+			currentLocale -> {
+				String w3cLanguageId = LocaleUtil.toW3cLanguageId(
+					currentLocale);
+
+				return JSONUtil.put(
+					"displayName",
+					LocaleUtil.getLocaleDisplayName(currentLocale, locale)
+				).put(
+					"id", LocaleUtil.toLanguageId(currentLocale)
+				).put(
+					"label", w3cLanguageId
+				).put(
+					"languageId", LocaleUtil.toLanguageId(currentLocale)
+				).put(
+					"name", currentLocale.getDisplayName()
+				).put(
+					"symbol",
+					com.liferay.portal.kernel.util.StringUtil.toLowerCase(
+						w3cLanguageId)
+				);
+			},
+			_log);
+	}
+
+	public static List<FDSActionDropdownItem>
+		getNeedsReviewFDSActionDropdownItems(
+			HttpServletRequest httpServletRequest) {
+
+		List<FDSActionDropdownItem> fdsActionDropdownItems =
+			getFDSActionDropdownItems(httpServletRequest);
+
+		addScheduleDateFDSActionDropdownItems(
+			fdsActionDropdownItems, httpServletRequest);
+
+		return fdsActionDropdownItems;
 	}
 
 	public static Map<String, String> getObjectDefinitionCssClasses() {
@@ -910,6 +1030,34 @@ public class SectionDisplayContextUtil {
 		}
 
 		return objectEntryFolderIdsMap;
+	}
+
+	public static FDSActionDropdownItem getScheduleDateFDSActionDropdownItem(
+		String actionId, HttpServletRequest httpServletRequest) {
+
+		return FDSActionDropdownItemBuilder.setHref(
+			StringPool.POUND
+		).setIcon(
+			"date-time"
+		).setLabel(
+			LanguageUtil.get(httpServletRequest, actionId)
+		).setPermissionKey(
+			"update"
+		).build(
+			actionId
+		);
+	}
+
+	public static String getUpcomingReviewsFilterString(
+		HttpServletRequest httpServletRequest) {
+
+		return appendGroupIds(
+			appendStatus(
+				StringBundler.concat(
+					"dateReview gt now() and dateReview le ",
+					_getReviewThresholdDateString(httpServletRequest), " and ",
+					_CMS_CONTENT_FILTER_STRING)),
+			httpServletRequest);
 	}
 
 	private static void _addAddAssetsToProjectBulkAction(
@@ -1057,6 +1205,32 @@ public class SectionDisplayContextUtil {
 					httpServletRequest, "reset-to-default-permissions")
 			).build(
 				"reset-to-default-permissions"
+			));
+	}
+
+	private static void _addScheduleDateBulkActionDropdownItems(
+		List<DropdownItem> bulkActionDropdownItems,
+		HttpServletRequest httpServletRequest) {
+
+		bulkActionDropdownItems.add(
+			FDSActionDropdownItemBuilder.setHref(
+				StringPool.POUND
+			).setIcon(
+				"date-time"
+			).setLabel(
+				LanguageUtil.get(httpServletRequest, "update-expiration-date")
+			).build(
+				"update-expiration-date"
+			));
+		bulkActionDropdownItems.add(
+			FDSActionDropdownItemBuilder.setHref(
+				StringPool.POUND
+			).setIcon(
+				"date-time"
+			).setLabel(
+				LanguageUtil.get(httpServletRequest, "update-review-date")
+			).build(
+				"update-review-date"
 			));
 	}
 
@@ -1216,6 +1390,15 @@ public class SectionDisplayContextUtil {
 		}
 
 		return jsonArray;
+	}
+
+	private static String _getExpirationThresholdDateString() {
+		return Instant.now(
+		).plus(
+			7, ChronoUnit.DAYS
+		).truncatedTo(
+			ChronoUnit.SECONDS
+		).toString();
 	}
 
 	private static Map<String, String> _getFileMimeTypeMultimediaCssClasses(
@@ -1381,6 +1564,26 @@ public class SectionDisplayContextUtil {
 		);
 	}
 
+	private static String _getReviewThresholdDateString(
+		HttpServletRequest httpServletRequest) {
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
+
+		TimeZone timeZone = themeDisplay.getTimeZone();
+
+		ZonedDateTime zonedDateTime = ZonedDateTime.now(timeZone.toZoneId());
+
+		ZonedDateTime thresholdZonedDateTime = zonedDateTime.plusMonths(1);
+
+		Instant instant = thresholdZonedDateTime.toInstant();
+
+		return instant.truncatedTo(
+			ChronoUnit.SECONDS
+		).toString();
+	}
+
 	private static String[] _getRootObjectEntryFolderExternalReferenceCodes(
 		String rootObjectEntryFolderExternalReferenceCode) {
 
@@ -1393,6 +1596,14 @@ public class SectionDisplayContextUtil {
 
 		return new String[] {rootObjectEntryFolderExternalReferenceCode};
 	}
+
+	private static final String _CMS_CONTENT_FILTER_STRING =
+		StringBundler.concat(
+			"(cmsSection eq 'contents' or cmsSection eq 'files') and ",
+			"objectDefinitionExternalReferenceCode ne '",
+			ObjectEntryFolderConstants.
+				EXTERNAL_REFERENCE_CODE_OBJECT_ENTRY_FOLDER,
+			"' and rootDescendantNode eq false");
 
 	private static final String _CMS_WORKFLOW_STATUSES_STRING =
 		StringUtil.merge(CMSWorkflowConstants.STATUSES, ", ");

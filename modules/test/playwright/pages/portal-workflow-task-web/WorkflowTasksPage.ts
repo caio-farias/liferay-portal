@@ -46,6 +46,10 @@ export class WorkflowTasksPage {
 		await this.goto(siteUrl);
 
 		await this.assignedToMyRolesLink.click();
+
+		await this.page.waitForURL(/tabs1=assigned-to-my-roles/);
+
+		await this.page.waitForLoadState();
 	}
 
 	async approve(articleTitle: string) {

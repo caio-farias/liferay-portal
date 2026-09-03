@@ -280,6 +280,10 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 
 	@Override
 	public synchronized void undeploy(ObjectDefinition objectDefinition) {
+		_objectLayoutTabLocalService.
+			unregisterObjectLayoutTabScreenNavigationCategories(
+				objectDefinition);
+
 		_unregister(_getServiceRegistrationKey(objectDefinition, null));
 
 		for (String serviceRegistrationKey : _serviceRegistrations.keySet()) {

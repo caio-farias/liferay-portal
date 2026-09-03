@@ -156,7 +156,8 @@ const AccountActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 							rangeSelectors,
 						}
 					),
-					total: eventsByUserSessions?.totalEventsMetric?.value ?? 0,
+					total:
+						eventsByUserSessions?.totalPageGroupsMetric?.value ?? 0,
 				})
 			),
 		[

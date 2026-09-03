@@ -5,6 +5,10 @@
 
 package com.liferay.jenkins.results.parser;
 
+import com.liferay.jenkins.results.parser.job.property.JobPropertyFactory;
+import com.liferay.jenkins.results.parser.test.clazz.TestClassFactory;
+import com.liferay.jenkins.results.parser.test.clazz.group.JUnitBatchTestClassGroup;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -45,6 +49,8 @@ public class Test {
 
 		Environment.setInstance(new Environment());
 
+		JUnitBatchTestClassGroup.clear();
+
 		JenkinsMasterTestUtil.resetCaches();
 
 		JenkinsResultsParserUtil.setBuildProperties(new Properties());
@@ -56,7 +62,11 @@ public class Test {
 
 		jobs.clear();
 
+		JobPropertyFactory.clear();
+
 		Shell.setInstance(new Shell());
+
+		TestClassFactory.clear();
 
 		UrlReader.setInstance(new UrlReader());
 	}
@@ -124,13 +134,11 @@ public class Test {
 		return true;
 	}
 
-	protected Environment mockEnvironment(
-		Map<String, String> environmentValues) {
-
+	protected Environment mockEnvironment(Map<String, String> environmentMap) {
 		Environment environment = Mockito.mock(Environment.class);
 
 		Mockito.doAnswer(
-			invocation -> environmentValues.get(invocation.getArgument(0))
+			invocation -> environmentMap.get(invocation.getArgument(0))
 		).when(
 			environment
 		).doGet(
@@ -138,7 +146,7 @@ public class Test {
 		);
 
 		Mockito.doReturn(
-			environmentValues
+			environmentMap
 		).when(
 			environment
 		).doGetAll();
@@ -201,12 +209,12 @@ public class Test {
 		);
 	}
 
-	protected void setUrlReaderOutput(
-			String standardOut, String url, UrlReader urlReader)
+	protected void setUrlReaderException(
+			IOException ioException, String url, UrlReader urlReader)
 		throws Exception {
 
-		Mockito.doAnswer(
-			invocation -> new ByteArrayInputStream(standardOut.getBytes())
+		Mockito.doThrow(
+			ioException
 		).when(
 			urlReader
 		).doRead(
@@ -215,6 +223,34 @@ public class Test {
 			Mockito.argThat(
 				readURL -> (readURL != null) && readURL.contains(url))
 		);
+	}
+
+	protected void setUrlReaderOutput(
+			long delayMillis, String standardOut, String url,
+			UrlReader urlReader)
+		throws Exception {
+
+		Mockito.doAnswer(
+			invocation -> {
+				JenkinsResultsParserUtil.sleep(delayMillis);
+
+				return new ByteArrayInputStream(standardOut.getBytes());
+			}
+		).when(
+			urlReader
+		).doRead(
+			Mockito.anyBoolean(), Mockito.any(), Mockito.any(),
+			Mockito.anyInt(), Mockito.any(), Mockito.anyInt(), Mockito.anyInt(),
+			Mockito.argThat(
+				readURL -> (readURL != null) && readURL.contains(url))
+		);
+	}
+
+	protected void setUrlReaderOutput(
+			String standardOut, String url, UrlReader urlReader)
+		throws Exception {
+
+		setUrlReaderOutput(0, standardOut, url, urlReader);
 	}
 
 	protected void testEquals(Object expected, Object actual) {
@@ -244,6 +280,20 @@ public class Test {
 			"file:" +
 				JenkinsResultsParserUtil.getCanonicalPath(dependenciesDir),
 			"${dependencies.url}/" + path);
+	}
+
+	protected void verifyUrlReaderRead(
+			boolean checkCache, int maxRetries, int timeoutMillis,
+			UrlReader urlReader)
+		throws Exception {
+
+		Mockito.verify(
+			urlReader
+		).doRead(
+			Mockito.eq(checkCache), Mockito.any(), Mockito.any(),
+			Mockito.eq(maxRetries), Mockito.any(), Mockito.anyInt(),
+			Mockito.eq(timeoutMillis), Mockito.anyString()
+		);
 	}
 
 	protected List<File> dependenciesDirs = getDependenciesDirs(

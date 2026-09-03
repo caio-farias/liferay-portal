@@ -15,15 +15,12 @@ import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.Portal;
-import com.liferay.portal.test.rule.LiferayUnitTestRule;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Rule;
 import org.junit.Test;
 
 import org.mockito.Mock;
@@ -36,11 +33,6 @@ import org.springframework.test.util.ReflectionTestUtils;
  * @author Thiago Buarque
  */
 public class FaroProjectFilterTest {
-
-	@ClassRule
-	@Rule
-	public static final LiferayUnitTestRule liferayUnitTestRule =
-		LiferayUnitTestRule.INSTANCE;
 
 	@Before
 	public void setUp() throws Exception {
@@ -118,7 +110,7 @@ public class FaroProjectFilterTest {
 		Mockito.when(
 			jsonObject.getString("name")
 		).thenReturn(
-			ProductConstants.DATA_PLATFORM_PRIVATE_BETA_PRODUCT_ENTRY_NAME
+			ProductConstants.PRODUCT_ENTRY_NAME_DATA_PLATFORM_PRIVATE_BETA
 		);
 
 		Mockito.when(
@@ -193,7 +185,7 @@ public class FaroProjectFilterTest {
 		Mockito.when(
 			jsonObject.getString("name")
 		).thenReturn(
-			ProductConstants.DATA_PLATFORM_PRIVATE_BETA_PRODUCT_ENTRY_NAME
+			ProductConstants.PRODUCT_ENTRY_NAME_DATA_PLATFORM_PRIVATE_BETA
 		);
 
 		Mockito.when(
@@ -299,7 +291,7 @@ public class FaroProjectFilterTest {
 		Mockito.when(
 			jsonObject.getString("name")
 		).thenReturn(
-			ProductConstants.ENTERPRISE_CONTACTS_PRODUCT_ENTRY_NAME
+			ProductConstants.PRODUCT_ENTRY_NAME_ENTERPRISE_CONTACTS
 		);
 
 		Mockito.when(
@@ -372,7 +364,7 @@ public class FaroProjectFilterTest {
 		Mockito.when(
 			jsonObject.getString("name")
 		).thenReturn(
-			ProductConstants.DATA_PLATFORM_PRIVATE_BETA_PRODUCT_ENTRY_NAME
+			ProductConstants.PRODUCT_ENTRY_NAME_DATA_PLATFORM_PRIVATE_BETA
 		);
 
 		Mockito.when(

@@ -32,9 +32,3 @@ output "subnet_id" {
 output "vnet_id" {
 	value=azurerm_virtual_network.main.id
 }
-output "workload_identity_client_id" {
-	value=azurerm_user_assigned_identity.workload.client_id
-}
-output "workload_identity_id" {
-	value=azurerm_user_assigned_identity.workload.id
-}

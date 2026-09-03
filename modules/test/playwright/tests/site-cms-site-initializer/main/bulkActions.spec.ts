@@ -3297,14 +3297,7 @@ test(
 					.getByRole('button', {name: `${contentName} Actions`})
 					.click();
 
-				await page
-					.getByRole('menuitem', {exact: true, name: 'Permissions'})
-					.click();
-
-				await page
-					.getByRole('menuitem', {exact: true, name: 'Permissions'})
-					.last()
-					.click();
+				await permissionsPage.openFromActionsMenu();
 
 				await permissionsPage.checkPermissionsAndSave(
 					overriddenPermissions
@@ -3342,14 +3335,7 @@ test(
 					.getByRole('button', {name: `${contentName} Actions`})
 					.click();
 
-				await page
-					.getByRole('menuitem', {exact: true, name: 'Permissions'})
-					.click();
-
-				await page
-					.getByRole('menuitem', {exact: true, name: 'Permissions'})
-					.last()
-					.click();
+				await permissionsPage.openFromActionsMenu();
 
 				await permissionsPage.verifyPermissions([
 					{
@@ -3446,16 +3432,86 @@ test(
 					.getByRole('button', {name: `${contentName} Actions`})
 					.click();
 
-				await page
-					.getByRole('menuitem', {exact: true, name: 'Permissions'})
-					.click();
-
-				await page
-					.getByRole('menuitem', {exact: true, name: 'Permissions'})
-					.last()
-					.click();
+				await permissionsPage.openFromActionsMenu();
 
 				await permissionsPage.verifyPermissions(expected);
+			}
+		});
+	}
+);
+
+test(
+	'Duplicate CMS contents in bulk',
+	{tag: '@LPD-103464'},
+	async ({apiHelpers, assetsPage, page}) => {
+		const firstTitle = `Content ${getRandomString()}`;
+		const secondTitle = `Content ${getRandomString()}`;
+		const spaceName = `Space ${getRandomString()}`;
+
+		await test.step('Create two contents in a new Space', async () => {
+			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+				name: spaceName,
+				type: 'Space',
+			});
+
+			for (const title of [firstTitle, secondTitle]) {
+				await apiHelpers.objectEntry.postObjectEntry(
+					{
+						objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
+						title,
+					},
+					'cms/basic-web-contents',
+					spaceName
+				);
+			}
+		});
+
+		await test.step('Duplicate both contents in one bulk action', async () => {
+			await assetsPage.gotoSpaceContents(spaceName);
+
+			await assetsPage.selectItems([firstTitle, secondTitle]);
+
+			await assetsPage.execBulkItemAction('Duplicate');
+
+			await waitForModal({page});
+
+			await expect(assetsPage.modal.title).toContainText(
+				'Duplicate Items'
+			);
+
+			await assetsPage.modal.footer
+				.getByRole('button', {exact: true, name: 'Duplicate'})
+				.click();
+
+			await waitForAlert(
+				page,
+				'Info:Duplicate action started for 2 assets.',
+				{type: 'info'}
+			);
+
+			await waitForAlert(
+				page,
+				'Success:2 assets were successfully duplicated.',
+				{first: true}
+			);
+		});
+
+		await test.step('Both copies are drafts in the same Space', async () => {
+			await assetsPage.gotoSpaceContents(spaceName);
+
+			for (const title of [firstTitle, secondTitle]) {
+				const copyLink = page.getByRole('link', {
+					exact: true,
+					name: `${title} (Copy)`,
+				});
+
+				await expect(copyLink).toBeVisible();
+
+				await expect(
+					assetsPage.table.bodyRows
+						.filter({has: copyLink})
+						.getByText('Draft')
+				).toBeVisible();
 			}
 		});
 	}

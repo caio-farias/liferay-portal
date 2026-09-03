@@ -888,6 +888,12 @@ public class PropsValues {
 					PropsKeys.
 						FIELD_ENABLE_COM_LIFERAY_PORTAL_KERNEL_MODEL_ORGANIZATION_STATUS));
 
+	public static final String FIPS_AUDIT_DEPLOYMENT_INSTANCE_ID =
+		PropsUtil.get(PropsKeys.FIPS_AUDIT_DEPLOYMENT_INSTANCE_ID);
+
+	public static final String FIPS_AUDIT_PROVIDER_CMVP_CERTIFICATE_ID =
+		PropsUtil.get(PropsKeys.FIPS_AUDIT_PROVIDER_CMVP_CERTIFICATE_ID);
+
 	public static final boolean FIPS_ENABLED = GetterUtil.getBoolean(
 		PropsUtil.get(PropsKeys.FIPS_ENABLED));
 
@@ -2371,11 +2377,6 @@ public class PropsValues {
 	public static final int UPGRADE_CONCURRENT_FETCH_SIZE =
 		GetterUtil.getInteger(
 			PropsUtil.get(PropsKeys.UPGRADE_CONCURRENT_FETCH_SIZE));
-
-	public static final int UPGRADE_CONCURRENT_PROCESS_FUTURE_LIST_MAX_SIZE =
-		GetterUtil.getInteger(
-			PropsUtil.get(
-				PropsKeys.UPGRADE_CONCURRENT_PROCESS_FUTURE_LIST_MAX_SIZE));
 
 	public static final boolean UPGRADE_DATABASE_DL_STORAGE_CHECK_DISABLED =
 		GetterUtil.getBoolean(

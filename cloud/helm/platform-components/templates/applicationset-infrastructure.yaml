@@ -1,3 +1,4 @@
+{{- if .Values.infrastructure.enabled -}}
 {{- $layout := .Values.gitops.layout -}}
 {{- $name := printf "%s-%s-infra" $layout.projectId $layout.environmentId -}}
 apiVersion: argoproj.io/v1alpha1
@@ -36,6 +37,8 @@ spec:
                 -   {{- include "liferay-platform.chartSource" .Values.infrastructure | nindent 20 }}
                     helm:
                         parameters:
+                            -   name: clusterSecretStoreName
+                                value: {{ include "liferay-platform.clusterSecretStoreName" . | quote }}
                             -   name: environmentId
                                 value: {{ $layout.environmentId | quote }}
                             -   name: gateway.className
@@ -45,12 +48,7 @@ spec:
                             -   name: projectId
                                 value: {{ $layout.projectId | quote }}
                             -   name: region
-                                value: {{ .Values.clusterIdentity.region | quote }}
-                            -   name: secretStoreName
-                                value: {{ include "liferay-platform.clusterSecretStoreName" . | quote }}
-                            {{- with .Values.infrastructure.parameters }}
-                            {{- toYaml . | nindent 28 }}
-                            {{- end }}
+                                value: {{ .Values.deploymentContext.region | quote }}
                         valueFiles:
                             -   $values/{{ $layout.base }}/{{ $layout.infrastructureValuesFilename }}
                             -   $values/{{ `{{path}}` }}/{{ $layout.infrastructureValuesFilename }}
@@ -75,3 +73,4 @@ spec:
                     -   IgnoreExtraneous=true
                     -   RespectIgnoreDifferences=true
                     -   SkipDryRunOnMissingResource=true
+{{- end -}}

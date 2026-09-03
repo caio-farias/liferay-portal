@@ -5,8 +5,12 @@
 
 import {Locator, Page, expect} from '@playwright/test';
 
+import {clickAndExpectToBeVisible} from '../../utils/clickAndExpectToBeVisible';
 import {waitForAlert} from '../../utils/waitForAlert';
 import {ProcessBuilderPage} from './ProcessBuilderPage';
+
+const WORKFLOW_NAMESPACE =
+	'_com_liferay_portal_workflow_web_portlet_ControlPanelWorkflowPortlet_';
 
 export class ConfigurationTabPage {
 	readonly configurationTabLink: Locator;
@@ -23,31 +27,25 @@ export class ConfigurationTabPage {
 
 	async goTo() {
 		await this.processBuilderPage.goto();
-		await this.configurationTabLink.waitFor({state: 'visible'});
-		await this.configurationTabLink.click({force: true});
+		await this.configurationTabLink.click();
 		await this.page.waitForURL((url) =>
 			url.href.includes('=configuration')
 		);
 	}
 
-	private async clickAssetTypeEditButton(assetType: string) {
-
-		// Callers reach this tab either through goTo, which waits for the tab's
-		// own address, or by clicking the tab link themselves and continuing
-		// straight into an assignment. Until that navigation lands, the tab the
-		// caller came from is still on screen, and its management bar carries
-		// its own enabled search form, so a submit sent in that window filters
-		// that other table and leaves this one empty for good. Wait for the
-		// address before touching the search form.
-
-		await this.page.waitForURL((url) =>
-			url.href.includes('=configuration')
+	async searchAssetType(assetType: string) {
+		await this.page.goto(
+			'/group/control_panel/manage' +
+				'?p_p_id=com_liferay_portal_workflow_web_portlet_ControlPanelWorkflowPortlet' +
+				`&${WORKFLOW_NAMESPACE}tab=configuration` +
+				`&${WORKFLOW_NAMESPACE}keywords=${encodeURIComponent(assetType)}`
 		);
 
-		// The table lists every workflow enabled asset type in the instance and
-		// pages at twenty rows, which leaves a generated object definition on the
-		// boundary of the first page. Filter by name so the lookup does not
-		// depend on how many asset types the instance happens to hold.
+		await this.page.waitForLoadState('networkidle');
+	}
+
+	private async clickAssetTypeEditButton(assetType: string) {
+		await this.searchAssetType(assetType);
 
 		const editButton = this.page
 			.getByRole('row')
@@ -59,27 +57,12 @@ export class ConfigurationTabPage {
 			})
 			.getByRole('button', {name: 'Edit'});
 
-		// The search submit button is served disabled and the toolbar's script
-		// enables it only once it runs. It is the form's default button, and a
-		// form whose default button is disabled ignores Enter, so wait for the
-		// button itself before submitting. No load state can stand in for it:
-		// the tab arrives through a single page application navigation, after
-		// which load and networkidle resolve while the button is still
-		// disabled.
-
-		await expect(
-			this.page.locator('.management-bar button[type="submit"]')
-		).toBeEnabled();
-
-		const searchInput = this.page.getByPlaceholder('Search for');
-
-		await searchInput.fill(assetType);
-
-		await searchInput.press('Enter');
-
 		await expect(editButton).toBeVisible();
 
-		await editButton.click();
+		await clickAndExpectToBeVisible({
+			target: this.getAssignWorkflowDropdown(assetType),
+			trigger: editButton,
+		});
 	}
 
 	private async clickAssetTypeSaveButton(

@@ -9,6 +9,7 @@ import ClayIcon from '@clayui/icon';
 import ClayLoadingIndicator from '@clayui/loading-indicator';
 import ClaySticker from '@clayui/sticker';
 import {TrendClassification} from '@liferay/analytics-reports-js-components-web';
+import {isNullOrUndefined} from '@liferay/layout-js-components-web';
 import classNames from 'classnames';
 import React from 'react';
 
@@ -38,10 +39,9 @@ const STICKER_DISPLAY_TYPES: Record<
 
 type Props = {
 	active?: boolean;
-	color: MetricColor;
+	color?: MetricColor;
 	description?: string;
-	hoverContent?: React.ReactNode;
-	icon: string;
+	icon?: string;
 	loading?: boolean;
 	onClick?: () => void;
 	title: string;
@@ -50,43 +50,50 @@ type Props = {
 		percentage: number;
 	};
 	value?: React.ReactNode;
-};
+} & React.AriaAttributes;
 
 export default function InteractiveCard({
 	active = false,
 	color,
 	description,
-	hoverContent,
 	icon,
 	loading = false,
 	onClick,
 	title,
 	trend,
 	value,
+	...ariaAttributes
 }: Props) {
 	return (
 		<ClayButton
+			{...ariaAttributes}
 			className={classNames(
-				'cms-dashboard__interactive-card h-100 p-3 rounded-lg sheet text-left w-100',
+				'cms-dashboard__interactive-card d-flex flex-column h-100 p-3 rounded-lg sheet text-left w-100',
 				{active}
 			)}
 			displayType="unstyled"
 			onClick={onClick}
 		>
-			<div className="align-items-center d-flex">
+			<div
+				className={classNames('align-items-center d-flex', {
+					'mb-1': description,
+				})}
+			>
 				<div className="flex-grow-1">
 					<Text size={4} weight="semi-bold">
 						{title}
 					</Text>
 				</div>
 
-				<ClaySticker
-					borderless
-					className="flex-shrink-0"
-					displayType={STICKER_DISPLAY_TYPES[color]}
-				>
-					<ClayIcon symbol={icon} />
-				</ClaySticker>
+				{color && icon ? (
+					<ClaySticker
+						borderless
+						className="flex-shrink-0"
+						displayType={STICKER_DISPLAY_TYPES[color]}
+					>
+						<ClayIcon symbol={icon} />
+					</ClaySticker>
+				) : null}
 			</div>
 
 			{description ? (
@@ -95,27 +102,19 @@ export default function InteractiveCard({
 				</Text>
 			) : null}
 
-			<div className="mt-2 position-relative">
+			<div className="mt-2">
 				<div className="cms-dashboard__interactive-card__metric d-flex flex-column justify-content-center">
 					{loading ? (
-						<ClayLoadingIndicator size="sm" />
-					) : (
-						trend && (
-							<MetricValue
-								textWeight="bold"
-								trend={trend}
-								value={value}
-								valueClassName="text-lowercase"
-							/>
-						)
-					)}
+						<ClayLoadingIndicator className="my-3" size="sm" />
+					) : !isNullOrUndefined(value) ? (
+						<MetricValue
+							textWeight="bold"
+							trend={trend}
+							value={value}
+							valueClassName="text-lowercase"
+						/>
+					) : null}
 				</div>
-
-				{hoverContent ? (
-					<div className="cms-dashboard__interactive-card__hover-content position-absolute">
-						{hoverContent}
-					</div>
-				) : null}
 			</div>
 		</ClayButton>
 	);

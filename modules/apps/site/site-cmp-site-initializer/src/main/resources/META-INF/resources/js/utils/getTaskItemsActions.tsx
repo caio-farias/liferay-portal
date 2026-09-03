@@ -35,11 +35,16 @@ export default function getTaskItemsActions(
 	task: ITaskItemsActionsTask,
 	onTaskChanged?: (task: ITaskItemsActionsTask) => void
 ) {
-	const applyTaskUpdates = (updatedTask: Partial<ITaskObjectEntry>) => {
+
+	// The object entry API omits empty fields from its payload, so merging
+	// the response over the local copy cannot clear a field. Replace the
+	// local copy instead: every caller passes a complete server entry.
+
+	const applyTaskUpdates = (updatedTask: ITaskObjectEntry) => {
 		if (onTaskChanged) {
 			onTaskChanged({
 				actions: updatedTask.actions ?? task.actions,
-				embedded: {...task.embedded, ...updatedTask},
+				embedded: updatedTask,
 			});
 		}
 		else {
@@ -200,6 +205,10 @@ export default function getTaskItemsActions(
 					}) => (
 						<EditAssigneeModalContent
 							closeModal={closeModal}
+							cmpProjectObjectEntryId={
+								task.embedded
+									.r_cmpProjectToCMPTasks_c_cmpProjectId
+							}
 							cmpTaskObjectEntryId={String(task.embedded.id)}
 							cmpTaskObjectEntryTitle={task.embedded.title}
 							loadData={loadData}

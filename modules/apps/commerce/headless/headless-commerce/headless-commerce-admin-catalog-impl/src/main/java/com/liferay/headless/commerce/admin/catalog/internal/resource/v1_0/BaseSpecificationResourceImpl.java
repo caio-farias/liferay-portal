@@ -78,7 +78,7 @@ public abstract class BaseSpecificationResourceImpl
 	 * curl -X 'DELETE' 'http://localhost:8080/o/headless-commerce-admin-catalog/v1.0/specifications/{id}'  -u 'test@liferay.com:test'
 	 */
 	@io.swagger.v3.oas.annotations.Operation(
-		description = "Deletes the specification identified by id. Returns 404 when the record is not found. Side effects -- Cascades through product specification value listeners; reindexes affected products."
+		description = "Deletes the specification identified by ID. Returns 404 when the record is not found. Side effects -- Cascades through product specification value listeners; reindexes affected products."
 	)
 	@io.swagger.v3.oas.annotations.Parameters(
 		value = {
@@ -194,7 +194,7 @@ public abstract class BaseSpecificationResourceImpl
 	 * curl -X 'GET' 'http://localhost:8080/o/headless-commerce-admin-catalog/v1.0/specifications/{id}'  -u 'test@liferay.com:test'
 	 */
 	@io.swagger.v3.oas.annotations.Operation(
-		description = "Fetches the specification identified by id. Returns 404 when the id is not found."
+		description = "Fetches the specification identified by ID. Returns 404 when the ID is not found."
 	)
 	@io.swagger.v3.oas.annotations.Parameters(
 		value = {
@@ -325,10 +325,10 @@ public abstract class BaseSpecificationResourceImpl
 	/**
 	 * Invoke this method with the command line:
 	 *
-	 * curl -X 'PATCH' 'http://localhost:8080/o/headless-commerce-admin-catalog/v1.0/specifications/{id}' -d $'{"description": ___, "externalReferenceCode": ___, "facetable": ___, "key": ___, "listTypeDefinitionId": ___, "listTypeDefinitionIds": ___, "optionCategory": ___, "priority": ___, "title": ___, "visible": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
+	 * curl -X 'PATCH' 'http://localhost:8080/o/headless-commerce-admin-catalog/v1.0/specifications/{id}' -d $'{"description": ___, "externalReferenceCode": ___, "facetable": ___, "key": ___, "listTypeDefinitionExternalReferenceCodes": ___, "listTypeDefinitionId": ___, "listTypeDefinitionIds": ___, "optionCategory": ___, "priority": ___, "title": ___, "visible": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
 	 */
 	@io.swagger.v3.oas.annotations.Operation(
-		description = "Partially updates the specification identified by id. Returns 404 when the id is not found. Side effects -- Reindexes the specification and any products that reference it."
+		description = "Partially updates the specification identified by ID. Returns 404 when the ID is not found. Side effects -- Reindexes the specification and any products that reference it."
 	)
 	@io.swagger.v3.oas.annotations.Parameters(
 		value = {
@@ -363,7 +363,7 @@ public abstract class BaseSpecificationResourceImpl
 	/**
 	 * Invoke this method with the command line:
 	 *
-	 * curl -X 'PATCH' 'http://localhost:8080/o/headless-commerce-admin-catalog/v1.0/specifications/by-external-reference-code/{externalReferenceCode}' -d $'{"description": ___, "externalReferenceCode": ___, "facetable": ___, "key": ___, "listTypeDefinitionId": ___, "listTypeDefinitionIds": ___, "optionCategory": ___, "priority": ___, "title": ___, "visible": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
+	 * curl -X 'PATCH' 'http://localhost:8080/o/headless-commerce-admin-catalog/v1.0/specifications/by-external-reference-code/{externalReferenceCode}' -d $'{"description": ___, "externalReferenceCode": ___, "facetable": ___, "key": ___, "listTypeDefinitionExternalReferenceCodes": ___, "listTypeDefinitionId": ___, "listTypeDefinitionIds": ___, "optionCategory": ___, "priority": ___, "title": ___, "visible": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
 	 */
 	@io.swagger.v3.oas.annotations.Operation(
 		description = "Partially updates the specification identified by external reference code. Returns 404 when the external reference code is not found. Side effects -- Reindexes the specification and dependent products."
@@ -418,6 +418,13 @@ public abstract class BaseSpecificationResourceImpl
 			existingSpecification.setKey(specification.getKey());
 		}
 
+		if (specification.getListTypeDefinitionExternalReferenceCodes() !=
+				null) {
+
+			existingSpecification.setListTypeDefinitionExternalReferenceCodes(
+				specification.getListTypeDefinitionExternalReferenceCodes());
+		}
+
 		if (specification.getListTypeDefinitionId() != null) {
 			existingSpecification.setListTypeDefinitionId(
 				specification.getListTypeDefinitionId());
@@ -449,10 +456,10 @@ public abstract class BaseSpecificationResourceImpl
 	/**
 	 * Invoke this method with the command line:
 	 *
-	 * curl -X 'POST' 'http://localhost:8080/o/headless-commerce-admin-catalog/v1.0/specifications' -d $'{"description": ___, "externalReferenceCode": ___, "facetable": ___, "key": ___, "listTypeDefinitionId": ___, "listTypeDefinitionIds": ___, "optionCategory": ___, "priority": ___, "title": ___, "visible": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
+	 * curl -X 'POST' 'http://localhost:8080/o/headless-commerce-admin-catalog/v1.0/specifications' -d $'{"description": ___, "externalReferenceCode": ___, "facetable": ___, "key": ___, "listTypeDefinitionExternalReferenceCodes": ___, "listTypeDefinitionId": ___, "listTypeDefinitionIds": ___, "optionCategory": ___, "priority": ___, "title": ___, "visible": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
 	 */
 	@io.swagger.v3.oas.annotations.Operation(
-		description = "Creates or updates a specification by trying id, external reference code, then key for resolution. POST is upsert by external reference code -- creates a new entity when the ERC is unknown, otherwise updates the existing one. Returns 400 when the key is invalid. Side effects -- Reindexes the specification; lookups by id/ERC/key fall through with debug logging."
+		description = "Creates or updates a specification by trying ID, external reference code, then key for resolution. POST is upsert by external reference code -- creates a new entity when the ERC is unknown, otherwise updates the existing one. Returns 400 when the key is invalid. Side effects -- Reindexes the specification; lookups by ID/ERC/key fall through with debug logging."
 	)
 	@io.swagger.v3.oas.annotations.tags.Tags(
 		value = {
@@ -604,7 +611,7 @@ public abstract class BaseSpecificationResourceImpl
 	/**
 	 * Invoke this method with the command line:
 	 *
-	 * curl -X 'PUT' 'http://localhost:8080/o/headless-commerce-admin-catalog/v1.0/specifications/by-external-reference-code/{externalReferenceCode}' -d $'{"description": ___, "externalReferenceCode": ___, "facetable": ___, "key": ___, "listTypeDefinitionId": ___, "listTypeDefinitionIds": ___, "optionCategory": ___, "priority": ___, "title": ___, "visible": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
+	 * curl -X 'PUT' 'http://localhost:8080/o/headless-commerce-admin-catalog/v1.0/specifications/by-external-reference-code/{externalReferenceCode}' -d $'{"description": ___, "externalReferenceCode": ___, "facetable": ___, "key": ___, "listTypeDefinitionExternalReferenceCodes": ___, "listTypeDefinitionId": ___, "listTypeDefinitionIds": ___, "optionCategory": ___, "priority": ___, "title": ___, "visible": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
 	 */
 	@io.swagger.v3.oas.annotations.Operation(
 		description = "Creates or replaces the specification identified by external reference code. POST is upsert by external reference code -- creates a new entity when the ERC is unknown, otherwise updates the existing one. Returns 400 when the key is invalid. Side effects -- Reindexes the specification."
@@ -1444,4 +1451,4 @@ public abstract class BaseSpecificationResourceImpl
 		LogFactoryUtil.getLog(BaseSpecificationResourceImpl.class);
 
 }
-// LIFERAY-REST-BUILDER-HASH:1319584215
+// LIFERAY-REST-BUILDER-HASH:-1067238553

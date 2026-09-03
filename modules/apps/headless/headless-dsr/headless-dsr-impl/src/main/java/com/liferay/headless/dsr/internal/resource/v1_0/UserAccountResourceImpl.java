@@ -16,6 +16,7 @@ import com.liferay.notification.model.NotificationTemplate;
 import com.liferay.notification.service.NotificationTemplateLocalService;
 import com.liferay.notification.type.NotificationType;
 import com.liferay.notification.type.NotificationTypeServiceTracker;
+import com.liferay.object.exception.ObjectEntryExpirationDateException;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.service.ObjectEntryService;
@@ -29,9 +30,11 @@ import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.Ticket;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.model.UserGroupRole;
 import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.portlet.PortletURLFactoryUtil;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
@@ -96,6 +99,8 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 
 		Group group = _getGroup(roomId);
 
+		_checkAssignMembersPermission(group, userAccountId);
+
 		LiveUsers.leaveGroup(
 			contextCompany.getCompanyId(), group.getGroupId(), userAccountId);
 
@@ -137,10 +142,11 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 
 		_checkPermission(group, userAccount.getRoleKey());
 
+		_validate(userAccount.getMembershipExpirationDate());
+
 		User user = _userLocalService.getUser(userAccountId);
 
-		_userGroupRoleLocalService.deleteUserGroupRoles(
-			new long[] {user.getUserId()}, group.getGroupId());
+		_checkAssignMembersPermission(group, user.getUserId());
 
 		if (Validator.isNotNull(userAccount.getRoleKey())) {
 			Role role = _roleLocalService.getRole(
@@ -153,6 +159,9 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 						RoleConstants.getTypeLabel(role.getType()), " is not ",
 						RoleConstants.getTypeLabel(RoleConstants.TYPE_SITE)));
 			}
+
+			_userGroupRoleLocalService.deleteUserGroupRoles(
+				new long[] {user.getUserId()}, group.getGroupId());
 
 			_userGroupRoleLocalService.addUserGroupRoles(
 				user.getUserId(), group.getGroupId(),
@@ -172,6 +181,8 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 		if (Validator.isNull(userAccount.getEmailAddress())) {
 			throw new ValidationException("Email Address is null");
 		}
+
+		_validate(userAccount.getMembershipExpirationDate());
 
 		ObjectEntry objectEntry = _getObjectEntry(true, roomId);
 
@@ -365,6 +376,27 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 			membershipExpirationDate, new ServiceContext());
 	}
 
+	private void _checkAssignMembersPermission(Group group, long userId)
+		throws Exception {
+
+		PermissionChecker permissionChecker =
+			PermissionThreadLocal.getPermissionChecker();
+
+		if (permissionChecker.isGroupAdmin(group.getGroupId()) ||
+			permissionChecker.isGroupOwner(group.getGroupId())) {
+
+			return;
+		}
+
+		if (_getRolePriority(group.getGroupId(), contextUser.getUserId()) <=
+				_getRolePriority(group.getGroupId(), userId)) {
+
+			throw new PrincipalException.MustHavePermission(
+				permissionChecker, Group.class.getName(), group.getGroupId(),
+				ActionKeys.ASSIGN_MEMBERS);
+		}
+	}
+
 	private void _checkPermission(Group group, String roleKey)
 		throws Exception {
 
@@ -428,6 +460,22 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 		return objectEntry;
 	}
 
+	private int _getRolePriority(long groupId, long userId) throws Exception {
+		int rolePriority = 0;
+
+		for (UserGroupRole userGroupRole :
+				_userGroupRoleLocalService.getUserGroupRoles(userId, groupId)) {
+
+			Role role = userGroupRole.getRole();
+
+			rolePriority = Math.max(
+				rolePriority,
+				_rolePrioritiesMap.getOrDefault(role.getName(), 0));
+		}
+
+		return rolePriority;
+	}
+
 	private void _initThemeDisplay(long groupId) throws Exception {
 		ThemeDisplay themeDisplay =
 			(ThemeDisplay)contextHttpServletRequest.getAttribute(
@@ -467,6 +515,25 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 				contextUser),
 			user);
 	}
+
+	private void _validate(Date expirationDate) throws Exception {
+		if ((expirationDate != null) && expirationDate.before(new Date())) {
+			throw new ObjectEntryExpirationDateException(
+				"Expiration date must be a future date",
+				"expiration-date-must-be-a-future-date");
+		}
+	}
+
+	private static final Map<String, Integer> _rolePrioritiesMap =
+		HashMapBuilder.put(
+			DSRRoleConstants.NAME_DSR_CONTENT_CONTRIBUTOR, 1
+		).put(
+			DSRRoleConstants.NAME_DSR_ROOM_COLLABORATOR, 2
+		).put(
+			RoleConstants.SITE_ADMINISTRATOR, 3
+		).put(
+			RoleConstants.SITE_OWNER, 4
+		).build();
 
 	@Reference
 	private AccountEntryUserRelLocalService _accountEntryUserRelLocalService;

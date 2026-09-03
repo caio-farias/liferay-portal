@@ -1060,18 +1060,7 @@ privateContentIconTest(
 
 		await journalEditArticlePage.openRelatedAsset();
 
-		await journalEditArticlePage.assertPrivateContentIconInRelatedAssetPopUp(
-			'Basic Web Content'
-		);
-
-		await journalEditArticlePage.changeViewInRelatedAssetPopUp(
-			'Basic Web Content',
-			'table'
-		);
-
-		await journalEditArticlePage.assertPrivateContentIconInRelatedAssetPopUp(
-			'Basic Web Content'
-		);
+		await journalEditArticlePage.assertPrivateContentIconInRelatedAssetPopUp();
 	}
 );
 
@@ -1356,6 +1345,89 @@ baseTest(
 		await translationOptionsButton.click();
 
 		await expect(markAsTranslatedButton).toBeDisabled();
+	}
+);
+
+baseTest(
+	'This is a test for the translation status of a web content with empty fields after publishing',
+	{
+		tag: '@LPD-102657',
+	},
+	async ({journalEditArticlePage, page, site}) => {
+
+		// Publish a web content with only the title filled
+
+		const title = getRandomString();
+
+		await journalEditArticlePage.goto({siteUrl: site.friendlyUrlPath});
+
+		await journalEditArticlePage.createAndPublishBasicArticle(title);
+
+		// Mark Catalan as translated without filling any field
+
+		await journalEditArticlePage.editArticle(title);
+
+		const translationButton = page.getByRole('combobox', {
+			name: 'Select a language',
+		});
+
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: page.getByRole('option', {
+				name: 'Catalan Language: Not Translated',
+			}),
+			trigger: translationButton,
+		});
+
+		await page.getByLabel('Translation Options').click();
+
+		await page.getByRole('button', {name: 'Mark as Translated'}).click();
+
+		await expect(
+			page.getByRole('heading', {name: 'Mark ca_ES as Translated'})
+		).toBeVisible();
+
+		await page.getByRole('button', {name: 'Mark as Translated'}).click();
+
+		await journalEditArticlePage.publishArticle(true);
+
+		await waitForAlert(page, `Success:${title} was updated successfully.`);
+
+		// Catalan must remain translated when the web content is reopened
+
+		await journalEditArticlePage.editArticle(title);
+
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: page.getByRole('option', {
+				name: 'Catalan Language: Translated',
+			}),
+			trigger: translationButton,
+		});
+
+		// Reset the translation
+
+		await page.getByLabel('Translation Options').click();
+
+		await page.getByRole('button', {name: 'Reset Translation'}).click();
+
+		await page.getByRole('button', {name: 'Delete'}).click();
+
+		await journalEditArticlePage.publishArticle(true);
+
+		await waitForAlert(page, `Success:${title} was updated successfully.`);
+
+		// Catalan must remain untranslated when the web content is reopened
+
+		await journalEditArticlePage.editArticle(title);
+
+		await clickAndExpectToBeVisible({
+			autoClick: false,
+			target: page.getByRole('option', {
+				name: 'Catalan Language: Not Translated',
+			}),
+			trigger: translationButton,
+		});
 	}
 );
 

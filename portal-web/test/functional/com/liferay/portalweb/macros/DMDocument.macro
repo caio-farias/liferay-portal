@@ -679,9 +679,7 @@ definition {
 		}
 
 		if (isSet(dmDocumentRelatedAsset)) {
-			RelatedAssets.selectAsset(
-				assetTitle = ${assetTitle},
-				assetType = ${assetType});
+			RelatedAssets.selectAsset(assetTitle = ${assetTitle});
 		}
 
 		if (isSet(tagNameList)) {
@@ -1349,9 +1347,7 @@ definition {
 			locator1 = "TextInput#ANY",
 			value1 = ${copyLimit});
 
-		Button.clickSave();
-
-		Alert.viewSuccessMessage();
+		SystemSettings.saveConfiguration();
 	}
 
 	@summary = "Default summary"

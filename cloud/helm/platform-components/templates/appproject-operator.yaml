@@ -1,3 +1,7 @@
+{{- $repoURLs := list -}}
+{{- range $operatorApplication := .Values.operatorApplications -}}
+{{- $repoURLs = append $repoURLs $operatorApplication.repoURL -}}
+{{- end -}}
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
@@ -18,9 +22,10 @@ spec:
         {{- range $operatorApplication := .Values.operatorApplications }}
         -   namespace: {{ $operatorApplication.namespace }}
             server: https://kubernetes.default.svc
+        {{- range $extraDestinationNamespace := $operatorApplication.extraDestinationNamespaces }}
+        -   namespace: {{ $extraDestinationNamespace }}
+            server: https://kubernetes.default.svc
+        {{- end }}
         {{- end }}
     sourceRepos:
-        {{- range $operatorApplication := .Values.operatorApplications }}
-        -   {{ $operatorApplication.repoURL }}
-        -   {{ $operatorApplication.repoURL }}/*
-        {{- end }}
+        {{- include "liferay-platform.sourceRepos" $repoURLs | nindent 8 }}

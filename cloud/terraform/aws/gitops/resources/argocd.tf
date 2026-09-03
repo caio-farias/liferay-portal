@@ -225,7 +225,7 @@ resource "kubernetes_manifest" "infrastructure_provider_application" {
 				merge(
 					{
 						helm={
-							parameters=[
+							parameters=concat([
 								{
 									name="aws.accountId"
 									value=local.account_id
@@ -271,10 +271,14 @@ resource "kubernetes_manifest" "infrastructure_provider_application" {
 									value=var.gateway_namespace
 								},
 								{
+									name="liferay-dxp-operator.marketplace.csi.volumeHandle"
+									value=data.aws_efs_file_system.marketplace.file_system_id
+								},
+								{
 									name="liferayServiceAccountRoleName"
 									value=local.liferay_service_account_role_name
 								},
-							]
+							], local.dxp_operator_parameters)
 							valueFiles=[
 								"$values/${var.infrastructure_git_repo_config.source_paths.system}/${var.infrastructure_git_repo_config.source_paths.infrastructure_provider_values_filename}",
 							]
@@ -379,6 +383,10 @@ resource "kubernetes_manifest" "liferay_applicationset" {
 								helm={
 									parameters=[
 										{
+											name="${local.liferay_helm_chart_config.values_scope_prefix}marketplace.csi.volumeHandle"
+											value=data.aws_efs_file_system.marketplace.file_system_id
+										},
+										{
 											name="${local.liferay_helm_chart_config.values_scope_prefix}network.gatewayName"
 											value=local.gateway_name
 										},
@@ -441,6 +449,11 @@ resource "kubernetes_manifest" "liferay_applicationset" {
 							jsonPointers=["/data"]
 							kind="Secret"
 							name="liferay-default"
+						},
+						{
+							group="apps"
+							kind="StatefulSet"
+							managedFieldsManagers=["liferay-dxp-operator"]
 						},
 					]
 					syncPolicy={

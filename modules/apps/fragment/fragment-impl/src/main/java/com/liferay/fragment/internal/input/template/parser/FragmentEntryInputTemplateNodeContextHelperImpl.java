@@ -1004,6 +1004,10 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			infoField.getUniqueId());
 
 		if (!(infoParameterMapValue instanceof RelatedInfoFieldValue<?>)) {
+			if (infoParameterMapValue == null) {
+				return StringPool.BLANK;
+			}
+
 			if (infoParameterMapValue instanceof Map) {
 				return _parseLocalizedValues(
 					infoField, (Map<Locale, ?>)infoParameterMapValue);
@@ -1092,7 +1096,7 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			if (availableLocales.contains(locale)) {
 				inputLabel = labelInfoLocalizedValue.getValue(locale);
 			}
-			else {
+			else if (inputLabelJSONObject != null) {
 				inputLabel = inputLabelJSONObject.getString(
 					_language.getLanguageId(LocaleUtil.getSiteDefault()));
 			}

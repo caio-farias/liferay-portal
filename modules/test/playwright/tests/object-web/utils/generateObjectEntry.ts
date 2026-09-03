@@ -53,10 +53,7 @@ function generateObjectEntryValue({
 }) {
 	const listTypeEntriesRandomLength1 = listTypeEntriesName
 		? Math.floor(Math.random() * listTypeEntriesName.length)
-		: '';
-	const listTypeEntriesRandomLength2 = listTypeEntriesName
-		? Math.floor(Math.random() * listTypeEntriesName.length)
-		: '';
+		: 0;
 
 	switch (objectFieldBusinessType) {
 		case 'Assignee':
@@ -68,7 +65,9 @@ function generateObjectEntryValue({
 		case 'DateTime':
 			return getRandomDateTime(objectEntryFormat);
 		case 'Decimal':
-			return parseFloat(Math.random().toFixed(10)).toString();
+			return parseFloat(
+				(0.001 + Math.random() * 0.998).toFixed(10)
+			).toString();
 		case 'Encrypted':
 			return getRandomString();
 		case 'Integer':
@@ -80,7 +79,10 @@ function generateObjectEntryValue({
 		case 'MultiselectPicklist':
 			return [
 				listTypeEntriesName[listTypeEntriesRandomLength1],
-				listTypeEntriesName[listTypeEntriesRandomLength2],
+				listTypeEntriesName[
+					(listTypeEntriesRandomLength1 + 1) %
+						listTypeEntriesName.length
+				],
 			];
 		case 'Picklist':
 			return {

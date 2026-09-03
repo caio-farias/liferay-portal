@@ -20,6 +20,7 @@ exports[`SalesforceOverview should render 1`] = `
             <a
               aria-label="Back"
               class="text-secondary"
+              data-discover="true"
               href="/workspace/23"
             >
               <svg
@@ -296,6 +297,7 @@ exports[`SalesforceOverview should render 1`] = `
             >
               <a
                 class="breadcrumb-text-truncate breadcrumb-link"
+                data-discover="true"
                 href="/workspace/23/settings/data-source"
               >
                 Data Sources
@@ -724,7 +726,7 @@ exports[`SalesforceOverview should render 1`] = `
                   <p
                     class="text-4 text-secondary"
                   >
-                    Properties let you consolidate data from individuals, accounts, campaigns, sites, and commerce channels in one place. An individual's data is available in every property they are assigned to.
+                    Properties let you consolidate data from individuals, accounts, campaigns, and sites in one place. An individual's data is available in every property they are assigned to.
                   </p>
                   <div
                     class="mb-4"

@@ -14,6 +14,7 @@ import EventDefinitionQuery from 'event-analysis/queries/EventDefinitionQuery';
 import EventDefinitionsQuery from 'event-analysis/queries/EventDefinitionsQuery';
 import EventMetricQuery from 'shared/queries/EventMetricQuery';
 import EventPropertiesQuery from 'segment/segment-editor/dynamic/queries/EventPropertiesQuery';
+import EventsTrendQuery from 'shared/queries/EventsTrendQuery';
 import getInterestsQuery from 'contacts/queries/InterestsQuery';
 import IndividualInterestsQuery from 'shared/queries/IndividualInterestsQuery';
 import IndividualMetricsQuery from 'shared/queries/IndividualMetricsQuery';
@@ -62,7 +63,10 @@ import {
 import {getSafeRangeSelectors} from 'shared/util/util';
 import {INTERVAL_KEY_MAP} from 'shared/util/time';
 import {isArray, mapValues, range} from 'lodash';
-import {PageAudienceReportQuery} from 'shared/components/audience-report/queries';
+import {
+	PageAudienceReportQuery,
+	PageSegmentQuery,
+} from 'shared/components/audience-report/queries';
 
 const METRIC_TYPENAME_MAP = {
 	histogram: 'HistogramMetric',
@@ -273,20 +277,22 @@ export function mockAssetTabsReq({metrics, name, rangeKey}) {
 	};
 }
 
+const AUDIENCE_REPORT_VARIABLES = {
+	channelId: '456',
+	devices: 'Any',
+	location: 'Any',
+	rangeEnd: null,
+	rangeKey: 30,
+	rangeStart: null,
+	title: 'Home Page',
+	touchpoint: 'https://www.liferay.com',
+};
+
 export function mockAudienceReportReq({queryProps}) {
 	return {
 		request: {
 			query: PageAudienceReportQuery(queryProps),
-			variables: {
-				channelId: '456',
-				devices: 'Any',
-				location: 'Any',
-				rangeEnd: null,
-				rangeKey: 30,
-				rangeStart: null,
-				title: 'Home Page',
-				touchpoint: 'https://www.liferay.com',
-			},
+			variables: AUDIENCE_REPORT_VARIABLES,
 		},
 		result: {
 			data: {
@@ -302,6 +308,25 @@ export function mockAudienceReportReq({queryProps}) {
 							segmentedAnonymousUsersCount: null,
 							segmentedKnownUsersCount: 2,
 						},
+					},
+				},
+			},
+		},
+	};
+}
+
+export function mockSegmentReq({queryProps}) {
+	return {
+		request: {
+			query: PageSegmentQuery(queryProps),
+			variables: AUDIENCE_REPORT_VARIABLES,
+		},
+		result: {
+			data: {
+				page: {
+					__typename: 'PageMetric',
+					viewsMetric: {
+						__typename: 'Metric',
 						segment: {
 							__typename: 'MetricBag',
 							metrics: [
@@ -2217,18 +2242,6 @@ export const mockEventMetrics = (variables) => ({
 	},
 });
 
-export function mockCommerceTotalOrderValueReq({Query, data, variables}) {
-	return {
-		request: {
-			query: Query,
-			variables,
-		},
-		result: {
-			data,
-		},
-	};
-}
-
 export const mockSessions = (variables) => ({
 	request: {
 		query: UserSessionQuery,
@@ -2250,6 +2263,10 @@ export const mockSessions = (variables) => ({
 			eventsByUserSessions: {
 				__typename: 'EventsByUserSession',
 				totalEvents: 14314,
+				totalPageGroupsMetric: {
+					__typename: 'Metric',
+					value: 42,
+				},
 				userSessions: [
 					{
 						__typename: 'UserSession',
@@ -2268,6 +2285,7 @@ export const mockSessions = (variables) => ({
 								createDate: 'Mon Dec 06 17:28:48 GMT 2021',
 								name: 'tabBlurred',
 								pageDescription: '',
+								pageGroupId: 'http://localhost:8080',
 								pageKeywords: '',
 								pageTitle: 'Home - Liferay DXP',
 								referrer: '',
@@ -2282,6 +2300,39 @@ export const mockSessions = (variables) => ({
 							'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36',
 					},
 				],
+			},
+		},
+	},
+});
+
+export const mockEventsTrend = (variables) => ({
+	request: {
+		query: EventsTrendQuery,
+		variables: {
+			channelId: '123123',
+			entityId: '0',
+			entityType: 'INDIVIDUAL',
+			keywords: '',
+			rangeEnd: null,
+			rangeKey: 30,
+			rangeStart: null,
+			...variables,
+		},
+	},
+	result: {
+		data: {
+			eventsByUserSessions: {
+				__typename: 'EventsByUserSession',
+				totalEventsMetric: {
+					__typename: 'Metric',
+					previousValue: 45,
+					trend: {
+						__typename: 'Trend',
+						percentage: 22.5,
+						trendClassification: 'POSITIVE',
+					},
+					value: 56,
+				},
 			},
 		},
 	},
@@ -2432,6 +2483,7 @@ const DEFAULT_ACCOUNT_USER_SESSIONS = [
 				eventId: 'pageViewed',
 				name: 'pageViewed',
 				pageDescription: '',
+				pageGroupId: 'https://liferay.com/home',
 				pageKeywords: '',
 				pageTitle: 'Home',
 				properties: [],
@@ -2458,7 +2510,7 @@ export const mockAccountUserSessionsReq = ({
 	rangeKey = 30,
 	sessions = DEFAULT_ACCOUNT_USER_SESSIONS,
 	size = 2,
-	totalEvents = 1,
+	totalPageGroups = 1,
 } = {}) => ({
 	request: {
 		query: AccountUserSessionQuery,
@@ -2479,9 +2531,9 @@ export const mockAccountUserSessionsReq = ({
 		data: {
 			eventsByUserSessions: {
 				__typename: 'EventsByUserSession',
-				totalEventsMetric: {
+				totalPageGroupsMetric: {
 					__typename: 'Metric',
-					value: totalEvents,
+					value: totalPageGroups,
 				},
 				userSessions: sessions,
 			},

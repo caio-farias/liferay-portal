@@ -1,9 +1,10 @@
+{{- if .Values.infrastructureProvider.enabled -}}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
     annotations:
         argocd.argoproj.io/compare-options: IgnoreExtraneous
-        argocd.argoproj.io/sync-wave: "-60"
+        argocd.argoproj.io/sync-wave: "-80"
     finalizers:
         -   resources-finalizer.argocd.argoproj.io
     labels:
@@ -20,21 +21,14 @@ spec:
         -   {{- include "liferay-platform.chartSource" .Values.infrastructureProvider | nindent 12 }}
             helm:
                 parameters:
-                    {{- range $key, $value := .Values.clusterIdentity }}
-                    -   name: clusterIdentity.{{ $key }}
-                        value: {{ $value | quote }}
-                    {{- end }}
                     -   name: crossplaneNamespace
                         value: {{ .Values.operatorApplications.crossplane.namespace | quote }}
-                    -   name: deploymentName
-                        value: {{ .Values.clusterIdentity.deploymentName | quote }}
-                    -   name: gateway.className
-                        value: liferay-gateway-class
-                    -   name: gateway.namespace
-                        value: {{ .Values.operatorApplications.envoyGateway.namespace | quote }}
-                    {{- with .Values.infrastructureProvider.parameters }}
-                    {{- toYaml . | nindent 20 }}
+                    {{- range $key, $value := .Values.deploymentContext }}
+                    -   name: deploymentContext.{{ $key }}
+                        value: {{ $value | quote }}
                     {{- end }}
+                    -   name: deploymentName
+                        value: {{ .Values.deploymentContext.deploymentName | quote }}
                 valueFiles:
                     -   $values/{{ .Values.gitops.layout.system }}/{{ .Values.gitops.layout.infrastructureProviderValuesFilename }}
         -   ref: values
@@ -53,3 +47,4 @@ spec:
         syncOptions:
             -   CreateNamespace=true
             -   SkipDryRunOnMissingResource=true
+{{- end -}}

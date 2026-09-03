@@ -152,7 +152,14 @@ export class ObjectFieldsPage {
 				.click();
 		}
 
+		const navigation = this.page.waitForNavigation({
+			timeout: 10000,
+			waitUntil: 'load',
+		});
+
 		await this.saveButton.click();
+
+		await navigation;
 	}
 
 	async deleteObjectField(confirmDeletion: boolean, nth: number) {
@@ -250,6 +257,17 @@ export class ObjectFieldsPage {
 		await this.page.locator('.fds-side-panel').waitFor({state: 'hidden'});
 
 		await waitForPageToBeLoaded(this.page);
+	}
+
+	async saveObjectFieldReturningNavigation() {
+		const navigation = this.page.waitForNavigation({
+			timeout: 10000,
+			waitUntil: 'load',
+		});
+
+		await this.editFieldSaveButton.click();
+
+		return {navigation};
 	}
 
 	async selectDefaultValue(value: string) {

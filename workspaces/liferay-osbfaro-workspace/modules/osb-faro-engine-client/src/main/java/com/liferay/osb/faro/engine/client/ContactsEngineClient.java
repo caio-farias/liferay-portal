@@ -14,6 +14,7 @@ import com.liferay.osb.faro.engine.client.model.AccountLifecycleStageMetric;
 import com.liferay.osb.faro.engine.client.model.AccountLifecycleStatus;
 import com.liferay.osb.faro.engine.client.model.AccountMetric;
 import com.liferay.osb.faro.engine.client.model.AccountName;
+import com.liferay.osb.faro.engine.client.model.AcquisitionParameter;
 import com.liferay.osb.faro.engine.client.model.Activity;
 import com.liferay.osb.faro.engine.client.model.ActivityAggregation;
 import com.liferay.osb.faro.engine.client.model.ActivityAsset;
@@ -199,7 +200,8 @@ public interface ContactsEngineClient {
 
 	public Results<Individual> getAccountIndividuals(
 		FaroProject faroProject, String accountId, String channelId,
-		String query, int cur, int delta, String sortString);
+		String query, String rangeEnd, Integer rangeKey, String rangeStart,
+		int cur, int delta, String sortString);
 
 	public Results<IndividualSegment> getAccountIndividualSegments(
 		FaroProject faroProject, String accountId, String channelId,
@@ -258,6 +260,9 @@ public interface ContactsEngineClient {
 		String filterString, String individualSegmentId, int count,
 		int numberOfBins, List<OrderByField> orderByFields);
 
+	public List<AcquisitionParameter> getAcquisitionParameters(
+		FaroProject faroProject, String channelId);
+
 	public Results<Activity> getActivities(
 		FaroProject faroProject, String ownerId, String ownerType,
 		String groupId, String query, Date startDate, Date endDate, int action,
@@ -303,9 +308,9 @@ public interface ContactsEngineClient {
 
 	public Results<AssetSummaryCategory> getAssetSummaryCategories(
 		FaroProject faroProject, String accountId, long channelId,
-		String keywords, String rangeEnd, int rangeKey, String rangeStart,
-		String selectedMetric, String sort, String vocabularyId, int cur,
-		int delta);
+		String individualId, String keywords, String rangeEnd, int rangeKey,
+		String rangeStart, String selectedMetric, String sort,
+		String vocabularyId, int cur, int delta);
 
 	public Results<AssetSummaryMimeType> getAssetSummaryMimeTypes(
 		FaroProject faroProject, long channelId, String rangeEnd, int rangeKey,
@@ -313,8 +318,9 @@ public interface ContactsEngineClient {
 
 	public Results<AssetSummaryTag> getAssetSummaryTags(
 		FaroProject faroProject, String accountId, long channelId,
-		String keywords, String rangeEnd, int rangeKey, String rangeStart,
-		String selectedMetric, String sort, int cur, int delta);
+		String individualId, String keywords, String rangeEnd, int rangeKey,
+		String rangeStart, String selectedMetric, String sort, int cur,
+		int delta);
 
 	public Results<AssetSummaryType> getAssetSummaryTypes(
 		FaroProject faroProject, long channelId, String rangeEnd, int rangeKey,

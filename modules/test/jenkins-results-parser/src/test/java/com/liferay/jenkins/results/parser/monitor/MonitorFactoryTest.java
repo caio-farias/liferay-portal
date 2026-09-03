@@ -21,6 +21,23 @@ public class MonitorFactoryTest
 	extends com.liferay.jenkins.results.parser.Test {
 
 	@Test
+	public void testNewMonitorHTTPEndpoint() {
+		Properties monitorProperties = new Properties();
+
+		monitorProperties.setProperty(
+			"monitor[a].parameter[url]",
+			"https://" + RandomTestUtil.randomString());
+		monitorProperties.setProperty("monitor[a].type", "http-endpoint");
+
+		List<MonitorConfig> monitorConfigs =
+			MonitorConfigLoader.getMonitorConfigs(monitorProperties);
+
+		Monitor monitor = MonitorFactory.newMonitor(monitorConfigs.get(0));
+
+		Assert.assertTrue(monitor instanceof HTTPEndpointMonitor);
+	}
+
+	@Test
 	public void testNewMonitorJobHealth() {
 		String masterName = RandomTestUtil.randomString();
 
@@ -48,6 +65,49 @@ public class MonitorFactoryTest
 		_testNewMonitorExpectedIllegalArgumentException(
 			new MonitorConfig(
 				"a", 0, null, MonitorConfig.Severity.MEDIUM, null, 60, null));
+	}
+
+	@Test
+	public void testNewMonitorReportFreshness() {
+		Properties monitorProperties = new Properties();
+
+		monitorProperties.setProperty("monitor[a].parameter[cadence]", "3600");
+		monitorProperties.setProperty(
+			"monitor[a].parameter[report.name]", RandomTestUtil.randomString());
+		monitorProperties.setProperty(
+			"monitor[a].parameter[url]",
+			"file:///" + RandomTestUtil.randomString());
+		monitorProperties.setProperty("monitor[a].type", "report-freshness");
+
+		List<MonitorConfig> monitorConfigs =
+			MonitorConfigLoader.getMonitorConfigs(monitorProperties);
+
+		Monitor monitor = MonitorFactory.newMonitor(monitorConfigs.get(0));
+
+		Assert.assertTrue(monitor instanceof ReportFreshnessMonitor);
+	}
+
+	@Test
+	public void testNewMonitorResourceThreshold() {
+		String masterName = RandomTestUtil.randomString();
+
+		JenkinsMasterTestUtil.getJenkinsMaster(
+			masterName, "http://" + masterName);
+
+		Properties monitorProperties = new Properties();
+
+		monitorProperties.setProperty(
+			"monitor[a].parameter[master.name]", masterName);
+		monitorProperties.setProperty("monitor[a].parameter[metric]", "ram");
+		monitorProperties.setProperty("monitor[a].threshold[warn]", "80");
+		monitorProperties.setProperty("monitor[a].type", "resource-threshold");
+
+		List<MonitorConfig> monitorConfigs =
+			MonitorConfigLoader.getMonitorConfigs(monitorProperties);
+
+		Monitor monitor = MonitorFactory.newMonitor(monitorConfigs.get(0));
+
+		Assert.assertTrue(monitor instanceof ResourceThresholdMonitor);
 	}
 
 	@Test

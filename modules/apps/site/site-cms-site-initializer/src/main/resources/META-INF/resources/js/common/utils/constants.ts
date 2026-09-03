@@ -24,6 +24,10 @@ export const FDS_EVENT_UPDATE_DISPLAY = 'fds-update-display';
 
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+export const NO_VALUE = '--';
+
+export const UPCOMING_REVIEWS_THRESHOLD_MONTHS = 1;
+
 export const ASSET_STATUS = {
 	APPROVED: 'approved',
 	DENIED: 'denied',
@@ -91,6 +95,8 @@ export const WORKFLOW_STATUS = {
 	APPROVED: 0,
 	DRAFT: 2,
 	EXPIRED: 3,
+	PENDING: 1,
+	SCHEDULED: 7,
 } as const;
 
 export type WorkflowStatus =
@@ -99,5 +105,6 @@ export type WorkflowStatus =
 export const FDS_FILTER_ID = {
 	DATE_EXPIRATION: 'dateExpiration',
 	DATE_REVIEW: 'dateReview',
+	SCOPE_GROUP_ID: 'scopeGroupId',
 	STATUS: 'status',
 } as const;

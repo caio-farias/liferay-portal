@@ -13,6 +13,7 @@ import {objectPagesTest} from '../../../fixtures/objectPagesTest';
 import {usersAndOrganizationsPagesTest} from '../../../fixtures/usersAndOrganizationsPagesTest';
 import {getRandomInt} from '../../../utils/getRandomInt';
 import {performUserSwitch, userData} from '../../../utils/performLogin';
+import {waitForAlert} from '../../../utils/waitForAlert';
 import {generateObjectFields} from '../utils/generateObjectFields';
 
 const test = mergeTests(
@@ -109,9 +110,11 @@ test('can anonymize object entries', async ({
 
 	await personalDataErasurePage.anonymizeButton.click();
 
+	await waitForAlert(page, undefined, {first: true});
+
 	await usersAndOrganizationsPage.goToUsers();
 
-	await usersAndOrganizationsPage.filterUsers('inactive');
+	await usersAndOrganizationsPage.filterUsers('Inactive');
 
 	await viewObjectEntriesPage.goto(objectDefinition.className);
 
@@ -265,9 +268,11 @@ test('can delete object entries via personal data management', async ({
 
 	await personalDataErasurePage.deleteMenuItem.click();
 
+	await waitForAlert(page);
+
 	await usersAndOrganizationsPage.goToUsers(true);
 
-	await usersAndOrganizationsPage.filterUsers('inactive');
+	await usersAndOrganizationsPage.filterUsers('Inactive');
 
 	await usersAndOrganizationsPage.activateUsers([userAccount.name]);
 

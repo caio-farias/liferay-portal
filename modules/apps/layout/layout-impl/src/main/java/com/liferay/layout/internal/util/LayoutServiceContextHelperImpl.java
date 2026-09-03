@@ -373,6 +373,27 @@ public class LayoutServiceContextHelperImpl
 			ThemeDisplay themeDisplay = ThemeDisplayFactory.create();
 
 			themeDisplay.setCompany(company);
+			themeDisplay.setPortalDomain(company.getVirtualHostname());
+
+			boolean secure = _isSecure();
+
+			int portalServerPort = _portal.getPortalServerPort(secure);
+
+			themeDisplay.setPortalURL(
+				_portal.getPortalURL(
+					company.getVirtualHostname(), portalServerPort, secure));
+
+			themeDisplay.setPathMain(_portal.getPathMain());
+			themeDisplay.setPermissionChecker(permissionChecker);
+			themeDisplay.setRealUser(user);
+			themeDisplay.setScopeGroupId(_group.getGroupId());
+			themeDisplay.setSecure(secure);
+			themeDisplay.setServerName(company.getVirtualHostname());
+			themeDisplay.setServerPort(portalServerPort);
+			themeDisplay.setSignedIn(!user.isGuestUser());
+			themeDisplay.setSiteGroupId(_group.getGroupId());
+			themeDisplay.setTimeZone(user.getTimeZone());
+			themeDisplay.setUser(user);
 
 			if (_layout != null) {
 				themeDisplay.setLanguageId(_layout.getDefaultLanguageId());
@@ -424,25 +445,6 @@ public class LayoutServiceContextHelperImpl
 				themeDisplay.setLocale(locale);
 				themeDisplay.setSiteDefaultLocale(locale);
 			}
-
-			themeDisplay.setPermissionChecker(permissionChecker);
-			themeDisplay.setPortalDomain(company.getVirtualHostname());
-
-			boolean secure = _isSecure();
-
-			int portalServerPort = _portal.getPortalServerPort(secure);
-
-			themeDisplay.setPortalURL(
-				_portal.getPortalURL(
-					company.getVirtualHostname(), portalServerPort, secure));
-
-			themeDisplay.setRealUser(user);
-			themeDisplay.setScopeGroupId(_group.getGroupId());
-			themeDisplay.setServerName(company.getVirtualHostname());
-			themeDisplay.setServerPort(portalServerPort);
-			themeDisplay.setSiteGroupId(_group.getGroupId());
-			themeDisplay.setTimeZone(user.getTimeZone());
-			themeDisplay.setUser(user);
 
 			return themeDisplay;
 		}
@@ -496,6 +498,8 @@ public class LayoutServiceContextHelperImpl
 				WebKeys.CTX, _httpServletRequest.getAttribute(WebKeys.CTX)
 			).put(
 				WebKeys.LAYOUT, _httpServletRequest.getAttribute(WebKeys.LAYOUT)
+			).put(
+				WebKeys.LOCALE, _httpServletRequest.getAttribute(WebKeys.LOCALE)
 			).put(
 				WebKeys.THEME_DISPLAY,
 				_httpServletRequest.getAttribute(WebKeys.THEME_DISPLAY)

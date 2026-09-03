@@ -77,6 +77,7 @@ import {JSONWebServicesLayoutSetPrototypeApiHelper} from './json-web-services/JS
 import {JSONWebServicesMBApiHelper} from './json-web-services/JSONWebServicesMBApiHelper';
 import {JSONWebServicesOSBAsahApiHelper} from './json-web-services/JSONWebServicesOSBAsahApiHelper';
 import {JSONWebServicesOSBFaroApiHelper} from './json-web-services/JSONWebServicesOSBFaroApiHelper';
+import {JSONWebServicesPushNotificationsDeviceApiHelper} from './json-web-services/JSONWebServicesPushNotificationsDeviceApiHelper';
 import {JSONWebServicesResourcePermissionApiHelper} from './json-web-services/JSONWebServicesResourcePermissionApiHelper';
 import {JSONWebServicesRoleApiHelper} from './json-web-services/JSONWebServicesRoleApiHelper';
 import {JSONWebServicesSegmentsEntryApiHelper} from './json-web-services/JSONWebServicesSegmentsEntryApiHelper';
@@ -112,12 +113,6 @@ export function clearAuthToken(page: Page) {
 }
 
 export async function readAuthToken(page: Page) {
-
-	// Read the token when the caller knows the page is settled, which is right
-	// after signing in, and keep it for the session it belongs to. Reading it
-	// while a request is being built instead is what fails: a navigation racing
-	// the evaluation destroys the execution context and kills it.
-
 	const authToken = await page.evaluate(() => Liferay.authToken);
 
 	authTokens.set(page.context(), authToken);
@@ -204,6 +199,7 @@ export class ApiHelpers {
 	readonly jsonWebServicesMBApiHelper: JSONWebServicesMBApiHelper;
 	readonly jsonWebServicesOSBAsah: JSONWebServicesOSBAsahApiHelper;
 	readonly jsonWebServicesOSBFaro: JSONWebServicesOSBFaroApiHelper;
+	readonly jsonWebServicesPushNotificationsDevice: JSONWebServicesPushNotificationsDeviceApiHelper;
 	readonly jsonWebServicesResourcePermissionApiHelper: JSONWebServicesResourcePermissionApiHelper;
 	readonly jsonWebServicesRole: JSONWebServicesRoleApiHelper;
 	readonly jsonWebServicesSegmentsEntry: JSONWebServicesSegmentsEntryApiHelper;
@@ -319,6 +315,8 @@ export class ApiHelpers {
 		this.jsonWebServicesMBApiHelper = new JSONWebServicesMBApiHelper(this);
 		this.jsonWebServicesOSBFaro = new JSONWebServicesOSBFaroApiHelper(this);
 		this.jsonWebServicesOSBAsah = new JSONWebServicesOSBAsahApiHelper(this);
+		this.jsonWebServicesPushNotificationsDevice =
+			new JSONWebServicesPushNotificationsDeviceApiHelper(this);
 		this.jsonWebServicesResourcePermissionApiHelper =
 			new JSONWebServicesResourcePermissionApiHelper(this);
 		this.jsonWebServicesRole = new JSONWebServicesRoleApiHelper(this);
@@ -383,11 +381,6 @@ export class ApiHelpers {
 		if (headers || response.status() !== 403) {
 			return response;
 		}
-
-		// The token belongs to the session that was live when it was read, so
-		// a test that has signed in again since leaves it stale and the portal
-		// answers Forbidden. Read it again and retry once, rather than failing
-		// the caller with a Forbidden body it cannot interpret.
 
 		clearAuthToken(this.page);
 
@@ -731,6 +724,11 @@ export class DataApiHelpers extends ApiHelpers {
 			}
 			else if (item.type === 'productConfigurationList') {
 				await this.headlessCommerceAdminCatalog.deleteProductConfigurationList(
+					item.id
+				);
+			}
+			else if (item.type === 'pushNotificationsDevice') {
+				await this.jsonWebServicesPushNotificationsDevice.deletePushNotificationsDevice(
 					item.id
 				);
 			}

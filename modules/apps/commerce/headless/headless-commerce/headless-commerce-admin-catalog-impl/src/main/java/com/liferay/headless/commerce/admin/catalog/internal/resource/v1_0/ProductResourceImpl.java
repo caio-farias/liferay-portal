@@ -41,6 +41,7 @@ import com.liferay.commerce.product.service.CPInstanceUnitOfMeasureService;
 import com.liferay.commerce.product.service.CPOptionCategoryService;
 import com.liferay.commerce.product.service.CPOptionService;
 import com.liferay.commerce.product.service.CPSpecificationOptionService;
+import com.liferay.commerce.product.service.CPTaxCategoryLocalService;
 import com.liferay.commerce.product.service.CProductLocalService;
 import com.liferay.commerce.product.service.CommerceCatalogLocalService;
 import com.liferay.commerce.product.service.CommerceChannelRelService;
@@ -105,11 +106,15 @@ import com.liferay.headless.commerce.core.util.DateConfig;
 import com.liferay.headless.commerce.core.util.ExpandoUtil;
 import com.liferay.headless.commerce.core.util.LanguageUtils;
 import com.liferay.headless.common.spi.odata.entity.EntityFieldsUtil;
+import com.liferay.journal.service.JournalArticleService;
 import com.liferay.petra.function.UnsafeFunction;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.change.tracking.CTAware;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
+import com.liferay.portal.kernel.exception.NoSuchModelException;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Sort;
@@ -117,6 +122,7 @@ import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
+import com.liferay.portal.kernel.service.GroupService;
 import com.liferay.portal.kernel.service.RepositoryLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.settings.CompanyServiceSettingsLocator;
@@ -143,6 +149,7 @@ import com.liferay.portal.vulcan.pagination.Pagination;
 import com.liferay.portal.vulcan.util.SearchUtil;
 import com.liferay.upload.UniqueFileNameProvider;
 
+import jakarta.ws.rs.NotSupportedException;
 import jakarta.ws.rs.core.MultivaluedMap;
 
 import java.io.Serializable;
@@ -173,12 +180,113 @@ import org.osgi.service.component.annotations.ServiceScope;
 public class ProductResourceImpl extends BaseProductResourceImpl {
 
 	@Override
+	public void create(
+			Collection<Product> products, Map<String, Serializable> parameters)
+		throws Exception {
+
+		UnsafeFunction<Product, Product, Exception> unsafeFunction = null;
+
+		String createStrategy = (String)parameters.getOrDefault(
+			"createStrategy", "INSERT");
+
+		if (StringUtil.equalsIgnoreCase(createStrategy, "INSERT")) {
+			unsafeFunction = product -> postProduct(product);
+		}
+
+		if (StringUtil.equalsIgnoreCase(createStrategy, "UPSERT")) {
+			String updateStrategy = (String)parameters.getOrDefault(
+				"updateStrategy", "UPDATE");
+
+			if (StringUtil.equalsIgnoreCase(updateStrategy, "PARTIAL_UPDATE")) {
+				unsafeFunction = product -> {
+					try {
+						Product getProduct = getProductByExternalReferenceCode(
+							product.getExternalReferenceCode());
+
+						return patchProduct(getProduct.getProductId(), product);
+					}
+					catch (NoSuchModelException noSuchModelException) {
+						if (_log.isDebugEnabled()) {
+							_log.debug(noSuchModelException);
+						}
+
+						return postProduct(product);
+					}
+				};
+			}
+
+			if (StringUtil.equalsIgnoreCase(updateStrategy, "UPDATE")) {
+				unsafeFunction = product -> putProductByExternalReferenceCode(
+					product.getExternalReferenceCode(), product);
+			}
+		}
+
+		if (unsafeFunction == null) {
+			throw new NotSupportedException(
+				"Create strategy \"" + createStrategy +
+					"\" is not supported for Product");
+		}
+
+		if (contextBatchUnsafeBiConsumer != null) {
+			contextBatchUnsafeBiConsumer.accept(products, unsafeFunction);
+		}
+		else if (contextBatchUnsafeConsumer != null) {
+			contextBatchUnsafeConsumer.accept(products, unsafeFunction::apply);
+		}
+		else {
+			for (Product product : products) {
+				unsafeFunction.apply(product);
+			}
+		}
+	}
+
+	@Override
 	public void delete(
 			Collection<Product> products, Map<String, Serializable> parameters)
 		throws Exception {
 
-		for (Product product : products) {
-			deleteProduct(product.getProductId());
+		UnsafeFunction<Product, Product, Exception> unsafeFunction =
+			product -> {
+				if (product.getProductId() != null) {
+					try {
+						deleteProduct(product.getProductId());
+
+						return product;
+					}
+					catch (Exception exception) {
+						if (_log.isDebugEnabled()) {
+							_log.debug(exception);
+						}
+
+						if (product.getExternalReferenceCode() != null) {
+							deleteProductByExternalReferenceCode(
+								product.getExternalReferenceCode());
+
+							return product;
+						}
+					}
+				}
+				else if (product.getExternalReferenceCode() != null) {
+					deleteProductByExternalReferenceCode(
+						product.getExternalReferenceCode());
+
+					return product;
+				}
+
+				throw new UnsupportedOperationException(
+					"Unable to delete by external reference code or ID");
+			};
+
+		if (contextBatchUnsafeBiConsumer != null) {
+			contextBatchUnsafeBiConsumer.accept(products, unsafeFunction);
+		}
+		else if (contextBatchUnsafeConsumer != null) {
+			contextBatchUnsafeConsumer.accept(products, unsafeFunction::apply);
+		}
+		else {
+			for (Product product : products) {
+				unsafeFunction.apply(product);
+			}
 		}
 	}
 
@@ -459,8 +567,38 @@ public class ProductResourceImpl extends BaseProductResourceImpl {
 			Collection<Product> products, Map<String, Serializable> parameters)
 		throws Exception {
 
-		for (Product product : products) {
-			patchProduct(product.getProductId(), product);
+		UnsafeFunction<Product, Product, Exception> unsafeFunction = null;
+
+		String updateStrategy = (String)parameters.getOrDefault(
+			"updateStrategy", "UPDATE");
+
+		if (StringUtil.equalsIgnoreCase(updateStrategy, "PARTIAL_UPDATE")) {
+			unsafeFunction = product -> {
+				if (product.getProductId() != null) {
+					return patchProduct(product.getProductId(), product);
+				}
+
+				return patchProductByExternalReferenceCode(
+					product.getExternalReferenceCode(), product);
+			};
+		}
+
+		if (unsafeFunction == null) {
+			throw new NotSupportedException(
+				"Update strategy \"" + updateStrategy +
+					"\" is not supported for Product");
+		}
+
+		if (contextBatchUnsafeBiConsumer != null) {
+			contextBatchUnsafeBiConsumer.accept(products, unsafeFunction);
+		}
+		else if (contextBatchUnsafeConsumer != null) {
+			contextBatchUnsafeConsumer.accept(products, unsafeFunction::apply);
+		}
+		else {
+			for (Product product : products) {
+				unsafeFunction.apply(product);
+			}
 		}
 	}
 
@@ -1169,8 +1307,9 @@ public class ProductResourceImpl extends BaseProductResourceImpl {
 		if (productTaxConfiguration != null) {
 			cpDefinition =
 				ProductTaxConfigurationUtil.updateCPDefinitionTaxCategoryInfo(
-					_cpDefinitionService, productTaxConfiguration,
-					cpDefinition);
+					contextCompany.getCompanyId(), cpDefinition,
+					_cpDefinitionService, _cpTaxCategoryLocalService,
+					productTaxConfiguration, contextUser.getUserId());
 		}
 
 		// Product specifications
@@ -1491,6 +1630,7 @@ public class ProductResourceImpl extends BaseProductResourceImpl {
 					cpDefinition, productVirtualSettings,
 					_cpDefinitionVirtualSettingService,
 					_cpdVirtualSettingFileEntryService, _dlAppService,
+					_groupService, _journalArticleService,
 					_repositoryLocalService, _uniqueFileNameProvider,
 					serviceContext);
 			}
@@ -1669,8 +1809,8 @@ public class ProductResourceImpl extends BaseProductResourceImpl {
 
 		if (!Validator.isBlank(product.getExternalReferenceCode())) {
 			_cpDefinitionService.updateExternalReferenceCode(
-				product.getExternalReferenceCode(),
-				cpDefinition.getCPDefinitionId());
+				cpDefinition.getCPDefinitionId(),
+				product.getExternalReferenceCode());
 		}
 
 		Map<String, ?> expando = product.getExpando();
@@ -1705,6 +1845,9 @@ public class ProductResourceImpl extends BaseProductResourceImpl {
 
 		return cpDefinition;
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		ProductResourceImpl.class);
 
 	@Reference
 	private AccountGroupRelLocalService _accountGroupRelLocalService;
@@ -1811,6 +1954,9 @@ public class ProductResourceImpl extends BaseProductResourceImpl {
 	private CPSpecificationOptionService _cpSpecificationOptionService;
 
 	@Reference
+	private CPTaxCategoryLocalService _cpTaxCategoryLocalService;
+
+	@Reference
 	private CPTypeRegistry _cpTypeRegistry;
 
 	@Reference
@@ -1845,6 +1991,12 @@ public class ProductResourceImpl extends BaseProductResourceImpl {
 
 	@Reference
 	private GroupLocalService _groupLocalService;
+
+	@Reference
+	private GroupService _groupService;
+
+	@Reference
+	private JournalArticleService _journalArticleService;
 
 	@Reference
 	private Portal _portal;

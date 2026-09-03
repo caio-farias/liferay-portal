@@ -5,18 +5,23 @@
 
 package com.liferay.analytics.cms.rest.internal.resource.v1_0;
 
+import com.liferay.analytics.cms.rest.dto.v1_0.Metric;
 import com.liferay.analytics.cms.rest.dto.v1_0.PerformanceMetric;
 import com.liferay.analytics.cms.rest.internal.client.AnalyticsCloudClient;
 import com.liferay.analytics.cms.rest.internal.depot.entry.util.DepotEntryUtil;
 import com.liferay.analytics.cms.rest.resource.v1_0.PerformanceMetricResource;
 import com.liferay.analytics.settings.rest.manager.AnalyticsSettingsManager;
+import com.liferay.analytics.settings.rest.util.AnalyticsSettingsManagerUtil;
 import com.liferay.petra.io.StreamUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.license.util.LicenseManagerUtil;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.StringUtil;
 
-import jakarta.ws.rs.BadRequestException;
+import jakarta.validation.ValidationException;
+
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 
@@ -50,9 +55,22 @@ public class PerformanceMetricResourceImpl
 
 		_validateMetricType(metricType);
 
+		AnalyticsSettingsManagerUtil.checkAnalyticsEnabled(
+			_analyticsSettingsManager, contextCompany.getCompanyId());
+
 		Long[] groupIds = DepotEntryUtil.getGroupIds(
 			DepotEntryUtil.getDepotEntries(
+				ActionKeys.VIEW_SITE_ADMINISTRATION,
 				contextCompany.getCompanyId(), depotEntryIds));
+
+		if (ArrayUtil.isEmpty(groupIds)) {
+			PerformanceMetric performanceMetric = new PerformanceMetric();
+
+			performanceMetric.setMetricType(() -> metricType);
+			performanceMetric.setMetrics(() -> new Metric[0]);
+
+			return performanceMetric;
+		}
 
 		AnalyticsCloudClient analyticsCloudClient = new AnalyticsCloudClient(
 			_http);
@@ -73,9 +91,20 @@ public class PerformanceMetricResourceImpl
 
 		_validateMetricType(metricType);
 
+		AnalyticsSettingsManagerUtil.checkAnalyticsEnabled(
+			_analyticsSettingsManager, contextCompany.getCompanyId());
+
 		Long[] groupIds = DepotEntryUtil.getGroupIds(
 			DepotEntryUtil.getDepotEntries(
+				ActionKeys.VIEW_SITE_ADMINISTRATION,
 				contextCompany.getCompanyId(), depotEntryIds));
+
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return _getResponse(
+				groupBy,
+				outputStream -> {
+				});
+		}
 
 		AnalyticsCloudClient analyticsCloudClient = new AnalyticsCloudClient(
 			_http);
@@ -86,15 +115,9 @@ public class PerformanceMetricResourceImpl
 			null, Arrays.asList(groupIds), null, metricType,
 			_getPath(groupBy) + "/export", rangeKey, null);
 
-		return Response.ok(
-			(StreamingOutput)outputStream -> StreamUtil.transfer(
-				inputStream, outputStream)
-		).header(
-			"Content-Disposition",
-			StringBundler.concat(
-				"attachment; filename=performance-metric-",
-				StringUtil.toLowerCase(groupBy), "-", LocalDate.now(), ".csv")
-		).build();
+		return _getResponse(
+			groupBy,
+			outputStream -> StreamUtil.transfer(inputStream, outputStream));
 	}
 
 	private String _getPath(String groupBy) {
@@ -106,7 +129,20 @@ public class PerformanceMetricResourceImpl
 			return "/geolocation";
 		}
 
-		throw new BadRequestException("Invalid group by: " + groupBy);
+		throw new ValidationException("Invalid group by: " + groupBy);
+	}
+
+	private Response _getResponse(
+		String groupBy, StreamingOutput streamingOutput) {
+
+		return Response.ok(
+			streamingOutput
+		).header(
+			"Content-Disposition",
+			StringBundler.concat(
+				"attachment; filename=performance-metric-",
+				StringUtil.toLowerCase(groupBy), "-", LocalDate.now(), ".csv")
+		).build();
 	}
 
 	private void _validateMetricType(String metricType) {
@@ -115,7 +151,7 @@ public class PerformanceMetricResourceImpl
 			!StringUtil.equalsIgnoreCase(metricType, "readsMetric") &&
 			!StringUtil.equalsIgnoreCase(metricType, "viewsMetric")) {
 
-			throw new BadRequestException("Invalid metric type: " + metricType);
+			throw new ValidationException("Invalid metric type: " + metricType);
 		}
 	}
 

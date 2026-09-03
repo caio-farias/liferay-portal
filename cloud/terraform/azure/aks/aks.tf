@@ -1,10 +1,3 @@
-resource "azurerm_federated_identity_credential" "liferay" {
-	audience=["api://AzureADTokenExchange"]
-	issuer=azurerm_kubernetes_cluster.main.oidc_issuer_url
-	name="${var.deployment_name}-liferay-default"
-	subject="system:serviceaccount:${local.deployment_namespace}:liferay-default"
-	user_assigned_identity_id=azurerm_user_assigned_identity.workload.id
-}
 resource "azurerm_kubernetes_cluster" "main" {
 	automatic_upgrade_channel="stable"
 	azure_policy_enabled=true
@@ -30,6 +23,11 @@ resource "azurerm_kubernetes_cluster" "main" {
 		only_critical_addons_enabled=true
 		os_disk_type="Ephemeral"
 		temporary_name_for_rotation="systemtmp"
+		upgrade_settings {
+			drain_timeout_in_minutes=0
+			max_surge="10%"
+			node_soak_duration_in_minutes=0
+		}
 		vm_size=var.machine_type
 		vnet_subnet_id=azurerm_subnet.main.id
 	}
@@ -60,6 +58,7 @@ resource "azurerm_kubernetes_cluster" "main" {
 		service_cidr=var.service_cidr
 	}
 	node_provisioning_profile {
+		default_node_pools="None"
 		mode="Auto"
 	}
 }

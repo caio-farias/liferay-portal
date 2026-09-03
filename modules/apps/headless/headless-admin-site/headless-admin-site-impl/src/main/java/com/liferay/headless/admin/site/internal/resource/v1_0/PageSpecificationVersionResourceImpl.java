@@ -5,13 +5,21 @@
 
 package com.liferay.headless.admin.site.internal.resource.v1_0;
 
+import com.liferay.client.extension.type.manager.CETManager;
+import com.liferay.fragment.processor.FragmentEntryProcessorRegistry;
+import com.liferay.headless.admin.site.dto.v1_0.ContentPageSpecification;
+import com.liferay.headless.admin.site.dto.v1_0.PageSpecification;
 import com.liferay.headless.admin.site.dto.v1_0.PageSpecificationVersion;
 import com.liferay.headless.admin.site.dto.v1_0.SitePage;
 import com.liferay.headless.admin.site.internal.dto.v1_0.util.DTOConverterContextUtil;
+import com.liferay.headless.admin.site.internal.resource.v1_0.util.LayoutUtil;
+import com.liferay.headless.admin.site.internal.resource.v1_0.util.PageSpecificationVersionUtil;
+import com.liferay.headless.admin.site.internal.resource.v1_0.util.ServiceContextUtil;
 import com.liferay.headless.admin.site.internal.util.EnabledUtil;
 import com.liferay.headless.admin.site.internal.util.SitePageUtil;
 import com.liferay.headless.admin.site.resource.v1_0.PageSpecificationVersionResource;
 import com.liferay.headless.common.spi.util.GroupUtil;
+import com.liferay.info.item.InfoItemServiceRegistry;
 import com.liferay.layout.content.model.LayoutContentVersion;
 import com.liferay.layout.content.service.LayoutContentVersionLocalService;
 import com.liferay.layout.content.service.LayoutContentVersionService;
@@ -54,12 +62,16 @@ public class PageSpecificationVersionResourceImpl
 
 		EnabledUtil.checkPageSpecificationVersionEnabled(contextCompany);
 
-		Layout layout = _getLayout(
-			false, siteExternalReferenceCode, sitePageExternalReferenceCode);
+		Layout layout = PageSpecificationVersionUtil.getLayout(
+			contextCompany.getCompanyId(), siteExternalReferenceCode,
+			sitePageExternalReferenceCode);
 
-		LayoutContentVersion layoutContentVersion = _getLayoutContentVersion(
-			pageSpecificationVersionExternalReferenceCode,
-			layout.fetchDraftLayout(), siteExternalReferenceCode);
+		LayoutContentVersion layoutContentVersion =
+			PageSpecificationVersionUtil.getLayoutContentVersion(
+				contextCompany.getCompanyId(),
+				pageSpecificationVersionExternalReferenceCode,
+				layout.fetchDraftLayout(), _layoutContentVersionService,
+				siteExternalReferenceCode);
 
 		_layoutContentVersionService.deleteLayoutContentVersion(
 			layoutContentVersion.getLayoutContentVersionId());
@@ -74,17 +86,19 @@ public class PageSpecificationVersionResourceImpl
 
 		EnabledUtil.checkPageSpecificationVersionEnabled(contextCompany);
 
-		Layout layout = _getLayout(
-			false, siteExternalReferenceCode, sitePageExternalReferenceCode);
+		Layout layout = PageSpecificationVersionUtil.getLayout(
+			contextCompany.getCompanyId(), siteExternalReferenceCode,
+			sitePageExternalReferenceCode);
 
 		Layout draftLayout = layout.fetchDraftLayout();
 
 		return _toPageSpecificationVersion(
 			_layoutContentVersionLocalService.
 				getLatestApprovedLayoutContentVersionId(draftLayout.getPlid()),
-			_getLayoutContentVersion(
+			PageSpecificationVersionUtil.getLayoutContentVersion(
+				contextCompany.getCompanyId(),
 				pageSpecificationVersionExternalReferenceCode, draftLayout,
-				siteExternalReferenceCode),
+				_layoutContentVersionService, siteExternalReferenceCode),
 			siteExternalReferenceCode, sitePageExternalReferenceCode);
 	}
 
@@ -101,8 +115,15 @@ public class PageSpecificationVersionResourceImpl
 
 		EnabledUtil.checkPageSpecificationVersionEnabled(contextCompany);
 
-		Layout layout = _getLayout(
-			true, siteExternalReferenceCode, sitePageExternalReferenceCode);
+		Layout layout = SitePageUtil.getSitePageLayout(
+			GroupUtil.getGroupId(
+				false, true, contextCompany.getCompanyId(),
+				siteExternalReferenceCode),
+			sitePageExternalReferenceCode);
+
+		if (!layout.isTypeContent()) {
+			return Page.of(Collections.emptyList());
+		}
 
 		Layout draftLayout = layout.fetchDraftLayout();
 
@@ -117,6 +138,48 @@ public class PageSpecificationVersionResourceImpl
 				layoutContentVersion -> _toPageSpecificationVersion(
 					latestApprovedLayoutContentVersionId, layoutContentVersion,
 					siteExternalReferenceCode, sitePageExternalReferenceCode)));
+	}
+
+	@Override
+	public PageSpecification postSiteSitePagePageSpecificationVersionRestore(
+			String siteExternalReferenceCode,
+			String sitePageExternalReferenceCode,
+			String pageSpecificationVersionExternalReferenceCode)
+		throws Exception {
+
+		EnabledUtil.checkPageSpecificationVersionEnabled(contextCompany);
+
+		Layout layout = PageSpecificationVersionUtil.getLayout(
+			contextCompany.getCompanyId(), siteExternalReferenceCode,
+			sitePageExternalReferenceCode);
+
+		Layout draftLayout = layout.fetchDraftLayout();
+
+		LayoutContentVersion layoutContentVersion =
+			PageSpecificationVersionUtil.getLayoutContentVersion(
+				contextCompany.getCompanyId(),
+				pageSpecificationVersionExternalReferenceCode, draftLayout,
+				_layoutContentVersionService, siteExternalReferenceCode);
+
+		draftLayout = LayoutUtil.updateLayout(
+			_cetManager, _fragmentEntryProcessorRegistry,
+			_infoItemServiceRegistry, draftLayout, layout.getNameMap(),
+			layout.getTitleMap(), layout.getDescriptionMap(),
+			draftLayout.getKeywordsMap(), draftLayout.getRobotsMap(),
+			draftLayout.getFriendlyURLMap(),
+			ContentPageSpecification.unsafeToDTO(
+				layoutContentVersion.getData()),
+			WorkflowConstants.STATUS_DRAFT,
+			ServiceContextUtil.createServiceContext(
+				layout.getGroupId(), contextHttpServletRequest,
+				contextUser.getUserId()));
+
+		return _pageSpecificationDTOConverter.toDTO(
+			DTOConverterContextUtil.getDTOConverterContext(
+				contextAcceptLanguage, _dtoConverterRegistry,
+				contextHttpServletRequest, draftLayout.getPlid(),
+				contextUriInfo, contextUser),
+			draftLayout);
 	}
 
 	private Map<String, String> _addAction(
@@ -166,47 +229,13 @@ public class PageSpecificationVersionResourceImpl
 			_addAction(
 				layoutContentVersion, "getSiteSitePagePageSpecificationVersion",
 				templateParameterMap)
+		).put(
+			"restore",
+			_addAction(
+				layoutContentVersion,
+				"postSiteSitePagePageSpecificationVersionRestore",
+				templateParameterMap)
 		).build();
-	}
-
-	private Layout _getLayout(
-			boolean allowLiveGroup, String siteExternalReferenceCode,
-			String sitePageExternalReferenceCode)
-		throws Exception {
-
-		Layout layout = SitePageUtil.getSitePageLayout(
-			GroupUtil.getGroupId(
-				false, allowLiveGroup, contextCompany.getCompanyId(),
-				siteExternalReferenceCode),
-			sitePageExternalReferenceCode);
-
-		if (!layout.isTypeContent()) {
-			throw new IllegalArgumentException(
-				"The page must be a content page");
-		}
-
-		return layout;
-	}
-
-	private LayoutContentVersion _getLayoutContentVersion(
-			String externalReferenceCode, Layout layout,
-			String siteExternalReferenceCode)
-		throws Exception {
-
-		LayoutContentVersion layoutContentVersion =
-			_layoutContentVersionService.
-				getLayoutContentVersionByExternalReferenceCode(
-					externalReferenceCode,
-					GroupUtil.getStagingAwareGroupId(
-						contextCompany.getCompanyId(),
-						siteExternalReferenceCode));
-
-		if (layoutContentVersion.getPlid() != layout.getPlid()) {
-			throw new IllegalArgumentException(
-				"The page specification version must belong to the site page");
-		}
-
-		return layoutContentVersion;
 	}
 
 	private PageSpecificationVersion _toPageSpecificationVersion(
@@ -230,7 +259,16 @@ public class PageSpecificationVersionResourceImpl
 	}
 
 	@Reference
+	private CETManager _cetManager;
+
+	@Reference
 	private DTOConverterRegistry _dtoConverterRegistry;
+
+	@Reference
+	private FragmentEntryProcessorRegistry _fragmentEntryProcessorRegistry;
+
+	@Reference
+	private InfoItemServiceRegistry _infoItemServiceRegistry;
 
 	@Reference
 	private LayoutContentVersionLocalService _layoutContentVersionLocalService;
@@ -242,6 +280,12 @@ public class PageSpecificationVersionResourceImpl
 		target = "(model.class.name=com.liferay.portal.kernel.model.Layout)"
 	)
 	private ModelResourcePermission<Layout> _layoutModelResourcePermission;
+
+	@Reference(
+		target = "(component.name=com.liferay.headless.admin.site.internal.dto.v1_0.converter.PageSpecificationDTOConverter)"
+	)
+	private DTOConverter<Layout, PageSpecification>
+		_pageSpecificationDTOConverter;
 
 	@Reference(
 		target = "(component.name=com.liferay.headless.admin.site.internal.dto.v1_0.converter.PageSpecificationVersionDTOConverter)"

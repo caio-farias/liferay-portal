@@ -3,10 +3,11 @@ import ProfileCardWithDataCDP from '../ProfileCardWithDataCDP';
 import React from 'react';
 import {act, fireEvent, render} from '@testing-library/react';
 import {Individual} from 'shared/util/records';
-import {MemoryRouter, Route} from 'react-router-dom';
+import {MemoryRouter, Route, Routes as RouterRoutes} from 'react-router-dom';
 import {MockedProvider} from '@apollo/client/testing';
 import {
 	mockEventMetrics,
+	mockEventsTrend,
 	mockPreferenceReq,
 	mockSessions,
 	mockTimeRangeReq,
@@ -26,7 +27,12 @@ const DefaultComponent = ({children}: {children: React.ReactNode}) => (
 				'/workspace/23/123123/contacts/individuals/known-individuals/4423123123',
 			]}
 		>
-			<Route path={Routes.CONTACTS_INDIVIDUAL}>{children}</Route>
+			<RouterRoutes>
+				<Route
+					element={children}
+					path={`${Routes.CONTACTS_INDIVIDUAL}/*`}
+				/>
+			</RouterRoutes>
 		</MemoryRouter>
 	</Provider>
 );
@@ -41,6 +47,9 @@ describe('IndividualProfileCard', () => {
 				<MockedProvider
 					mocks={[
 						mockEventMetrics({
+							rangeKey: 30,
+						}),
+						mockEventsTrend({
 							rangeKey: 30,
 						}),
 						mockTimeRangeReq(),
@@ -79,12 +88,15 @@ describe('IndividualProfileCard', () => {
 		expect(getByPlaceholderText('Search')).toBeInTheDocument();
 	});
 
-	it('does not render the activities trend summary', async () => {
-		const {container} = render(
+	it('renders the activities count and the trend versus the previous period', async () => {
+		const {container, getByText} = render(
 			<DefaultComponent>
 				<MockedProvider
 					mocks={[
 						mockEventMetrics({
+							rangeKey: 30,
+						}),
+						mockEventsTrend({
 							rangeKey: 30,
 						}),
 						mockTimeRangeReq(),
@@ -120,7 +132,9 @@ describe('IndividualProfileCard', () => {
 
 		await waitForLoadingToBeRemoved(container);
 
-		expect(container.querySelector('.trend-summary')).toBeNull();
+		expect(container.querySelector('.trend-summary')).toBeInTheDocument();
+		expect(getByText('56 Activities')).toBeInTheDocument();
+		expect(getByText('22.5%')).toBeInTheDocument();
 	});
 
 	it('should clear search input when X clear button is clicked', async () => {
@@ -129,23 +143,30 @@ describe('IndividualProfileCard', () => {
 				<MockedProvider
 					mocks={[
 						mockEventMetrics(),
+						mockEventsTrend(),
 						mockTimeRangeReq(),
 						mockPreferenceReq(),
 						mockSessions(),
 						mockEventMetrics(),
+						mockEventsTrend(),
 						mockSessions(),
 						mockEventMetrics(),
+						mockEventsTrend(),
 						mockSessions(),
 						mockTimeRangeReq(),
 						mockEventMetrics(),
+						mockEventsTrend(),
 						mockSessions(),
 						mockTimeRangeReq(),
 						mockEventMetrics(searchKeyword),
+						mockEventsTrend(searchKeyword),
 						mockTimeRangeReq(),
 						mockSessions(searchKeyword),
 						mockEventMetrics(searchKeyword),
+						mockEventsTrend(searchKeyword),
 						mockSessions(searchKeyword),
 						mockEventMetrics(searchKeyword),
+						mockEventsTrend(searchKeyword),
 						mockSessions(searchKeyword),
 					]}
 				>

@@ -178,6 +178,31 @@ definition {
 
 		PortletEntry.publish();
 
+		AssertElementNotPresent(
+			key_text = "Publish",
+			locator1 = "Button#ANY");
+
+		var portalURL = JSONCompany.getPortalURL();
+		var userPassword = PropsUtil.get("default.admin.password");
+
+		var curl = '''
+			${portalURL}/o/object-admin/v1.0/object-definitions?filter=name%20eq%20%27CustomObject73%27 \
+				-u test@liferay.com:${userPassword} \
+				-H accept:application/json
+		''';
+
+		var objectDefinitionsResponse = JSONCurlUtil.get(${curl});
+
+		echo("Object definitions answer after publish: ${objectDefinitionsResponse}");
+
+		var objectDefinitionStatus = JSONCurlUtil.get(${curl}, "$.items[0].status.label");
+
+		echo("Persisted status after publish: ${objectDefinitionStatus}");
+
+		TestUtils.assertEquals(
+			actual = ${objectDefinitionStatus},
+			expected = "approved");
+
 		ObjectAdmin.openObjectAdmin();
 
 		AssertTextEquals(

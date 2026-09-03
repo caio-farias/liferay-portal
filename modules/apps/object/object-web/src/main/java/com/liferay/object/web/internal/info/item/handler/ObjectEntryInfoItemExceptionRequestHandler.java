@@ -360,6 +360,22 @@ public class ObjectEntryInfoItemExceptionRequestHandler {
 				infoFieldUniqueId);
 		}
 
+		if (exception instanceof ObjectEntryValuesException.InvalidValue) {
+			ObjectEntryValuesException.InvalidValue objectEntryValuesException =
+				(ObjectEntryValuesException.InvalidValue)exception;
+
+			String infoFieldUniqueId = _getInfoFieldUniqueId(
+				groupId, infoItemFormProvider, objectDefinition,
+				objectEntryValuesException.getObjectFieldName());
+
+			if (infoFieldUniqueId == null) {
+				throw new InfoFormException();
+			}
+
+			throw new InfoFormValidationException.InvalidInfoFieldValue(
+				infoFieldUniqueId);
+		}
+
 		if (exception instanceof ObjectEntryValuesException.ListTypeEntry) {
 			ObjectEntryValuesException.ListTypeEntry
 				objectEntryValuesException =
@@ -380,6 +396,25 @@ public class ObjectEntryInfoItemExceptionRequestHandler {
 		if (exception instanceof ObjectEntryValuesException.Required) {
 			ObjectEntryValuesException.Required objectEntryValuesException =
 				(ObjectEntryValuesException.Required)exception;
+
+			String infoFieldUniqueId = _getInfoFieldUniqueId(
+				groupId, infoItemFormProvider, objectDefinition,
+				objectEntryValuesException.getObjectFieldName());
+
+			if (infoFieldUniqueId == null) {
+				throw new InfoFormException();
+			}
+
+			throw new InfoFormValidationException.RequiredInfoField(
+				infoFieldUniqueId);
+		}
+
+		if (exception instanceof
+				ObjectEntryValuesException.RequiredLanguageId) {
+
+			ObjectEntryValuesException.RequiredLanguageId
+				objectEntryValuesException =
+					(ObjectEntryValuesException.RequiredLanguageId)exception;
 
 			String infoFieldUniqueId = _getInfoFieldUniqueId(
 				groupId, infoItemFormProvider, objectDefinition,

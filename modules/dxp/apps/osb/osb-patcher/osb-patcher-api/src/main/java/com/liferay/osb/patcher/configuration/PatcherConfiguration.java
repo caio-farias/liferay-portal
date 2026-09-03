@@ -48,9 +48,6 @@ public interface PatcherConfiguration {
 	@Meta.AD(deflt = "", required = false)
 	public boolean jenkinsLoadBalancerEnabled();
 
-	@Meta.AD(deflt = "", required = false, type = Meta.Type.Password)
-	public String jenkinsToken();
-
 	@Meta.AD(deflt = "", required = false)
 	public String jenkinsURL();
 
@@ -95,12 +92,6 @@ public interface PatcherConfiguration {
 
 	@Meta.AD(deflt = "", required = false)
 	public String patcherLiferayPortalRepository();
-
-	@Meta.AD(deflt = "", required = false)
-	public String patcherPubsubProjectId();
-
-	@Meta.AD(deflt = "", required = false)
-	public String patcherPubsubSubscriptionId();
 
 	@Meta.AD(deflt = "", required = false)
 	public boolean patcherScanningEnabled();

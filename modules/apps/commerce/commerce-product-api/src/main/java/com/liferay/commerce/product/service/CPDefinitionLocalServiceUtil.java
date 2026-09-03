@@ -440,6 +440,14 @@ public class CPDefinitionLocalServiceUtil {
 		return getService().getCPDefinition(CPDefinitionId);
 	}
 
+	public static CPDefinition getCPDefinitionByCProductExternalReferenceCode(
+			String externalReferenceCode, long companyId)
+		throws PortalException {
+
+		return getService().getCPDefinitionByCProductExternalReferenceCode(
+			externalReferenceCode, companyId);
+	}
+
 	public static CPDefinition getCPDefinitionByCProductId(long cProductId)
 		throws PortalException {
 
@@ -684,6 +692,15 @@ public class CPDefinitionLocalServiceUtil {
 		return getService().getLayoutUuid(groupId, cpDefinitionId);
 	}
 
+	public static CPDefinition getOrAddEmptyCPDefinition(
+			String externalReferenceCode, String productTypeName,
+			long companyId, long userId, long groupId)
+		throws PortalException {
+
+		return getService().getOrAddEmptyCPDefinition(
+			externalReferenceCode, productTypeName, companyId, userId, groupId);
+	}
+
 	/**
 	 * Returns the OSGi service identifier.
 	 *
@@ -914,11 +931,11 @@ public class CPDefinitionLocalServiceUtil {
 	}
 
 	public static CPDefinition updateExternalReferenceCode(
-			String externalReferenceCode, long cpDefinitionId)
+			long cpDefinitionId, String externalReferenceCode)
 		throws PortalException {
 
 		return getService().updateExternalReferenceCode(
-			externalReferenceCode, cpDefinitionId);
+			cpDefinitionId, externalReferenceCode);
 	}
 
 	public static CPDefinition updateShippingInfo(
@@ -982,4 +999,4 @@ public class CPDefinitionLocalServiceUtil {
 			CPDefinitionLocalServiceUtil.class, CPDefinitionLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1263191931
+// LIFERAY-SERVICE-BUILDER-HASH:762569692

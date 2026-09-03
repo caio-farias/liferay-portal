@@ -7,7 +7,6 @@ import SidebarItem from './SidebarItem';
 import UserDropdown, {Menus} from 'shared/components/user-dropdown';
 import {ACCOUNTS, Routes, SEGMENTS, toRoute} from 'shared/util/router';
 import {DEVELOPER_MODE, LANGUAGES} from 'shared/util/constants';
-import {ENABLE_COMMERCE} from 'shared/util/feature-flags';
 import {Link, matchPath} from 'react-router-dom';
 import {useLDPEnabled} from 'shared/hooks/useLDPEnabled';
 import {User} from 'shared/util/records';
@@ -76,7 +75,7 @@ const Sidebar: React.FC<ISidebarProps> = ({
 				{
 					icon: 'ac_segment',
 					label: Liferay.Language.get('segments'),
-					route: Routes.CONTACTS_LIST_SEGMENT,
+					route: `${Routes.CONTACTS}/${SEGMENTS}`,
 					url: toRoute(Routes.CONTACTS_LIST_ENTITY, {
 						channelId,
 						groupId,
@@ -86,7 +85,7 @@ const Sidebar: React.FC<ISidebarProps> = ({
 				LDPEnabled && {
 					icon: 'ac_account',
 					label: Liferay.Language.get('accounts'),
-					route: Routes.CONTACTS_LIST_ACCOUNT,
+					route: `${Routes.CONTACTS}/${ACCOUNTS}`,
 					url: toRoute(Routes.CONTACTS_LIST_ENTITY, {
 						channelId,
 						groupId,
@@ -104,21 +103,6 @@ const Sidebar: React.FC<ISidebarProps> = ({
 				},
 			].filter(Boolean) as [],
 			label: Liferay.Language.get('people'),
-		},
-		{
-
-			// LRAC-13187 - TODO Remove Feature flag after definition of the features that will be announced to commerce and AC connection.
-
-			hide: !ENABLE_COMMERCE,
-			items: [
-				{
-					icon: 'ac_commerce',
-					label: Liferay.Language.get('commerce'),
-					route: Routes.COMMERCE,
-					url: toRoute(Routes.COMMERCE, {channelId, groupId}),
-				},
-			],
-			label: Liferay.Language.get('commerce'),
 		},
 		{
 			items: [
@@ -205,38 +189,33 @@ const Sidebar: React.FC<ISidebarProps> = ({
 			</div>
 
 			<div className="sidebar-body">
-				{sidebarSections.map(
-					({hide = false, items, label}, sectionIndex) =>
-						!hide && (
-							<div className="section" key={sectionIndex}>
-								<div className="h5 section-title">{label}</div>
+				{sidebarSections.map(({items, label}, sectionIndex) => (
+					<div className="section" key={sectionIndex}>
+						<div className="h5 section-title">{label}</div>
 
-								<ul className="nav-list">
-									{items.map(
-										(
-											{icon, label, route, url},
-											itemIndex
-										) => (
-											<SidebarItem
-												active={
-													!!matchPath(
-														activePathname,
-														{
-															path: route,
-														}
-													)
-												}
-												href={url}
-												icon={icon}
-												key={itemIndex}
-												label={label}
-											/>
-										)
-									)}
-								</ul>
-							</div>
-						)
-				)}
+						<ul className="nav-list">
+							{items.map(
+								({icon, label, route, url}, itemIndex) => (
+									<SidebarItem
+										active={
+											!!matchPath(
+												{
+													end: false,
+													path: route,
+												},
+												activePathname
+											)
+										}
+										href={url}
+										icon={icon}
+										key={itemIndex}
+										label={label}
+									/>
+								)
+							)}
+						</ul>
+					</div>
+				))}
 			</div>
 
 			<div className="sidebar-footer">
@@ -253,9 +232,13 @@ const Sidebar: React.FC<ISidebarProps> = ({
 
 					<SidebarItem
 						active={
-							!!matchPath(activePathname, {
-								path: Routes.SETTINGS,
-							})
+							!!matchPath(
+								{
+									end: false,
+									path: Routes.SETTINGS,
+								},
+								activePathname
+							)
 						}
 						href={toRoute(Routes.SETTINGS_DATA_SOURCE_LIST, {
 							groupId,
@@ -267,9 +250,13 @@ const Sidebar: React.FC<ISidebarProps> = ({
 					{DEVELOPER_MODE && (
 						<SidebarItem
 							active={
-								!!matchPath(activePathname, {
-									path: Routes.UI_KIT,
-								})
+								!!matchPath(
+									{
+										end: false,
+										path: Routes.UI_KIT,
+									},
+									activePathname
+								)
 							}
 							href={toRoute(Routes.UI_KIT, {
 								channelId,

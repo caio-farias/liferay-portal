@@ -72,7 +72,7 @@ import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.object.service.ObjectFieldSettingLocalService;
 import com.liferay.object.service.ObjectFilterLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
-import com.liferay.object.service.test.util.ObjectFieldTestUtil;
+import com.liferay.object.test.util.EncryptedObjectFieldTestUtil;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
@@ -206,19 +206,21 @@ public class ObjectFieldLocalServiceTest {
 			ObjectFieldBusinessTypeException.class,
 			ObjectFieldConstants.BUSINESS_TYPE_ENCRYPTED +
 				" business type is not indexable",
-			() -> ObjectFieldTestUtil.withEncryptedObjectFieldProperties(
-				"AES", true, ObjectFieldTestUtil.generateKey("AES"),
-				() -> ObjectDefinitionTestUtil.addCustomObjectDefinition(
-					Arrays.asList(
-						new EncryptedObjectFieldBuilder(
-						).indexed(
-							true
-						).labelMap(
-							LocalizedMapUtil.getLocalizedMap(
-								RandomTestUtil.randomString())
-						).name(
-							"a" + RandomTestUtil.randomString()
-						).build()))));
+			() ->
+				EncryptedObjectFieldTestUtil.withEncryptedObjectFieldProperties(
+					"AES", true,
+					EncryptedObjectFieldTestUtil.generateKey("AES"),
+					() -> ObjectDefinitionTestUtil.addCustomObjectDefinition(
+						Arrays.asList(
+							new EncryptedObjectFieldBuilder(
+							).indexed(
+								true
+							).labelMap(
+								LocalizedMapUtil.getLocalizedMap(
+									RandomTestUtil.randomString())
+							).name(
+								"a" + RandomTestUtil.randomString()
+							).build()))));
 		AssertUtils.assertFailure(
 			ObjectFieldBusinessTypeException.class,
 			ObjectFieldConstants.BUSINESS_TYPE_FORMULA +
@@ -281,7 +283,7 @@ public class ObjectFieldLocalServiceTest {
 			"Business type encrypted can only be used in object definitions " +
 				"with a default storage type",
 			() -> _addCustomObjectDefinitionWithEncryptedObjectField(
-				"AES", true, ObjectFieldTestUtil.generateKey("AES"),
+				"AES", true, EncryptedObjectFieldTestUtil.generateKey("AES"),
 				ObjectDefinitionConstants.STORAGE_TYPE_SALESFORCE));
 		AssertUtils.assertFailure(
 			ObjectFieldBusinessTypeException.class,
@@ -292,7 +294,7 @@ public class ObjectFieldLocalServiceTest {
 			ObjectFieldBusinessTypeException.class,
 			"Encryption algorithm is required for business type encrypted",
 			() -> _addCustomObjectDefinitionWithEncryptedObjectField(
-				"", true, ObjectFieldTestUtil.generateKey("AES"),
+				"", true, EncryptedObjectFieldTestUtil.generateKey("AES"),
 				ObjectDefinitionConstants.STORAGE_TYPE_DEFAULT));
 		AssertUtils.assertFailure(
 			ObjectFieldBusinessTypeException.class,
@@ -1328,6 +1330,8 @@ public class ObjectFieldLocalServiceTest {
 		AssertUtils.assertFailure(
 			ObjectFieldRequiredException.class, null,
 			() -> _addOrUpdateCustomObjectField(finalObjectField2));
+
+		_testAddOrUpdateCustomObjectFieldWithUnmodifiableSystemObjectDefinition();
 	}
 
 	@Test
@@ -3113,7 +3117,7 @@ public class ObjectFieldLocalServiceTest {
 			String algorithm, boolean enabled, String key, String storageType)
 		throws Exception {
 
-		ObjectFieldTestUtil.withEncryptedObjectFieldProperties(
+		EncryptedObjectFieldTestUtil.withEncryptedObjectFieldProperties(
 			algorithm, enabled, key,
 			() -> {
 				boolean enableCategorization = true;
@@ -3893,6 +3897,73 @@ public class ObjectFieldLocalServiceTest {
 			expectedObjectField.isRequired(), objectField.isRequired());
 		Assert.assertEquals(
 			expectedObjectField.isState(), objectField.isState());
+	}
+
+	private void _testAddOrUpdateCustomObjectFieldWithUnmodifiableSystemObjectDefinition()
+		throws Exception {
+
+		ObjectDefinition objectDefinition =
+			_addUnmodifiableSystemObjectDefinition(
+				ObjectFieldUtil.createObjectField(
+					ObjectFieldConstants.BUSINESS_TYPE_TEXT,
+					ObjectFieldConstants.DB_TYPE_STRING, "able",
+					Collections.emptyList()));
+
+		List<ObjectFieldSetting> objectFieldSettings = Arrays.asList(
+			new ObjectFieldSettingBuilder(
+			).name(
+				ObjectFieldSettingConstants.NAME_ACCEPTED_FILE_EXTENSIONS
+			).value(
+				"txt"
+			).build(),
+			new ObjectFieldSettingBuilder(
+			).name(
+				ObjectFieldSettingConstants.NAME_FILE_SOURCE
+			).value(
+				ObjectFieldSettingConstants.VALUE_DOCS_AND_MEDIA
+			).build(),
+			new ObjectFieldSettingBuilder(
+			).name(
+				ObjectFieldSettingConstants.NAME_MAX_FILE_SIZE
+			).value(
+				"100"
+			).build());
+
+		ObjectField objectField = _addCustomObjectField(
+			new AttachmentObjectFieldBuilder(
+			).labelMap(
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString())
+			).name(
+				"upload"
+			).objectDefinitionId(
+				objectDefinition.getObjectDefinitionId()
+			).objectFieldSettings(
+				objectFieldSettings
+			).build());
+
+		Map<Locale, String> labelMap = LocalizedMapUtil.getLocalizedMap(
+			RandomTestUtil.randomString());
+
+		objectField.setLabelMap(labelMap, LocaleUtil.getSiteDefault());
+
+		objectField = _addOrUpdateCustomObjectField(
+			objectField, objectFieldSettings);
+
+		Assert.assertEquals(labelMap, objectField.getLabelMap());
+
+		String attachmentDownloadActionKey =
+			objectField.getAttachmentDownloadActionKey();
+
+		Assert.assertNull(
+			_resourceActionLocalService.fetchResourceAction(
+				objectDefinition.getClassName(), attachmentDownloadActionKey));
+		Assert.assertNull(
+			_ploEntryLocalService.fetchPLOEntry(
+				objectDefinition.getCompanyId(),
+				"action." + attachmentDownloadActionKey,
+				objectField.getDefaultLanguageId()));
+
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
 	}
 
 	private ObjectField _updateReadOnlyObjectField(

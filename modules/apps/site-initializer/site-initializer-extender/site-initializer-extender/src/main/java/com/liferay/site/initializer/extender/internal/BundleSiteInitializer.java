@@ -2214,7 +2214,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 							PortletKeys.TRANSLATION),
 						true)
 				).build(),
-				unicodeProperties, serviceContext);
+				null, unicodeProperties, serviceContext);
 
 			Group scopeGroup = serviceContext.getScopeGroup();
 
@@ -2822,6 +2822,9 @@ public class BundleSiteInitializer implements SiteInitializer {
 				SiteInitializerUtil.read(
 					parentResourcePath + "page.json", _servletContext),
 				stringUtilReplaceValues));
+
+		_languageKeyResolver.expand(
+			serviceContext.getCompanyId(), pageJSONObject);
 
 		Map<Locale, String> nameMap = new HashMap<>(
 			SiteInitializerUtil.toMap(pageJSONObject.getString("name_i18n")));

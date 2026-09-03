@@ -1,6 +1,9 @@
 release:
     name: my-release
     namespace: argocd-system
+set:
+    clusterSecretStore:
+        name: liferay-test-secret-store
 suite: Git Chart Sources
 templates:
     -   templates/application-infrastructure-provider.yaml
@@ -29,7 +32,6 @@ tests:
                 repository:
                     url: https://github.com/example/liferay-gitops.git
             infrastructure:
-                chart: liferay-azure-infrastructure
                 repoURL: oci://example-registry/liferay-azure-infrastructure
             liferay:
                 path: cloud/helm/azure
@@ -68,7 +70,6 @@ tests:
                 repoURL: https://github.com/myfork/liferay-portal
                 targetRevision: LCD-12345
             liferay:
-                chart: liferay-azure
                 repoURL: oci://example-registry/liferay-azure
     -   asserts:
             -   equal:

@@ -25,6 +25,7 @@ function main {
 	_check_bootstrap "aws" "${aws_bootstrap_sources[@]}"
 
 	local azure_bootstrap_sources=(
+		"${_ROOT_CLOUD_DIR}/scripts/_azure_common.sh"
 		"${_ROOT_CLOUD_DIR}/scripts/chart_versions.json"
 		"${_ROOT_CLOUD_DIR}/scripts/setup_azure.sh"
 		"${_ROOT_CLOUD_DIR}/terraform/azure/aks"
@@ -92,6 +93,12 @@ function _bump_operator_version {
 		--regexp-extended \
 		"${git_blame_line}s/\"liferay-dxp-operator\": \"[0-9]+\.[0-9]+\.[0-9]+\"/\"liferay-dxp-operator\": \"${new_version}\"/" \
 		"${_VERSIONS_JSON_FILE}"
+
+	sed \
+		--in-place \
+		--regexp-extended \
+		"/^image:/,/^[^[:space:]]/ s/^(    tag: ).*/\1${new_version}/" \
+		"${_ROOT_CLOUD_DIR}/helm/dxp-operator/values.yaml"
 }
 
 function _check_bootstrap {
@@ -115,7 +122,7 @@ function _check_bootstrap {
 
 		commit_count=$(git rev-list --count "${git_blame_sha}..HEAD" -- "${clean_source}")
 
-		if [[ "${commit_count}" -gt 0 ]]; then
+		if [ ${commit_count} -gt 0 ]; then
 			git rev-list --oneline "${git_blame_sha}..HEAD" -- "${clean_source}"
 
 			echo "The version in ${_VERSIONS_JSON_FILE} is outdated. Updating liferay-${bootstrap_name}-bootstrap version." >&2
@@ -135,7 +142,7 @@ function _check_operator {
 
 	git_blame_sha="${git_blame_sha#^}"
 
-	if [ -z "${git_blame_sha}" ] || ! git rev-parse --quiet --verify "${git_blame_sha}^{commit}" > /dev/null
+	if [[ -z ${git_blame_sha} ]] || ! git rev-parse --quiet --verify "${git_blame_sha}^{commit}" > /dev/null
 	then
 		echo "The blame boundary commit for liferay-dxp-operator cannot be resolved." >&2
 
@@ -146,7 +153,7 @@ function _check_operator {
 
 	commit_count=$(git rev-list --count "${git_blame_sha}..HEAD" -- "${_ROOT_CLOUD_DIR}/operator")
 
-	if [[ "${commit_count}" -gt 0 ]]
+	if [ ${commit_count} -gt 0 ]
 	then
 		git rev-list --oneline "${git_blame_sha}..HEAD" -- "${_ROOT_CLOUD_DIR}/operator"
 
@@ -217,6 +224,15 @@ function _update_default_chart_version {
 		"aws-infrastructure-provider" | "gcp-infrastructure-provider")
 			_update_resources_tfvars "${helm_chart_name%%-*}" "infrastructure_provider_helm_chart_version" "${new_version}"
 			;;
+		"dxp-operator")
+			_update_platform_components_target_revision "liferay-dxp-operator" "${new_version}"
+			;;
+		"observability")
+			_update_platform_components_target_revision "observability" "${new_version}"
+
+			_update_resources_tfvars "aws" "observability_helm_chart_version" "${new_version}"
+			_update_resources_tfvars "gcp" "observability_helm_chart_version" "${new_version}"
+			;;
 		"platform")
 			_update_chart_versions_json "${helm_chart_name}" "${new_version}"
 			;;
@@ -224,6 +240,16 @@ function _update_default_chart_version {
 			sed --in-place "s/^\(    targetRevision: \).*/\1${new_version}/" "${_ROOT_CLOUD_DIR}/helm/platform/values.yaml"
 			;;
 	esac
+}
+
+function _update_platform_components_target_revision {
+	local chart_repository_name="${1}"
+	local new_version="${2}"
+
+	sed \
+		--in-place \
+		"\|repoURL: .*/${chart_repository_name}\$|,/targetRevision: / s/\(targetRevision: \).*/\1${new_version}/" \
+		"${_ROOT_CLOUD_DIR}/helm/platform-components/values.yaml"
 }
 
 function _update_resources_tfvars {

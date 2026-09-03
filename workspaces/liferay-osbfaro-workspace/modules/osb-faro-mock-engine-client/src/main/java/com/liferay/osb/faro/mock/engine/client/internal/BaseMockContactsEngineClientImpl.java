@@ -16,6 +16,7 @@ import com.liferay.osb.faro.engine.client.model.AccountLifecycleStageMetric;
 import com.liferay.osb.faro.engine.client.model.AccountLifecycleStatus;
 import com.liferay.osb.faro.engine.client.model.AccountMetric;
 import com.liferay.osb.faro.engine.client.model.AccountName;
+import com.liferay.osb.faro.engine.client.model.AcquisitionParameter;
 import com.liferay.osb.faro.engine.client.model.Activity;
 import com.liferay.osb.faro.engine.client.model.ActivityAggregation;
 import com.liferay.osb.faro.engine.client.model.ActivityAsset;
@@ -477,6 +478,14 @@ public abstract class BaseMockContactsEngineClientImpl
 	}
 
 	@Override
+	public List<AcquisitionParameter> getAcquisitionParameters(
+		FaroProject faroProject, String channelId) {
+
+		return contactsEngineClient.getAcquisitionParameters(
+			faroProject, channelId);
+	}
+
+	@Override
 	public Results<Activity> getActivities(
 		FaroProject faroProject, String ownerId, String ownerType,
 		String groupId, String query, Date startDate, Date endDate, int action,
@@ -552,6 +561,7 @@ public abstract class BaseMockContactsEngineClientImpl
 			orderByFields);
 	}
 
+	@Override
 	public Results<AssetSummary> getAssetSummaries(
 		FaroProject faroProject, long channelId, String filterString,
 		String keywords, String objectType, String rangeEnd, int rangeKey,
@@ -567,13 +577,14 @@ public abstract class BaseMockContactsEngineClientImpl
 	@Override
 	public Results<AssetSummaryCategory> getAssetSummaryCategories(
 		FaroProject faroProject, String accountId, long channelId,
-		String keywords, String rangeEnd, int rangeKey, String rangeStart,
-		String selectedMetric, String sort, String vocabularyId, int cur,
-		int delta) {
+		String individualId, String keywords, String rangeEnd, int rangeKey,
+		String rangeStart, String selectedMetric, String sort,
+		String vocabularyId, int cur, int delta) {
 
 		return contactsEngineClient.getAssetSummaryCategories(
-			faroProject, accountId, channelId, keywords, rangeEnd, rangeKey,
-			rangeStart, selectedMetric, sort, vocabularyId, cur, delta);
+			faroProject, accountId, channelId, individualId, keywords, rangeEnd,
+			rangeKey, rangeStart, selectedMetric, sort, vocabularyId, cur,
+			delta);
 	}
 
 	@Override
@@ -588,12 +599,13 @@ public abstract class BaseMockContactsEngineClientImpl
 	@Override
 	public Results<AssetSummaryTag> getAssetSummaryTags(
 		FaroProject faroProject, String accountId, long channelId,
-		String keywords, String rangeEnd, int rangeKey, String rangeStart,
-		String selectedMetric, String sort, int cur, int delta) {
+		String individualId, String keywords, String rangeEnd, int rangeKey,
+		String rangeStart, String selectedMetric, String sort, int cur,
+		int delta) {
 
 		return contactsEngineClient.getAssetSummaryTags(
-			faroProject, accountId, channelId, keywords, rangeEnd, rangeKey,
-			rangeStart, selectedMetric, sort, cur, delta);
+			faroProject, accountId, channelId, individualId, keywords, rangeEnd,
+			rangeKey, rangeStart, selectedMetric, sort, cur, delta);
 	}
 
 	@Override

@@ -223,12 +223,6 @@
 		},
 		{
 			"properties": {
-				"commerceSyncEnabledAnalyticsChannelIds": {
-					"items": {
-						"type": "string"
-					},
-					"type": "array"
-				},
 				"contentRecommenderMostPopularItemsEnabled": {
 					"type": "boolean"
 				},
@@ -278,12 +272,6 @@
 				"pid": {
 					"const": "com.liferay.analytics.settings.configuration.AnalyticsConfiguration"
 				},
-				"previousCommerceSyncEnabledAnalyticsChannelIds": {
-					"items": {
-						"type": "string"
-					},
-					"type": "array"
-				},
 				"previousContentRecommenderMostPopularItemsEnabled": {
 					"type": "boolean"
 				},
@@ -308,31 +296,19 @@
 					},
 					"type": "array"
 				},
-				"previousSyncedCommerceChannelIds": {
-					"items": {
-						"type": "string"
-					},
-					"type": "array"
-				},
 				"previousSyncedContactFieldNames": {
 					"items": {
 						"type": "string"
 					},
 					"type": "array"
 				},
-				"previousSyncedOrderFieldNames": {
+				"previousSyncedGroupIds": {
 					"items": {
 						"type": "string"
 					},
 					"type": "array"
 				},
 				"previousSyncedOrganizationIds": {
-					"items": {
-						"type": "string"
-					},
-					"type": "array"
-				},
-				"previousSyncedProductFieldNames": {
 					"items": {
 						"type": "string"
 					},
@@ -374,18 +350,6 @@
 					},
 					"type": "array"
 				},
-				"syncedCategoryFieldNames": {
-					"items": {
-						"type": "string"
-					},
-					"type": "array"
-				},
-				"syncedCommerceChannelIds": {
-					"items": {
-						"type": "string"
-					},
-					"type": "array"
-				},
 				"syncedContactFieldNames": {
 					"items": {
 						"type": "string"
@@ -398,31 +362,7 @@
 					},
 					"type": "array"
 				},
-				"syncedOrderFieldNames": {
-					"items": {
-						"type": "string"
-					},
-					"type": "array"
-				},
-				"syncedOrderItemFieldNames": {
-					"items": {
-						"type": "string"
-					},
-					"type": "array"
-				},
 				"syncedOrganizationIds": {
-					"items": {
-						"type": "string"
-					},
-					"type": "array"
-				},
-				"syncedProductChannelFieldNames": {
-					"items": {
-						"type": "string"
-					},
-					"type": "array"
-				},
-				"syncedProductFieldNames": {
 					"items": {
 						"type": "string"
 					},
@@ -584,6 +524,20 @@
 		},
 		{
 			"properties": {
+				"callbackURLHostsAllowed": {
+					"description": "List the host names that batch engine task callbacks may request. Leave the list blank for any host. A host that resolves to a local network address also requires local network access.",
+					"items": {
+						"type": "string"
+					},
+					"title": "Callback URL Hosts Allowed",
+					"type": "array"
+				},
+				"callbackURLLocalNetworkAccessEnabled": {
+					"default": false,
+					"description": "Send batch engine task callbacks to a URL that resolves to a local network address. Leave this disabled unless the callbacks require it, because it lets an attacker use the portal to reach services on the internal network.",
+					"title": "Callback URL Local Network Access Enabled",
+					"type": "boolean"
+				},
 				"csvFileColumnDelimiter": {
 					"default": ",",
 					"title": "CSV File Column Delimiter",
@@ -1520,6 +1474,10 @@
 				},
 				"environment": {
 					"type": "string"
+				},
+				"httpTimeout": {
+					"default": 60000,
+					"type": "number"
 				},
 				"integrationKey": {
 					"type": "string"
@@ -3140,10 +3098,6 @@
 					"default": false,
 					"type": "boolean"
 				},
-				"jenkinsToken": {
-					"default": "",
-					"type": "string"
-				},
 				"jenkinsURL": {
 					"default": "",
 					"type": "string"
@@ -3204,14 +3158,6 @@
 					"type": "boolean"
 				},
 				"patcherLiferayPortalRepository": {
-					"default": "",
-					"type": "string"
-				},
-				"patcherPubsubProjectId": {
-					"default": "",
-					"type": "string"
-				},
-				"patcherPubsubSubscriptionId": {
 					"default": "",
 					"type": "string"
 				},
@@ -3704,6 +3650,68 @@
 				"pid"
 			],
 			"title": "Audit"
+		},
+		{
+			"properties": {
+				"enabled": {
+					"default": false,
+					"title": "Enabled",
+					"type": "boolean"
+				},
+				"generateChecksum": {
+					"default": false,
+					"title": "Generate Checksum",
+					"type": "boolean"
+				},
+				"outputDirectory": {
+					"title": "Output Directory",
+					"type": "string"
+				},
+				"outputFormat": {
+					"default": "NDJSON",
+					"enum": [
+						"CSV",
+						"NDJSON"
+					],
+					"title": "Output Format",
+					"type": "string"
+				},
+				"pid": {
+					"const": "com.liferay.portal.security.audit.router.configuration.FileSystemAuditMessageProcessorConfiguration",
+					"title": "File System Audit Message Processor"
+				}
+			},
+			"required": [
+				"pid"
+			],
+			"title": "File System Audit Message Processor"
+		},
+		{
+			"properties": {
+				"bufferSize": {
+					"default": 2000,
+					"title": "Buffer Size",
+					"type": "number"
+				},
+				"enabled": {
+					"default": true,
+					"title": "Enabled",
+					"type": "boolean"
+				},
+				"flushInterval": {
+					"default": 60000,
+					"title": "Flush Interval in Milliseconds",
+					"type": "number"
+				},
+				"pid": {
+					"const": "com.liferay.portal.security.audit.router.configuration.PersistentAuditMessageProcessorConfiguration",
+					"title": "Persistent Message Audit Message Processor"
+				}
+			},
+			"required": [
+				"pid"
+			],
+			"title": "Persistent Message Audit Message Processor"
 		},
 		{
 			"properties": {
@@ -4941,26 +4949,6 @@
 					"default": "page-layout",
 					"title": "XML Sitemap Index Mode",
 					"type": "string"
-				},
-				"xmlSitemapRegenerationDayOfWeek": {
-					"default": "1",
-					"title": "XML Sitemap Regeneration Day of Week",
-					"type": "string"
-				},
-				"xmlSitemapRegenerationFrequency": {
-					"default": "daily",
-					"title": "XML Sitemap Regeneration Frequency",
-					"type": "string"
-				},
-				"xmlSitemapRegenerationTime": {
-					"default": "00:00",
-					"title": "XML Sitemap Regeneration Time",
-					"type": "string"
-				},
-				"xmlSitemapRegenerationTimeZoneId": {
-					"default": "",
-					"title": "XML Sitemap Regeneration Time Zone ID",
-					"type": "string"
 				}
 			},
 			"required": [
@@ -5295,6 +5283,8 @@
 				"com.liferay.portal.search.opensearch2.configuration.DeepPaginationConfiguration",
 				"com.liferay.portal.search.rest.configuration.SearchSuggestionsCompanyConfiguration",
 				"com.liferay.portal.security.audit.configuration.AuditConfiguration",
+				"com.liferay.portal.security.audit.router.configuration.FileSystemAuditMessageProcessorConfiguration",
+				"com.liferay.portal.security.audit.router.configuration.PersistentAuditMessageProcessorConfiguration",
 				"com.liferay.portal.security.auto.login.internal.basic.auth.header.configuration.BasicAuthHeaderAutoLoginConfiguration",
 				"com.liferay.portal.security.configuration.BasicAuthHeaderSupportConfiguration",
 				"com.liferay.portal.security.iframe.sanitizer.configuration.IFrameConfiguration",

@@ -32,12 +32,13 @@ jest.mock('shared/hooks/useRequest', () => ({
 
 const mockPush = jest.fn();
 
-const mockUnlisten = jest.fn();
-
 jest.mock('react-router-dom', () => ({
 	...jest.requireActual('react-router-dom'),
-	useHistory: () => ({listen: () => mockUnlisten, push: mockPush}),
 	useParams: () => ({channelId: '5', groupId: '23', id: 'acc-1'}),
+}));
+
+jest.mock('shared/hooks/useHistoryAdapter', () => ({
+	useHistoryAdapter: () => ({push: mockPush}),
 }));
 
 const mockedUseRequest = useRequest as jest.Mock;
@@ -64,6 +65,22 @@ const renderTopAssets = () =>
 						mocks={[mockTimeRangeReq(), mockPreferenceReq()]}
 					>
 						<TopAssets account={ACCOUNT} />
+					</MockedProvider>
+				</MemoryRouter>
+			</BasePage.Context.Provider>
+		</Provider>
+	);
+
+const renderTopAssetsWithoutAccount = () =>
+	render(
+		<Provider store={mockStore()}>
+			<BasePage.Context.Provider value={MOCK_CONTEXT}>
+				<MemoryRouter>
+					<MockedProvider
+						addTypename={false}
+						mocks={[mockTimeRangeReq(), mockPreferenceReq()]}
+					>
+						<TopAssets />
 					</MockedProvider>
 				</MemoryRouter>
 			</BasePage.Context.Provider>
@@ -476,6 +493,28 @@ describe('TopAssets', () => {
 
 			expect(pushedURL).toContain('orderBy=viewsMetric');
 		});
+
+		it('should pass the Content objectType from the Content tab', () => {
+			renderTopAssets();
+
+			fireEvent.click(screen.getByRole('button', {name: 'View All'}));
+
+			const pushedURL = mockPush.mock.calls[0][0];
+
+			expect(pushedURL).toContain('objectType=content');
+		});
+
+		it('should pass the File objectType from the Files tab', () => {
+			renderTopAssets();
+
+			fireEvent.click(screen.getByRole('tab', {name: 'Files'}));
+
+			fireEvent.click(screen.getByRole('button', {name: 'View All'}));
+
+			const pushedURL = mockPush.mock.calls[0][0];
+
+			expect(pushedURL).toContain('objectType=file');
+		});
 	});
 
 	describe('loading state', () => {
@@ -487,6 +526,21 @@ describe('TopAssets', () => {
 			expect(
 				container.querySelector('.loading-root')
 			).toBeInTheDocument();
+		});
+
+		it('should stop loading when there is no account to scope by', () => {
+			mockUseRequestWith({loading: true});
+
+			const {container} = renderTopAssetsWithoutAccount();
+
+			const tabPanel = container.querySelector(
+				'.tab-pane'
+			) as HTMLElement;
+
+			expect(tabPanel.querySelector('.loading-root')).toBeNull();
+			expect(
+				within(tabPanel).getAllByText('No Assets Available').length
+			).toBeGreaterThan(0);
 		});
 
 		it('should not render asset rows while loading', () => {
@@ -583,6 +637,28 @@ describe('TopAssets', () => {
 			) as HTMLElement;
 
 			expect(within(tabPanel).getAllByText('999').length).toBe(1);
+		});
+
+		it('should show a zero when the asset carries no selected metric', () => {
+			mockUseRequestWith({
+				data: {
+					items: [
+						buildAsset({
+							assetTitle: 'Metricless',
+							id: 'a-metricless',
+							impressionsMetric: undefined,
+						}),
+					],
+				},
+			});
+
+			const {container} = renderTopAssets();
+
+			const tabPanel = container.querySelector(
+				'.tab-pane'
+			) as HTMLElement;
+
+			expect(within(tabPanel).getAllByText('0').length).toBe(1);
 		});
 	});
 });

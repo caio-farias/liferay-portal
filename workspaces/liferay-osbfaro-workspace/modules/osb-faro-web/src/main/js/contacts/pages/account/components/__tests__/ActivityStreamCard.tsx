@@ -2,7 +2,7 @@ import ActivityStreamCard from '../ActivityStreamCard';
 import mockStore from 'test/mock-store';
 import React from 'react';
 import {act, fireEvent, render} from '@testing-library/react';
-import {MemoryRouter, Route} from 'react-router-dom';
+import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import {
 	mockAccountEventMetricsReq,
 	mockAccountEventsTrendReq,
@@ -44,21 +44,26 @@ interface WrapperProps {
 const Wrapper: React.FC<WrapperProps> = ({accountName, mocks}) => (
 	<Provider store={mockStore()}>
 		<MemoryRouter initialEntries={['/workspace/liferay.com']}>
-			<Route path="/workspace/:groupId">
-				<MockedProvider mocks={mocks}>
-					<ActivityStreamCard
-						accountId="abc"
-						accountName={accountName}
-						channelId="123123"
-						interval="D"
-						rangeSelectors={{
-							rangeEnd: null,
-							rangeKey: RangeKeyTimeRanges.Last30Days,
-							rangeStart: null,
-						}}
-					/>
-				</MockedProvider>
-			</Route>
+			<Routes>
+				<Route
+					element={
+						<MockedProvider mocks={mocks}>
+							<ActivityStreamCard
+								accountId="abc"
+								accountName={accountName}
+								channelId="123123"
+								interval="D"
+								rangeSelectors={{
+									rangeEnd: null,
+									rangeKey: RangeKeyTimeRanges.Last30Days,
+									rangeStart: null,
+								}}
+							/>
+						</MockedProvider>
+					}
+					path="/workspace/:groupId"
+				/>
+			</Routes>
 		</MemoryRouter>
 	</Provider>
 );
@@ -103,13 +108,13 @@ describe('ActivityStreamCard', () => {
 		expect(link.getAttribute('href')).toContain('accountName=Acme');
 	});
 
-	it('drives pagination from the activity stream event total, not the session count', async () => {
+	it('drives pagination from the activity stream page group total, not the event count', async () => {
 		const {container} = render(
 			<Wrapper
 				mocks={[
 					mockAccountEventMetricsReq(),
 					mockAccountEventsTrendReq(),
-					mockAccountUserSessionsReq({totalEvents: 186}),
+					mockAccountUserSessionsReq({totalPageGroups: 186}),
 				]}
 			/>
 		);
@@ -131,7 +136,10 @@ describe('ActivityStreamCard', () => {
 						trendClassification: 'NEUTRAL',
 						value: 0,
 					}),
-					mockAccountUserSessionsReq({sessions: [], totalEvents: 0}),
+					mockAccountUserSessionsReq({
+						sessions: [],
+						totalPageGroups: 0,
+					}),
 				]}
 			/>
 		);
@@ -159,7 +167,7 @@ describe('ActivityStreamCard', () => {
 					mockAccountUserSessionsReq({
 						keywords: SEARCH_KEYWORDS,
 						sessions: [],
-						totalEvents: 0,
+						totalPageGroups: 0,
 					}),
 					mockAccountEventMetricsReq(),
 					mockAccountEventsTrendReq(),
