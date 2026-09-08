@@ -32,6 +32,7 @@ import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.TimeZoneUtil;
+import com.liferay.portal.kernel.util.Validator;
 
 import java.text.DateFormat;
 import java.text.Format;
@@ -71,7 +72,8 @@ public class ObjectEntryVersionFieldValueResolver {
 	}
 
 	public Map<String, Object> getFieldValues(
-			String languageId, long objectEntryId, int version)
+			String defaultLanguageId, String languageId, long objectEntryId,
+			int version)
 		throws Exception {
 
 		Map<String, Object> fieldValues = new HashMap<>();
@@ -106,7 +108,15 @@ public class ObjectEntryVersionFieldValueResolver {
 				Map<String, Object> localizedValuesMap =
 					(Map<String, Object>)localizedValues;
 
-				fieldValue = localizedValuesMap.get(languageId);
+				Object localizedValue = localizedValuesMap.get(languageId);
+
+				if (Validator.isNull(localizedValue)) {
+					localizedValue = localizedValuesMap.get(defaultLanguageId);
+				}
+
+				if (Validator.isNotNull(localizedValue)) {
+					fieldValue = localizedValue;
+				}
 			}
 
 			fieldValues.put(fieldName, fieldValue);
@@ -274,7 +284,8 @@ public class ObjectEntryVersionFieldValueResolver {
 
 			return StringBundler.concat(
 				"<img alt=\"", fileName,
-				"\" class=\"cms-compare-versions-attachment\" src=\"",
+				"\" class=\"border cms-compare-versions-attachment d-block ",
+				"mb-2 mw-100 rounded\" src=\"",
 				_dlURLHelper.getPreviewURL(
 					fileEntry, fileEntry.getFileVersion(), null,
 					StringPool.BLANK),
