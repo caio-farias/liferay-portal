@@ -10,7 +10,7 @@ import com.liferay.frontend.js.web.test.util.FrontendJSWebTestUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.frontend.hashed.files.HashedFilesUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
-import com.liferay.portal.kernel.test.util.FIPSAlgorithmTestUtil;
+import com.liferay.portal.kernel.test.util.FIPSModeTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.DigesterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
@@ -93,7 +93,7 @@ public class HashedFilesRegistryImplTest {
 				"/o/frontend-js-web/main.css", RandomTestUtil.randomString())
 		).build();
 
-		FIPSAlgorithmTestUtil.assertAlgorithmSwitch(
+		FIPSModeTestUtil.assertAlgorithmSwitch(
 			DigesterUtil.MD5, MessageDigest.class, DigesterUtil.SHA_256,
 			MessageDigest::getInstance,
 			() -> ReflectionTestUtil.invoke(
