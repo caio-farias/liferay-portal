@@ -1,0 +1,378 @@
+[
+	{
+		"name": "Authentication MAC",
+		"uses": [
+			{
+				"classNames": [
+					"com.liferay.portal.security.pwd.PwdAuthenticator"
+				],
+				"configuredBy": [
+					"auth.mac.algorithm"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			}
+		]
+	},
+	{
+		"name": "Company encryption",
+		"uses": [
+			{
+				"classNames": [
+					"com.liferay.portal.encryptor.EncryptorImpl",
+					"com.liferay.portal.kernel.encryptor.CompanyKeyResolverUtil",
+					"com.liferay.portal.security.auth.session.AuthenticatedSessionManagerUtil",
+					"com.liferay.portal.security.key.internal.company.CompanyKeyResolverImpl",
+					"com.liferay.portal.service.impl.CompanyLocalServiceImpl",
+					"com.liferay.portal.service.impl.UserLocalServiceImpl",
+					"com.liferay.portal.servlet.EncryptedServletRequest",
+					"com.liferay.portal.tools.DBUpgrader",
+					"com.liferay.portal.upgrade.v6_2_0.UpgradeCompany",
+					"com.liferay.portal.util.PortalImpl",
+					"com.liferay.portlet.internal.PortletURLImpl"
+				],
+				"configuredBy": [
+					"company.encryption.algorithm",
+					"company.encryption.key.size"
+				],
+				"cryptoFunctions": [
+					"DECRYPT",
+					"ENCRYPT",
+					"KEYGEN"
+				],
+				"jcaClassNames": [
+					"Cipher",
+					"KeyGenerator",
+					"SecretKeySpec"
+				],
+				"primitive": "BLOCK_CIPHER"
+			}
+		]
+	},
+	{
+		"name": "CSRF token whitelist",
+		"uses": [
+			{
+				"algorithm": "SHA",
+				"classNames": [
+					"com.liferay.portal.security.auth.AuthTokenWhitelistImpl"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			}
+		]
+	},
+	{
+		"name": "Encrypted object fields",
+		"uses": [
+			{
+				"classNames": [
+					"com.liferay.object.service.impl.ObjectEntryLocalServiceImpl",
+					"com.liferay.object.service.impl.ObjectFieldLocalServiceImpl",
+					"com.liferay.portal.encryptor.EncryptorImpl"
+				],
+				"configuredBy": [
+					"object.encryption.algorithm"
+				],
+				"cryptoFunctions": [
+					"DECRYPT",
+					"ENCRYPT"
+				],
+				"jcaClassNames": [
+					"Cipher",
+					"SecretKeySpec"
+				],
+				"primitive": "UNKNOWN"
+			}
+		]
+	},
+	{
+		"name": "File checksums",
+		"uses": [
+			{
+				"algorithm": "MD5",
+				"classNames": [
+					"com.liferay.portal.util.FileImpl"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			}
+		]
+	},
+	{
+		"name": "Filter cache file names",
+		"uses": [
+			{
+				"algorithm": "SHA-256",
+				"classNames": [
+					"com.liferay.portal.servlet.filters.util.CacheFileNameGenerator"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			}
+		]
+	},
+	{
+		"name": "Hashed file URLs",
+		"uses": [
+			{
+				"algorithm": "MD5",
+				"classNames": [
+					"com.liferay.portal.kernel.frontend.hashed.files.HashedFilesUtil"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			}
+		]
+	},
+	{
+		"name": "HTTP Digest authentication",
+		"uses": [
+			{
+				"algorithm": "MD5",
+				"classNames": [
+					"com.liferay.portal.model.impl.UserImpl",
+					"com.liferay.portal.service.impl.UserLocalServiceImpl",
+					"com.liferay.portal.servlet.filters.secure.NonceUtil"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			}
+		]
+	},
+	{
+		"name": "Image URL tokens",
+		"uses": [
+			{
+				"algorithm": "SHA",
+				"classNames": [
+					"com.liferay.portal.kernel.model.UserConstants",
+					"com.liferay.portal.model.impl.OrganizationImpl",
+					"com.liferay.portal.webserver.WebServerServlet"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			},
+			{
+				"algorithm": "SHA-256",
+				"classNames": [
+					"com.liferay.portal.webserver.WebServerServletTokenImpl"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			}
+		]
+	},
+	{
+		"name": "JDBC driver download verification",
+		"uses": [
+			{
+				"algorithm": "SHA-1",
+				"classNames": [
+					"com.liferay.portal.kernel.util.URLUtil"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			}
+		]
+	},
+	{
+		"name": "Legacy password verification",
+		"uses": [
+			{
+				"classNames": [
+					"com.liferay.portal.action.UpdatePasswordActionUtil",
+					"com.liferay.portal.security.password.encryptor.internal.DefaultPasswordEncryptor",
+					"com.liferay.portal.security.password.encryptor.internal.SSHAPasswordEncryptor",
+					"com.liferay.portal.security.pwd.PwdAuthenticator",
+					"com.liferay.portal.service.impl.PasswordTrackerLocalServiceImpl",
+					"com.liferay.portal.service.impl.RememberMeTokenLocalServiceImpl",
+					"com.liferay.portal.service.impl.UserLocalServiceImpl",
+					"com.liferay.portal.servlet.filters.autologin.AutoLoginFilter"
+				],
+				"configuredBy": [
+					"passwords.encryption.algorithm.legacy"
+				],
+				"cryptoFunctions": [
+					"DIGEST",
+					"KEYDERIVE"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "UNKNOWN"
+			}
+		]
+	},
+	{
+		"name": "Password hashing",
+		"uses": [
+			{
+				"classNames": [
+					"com.liferay.portal.action.UpdatePasswordActionUtil",
+					"com.liferay.portal.kernel.security.auth.HttpPrincipal",
+					"com.liferay.portal.security.password.encryptor.internal.DefaultPasswordEncryptor",
+					"com.liferay.portal.security.password.encryptor.internal.PBKDF2PasswordEncryptor",
+					"com.liferay.portal.security.password.encryptor.internal.SSHAPasswordEncryptor",
+					"com.liferay.portal.security.pwd.PwdAuthenticator",
+					"com.liferay.portal.service.impl.PasswordTrackerLocalServiceImpl",
+					"com.liferay.portal.service.impl.RememberMeTokenLocalServiceImpl",
+					"com.liferay.portal.service.impl.UserLocalServiceImpl",
+					"com.liferay.portal.servlet.filters.autologin.AutoLoginFilter"
+				],
+				"configuredBy": [
+					"passwords.encryption.algorithm"
+				],
+				"cryptoFunctions": [
+					"DIGEST",
+					"KEYDERIVE"
+				],
+				"jcaClassNames": [
+					"Mac",
+					"MessageDigest",
+					"SecretKeySpec"
+				],
+				"primitive": "UNKNOWN"
+			}
+		]
+	},
+	{
+		"name": "Portlet preferences cache keys",
+		"uses": [
+			{
+				"algorithm": "SHA-1",
+				"classNames": [
+					"com.liferay.portal.cache.key.MessageDigestCacheKeyGenerator"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			}
+		]
+	},
+	{
+		"name": "Request user header",
+		"uses": [
+			{
+				"algorithm": "MD5",
+				"classNames": [
+					"com.liferay.portal.events.ServicePreAction"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			}
+		]
+	},
+	{
+		"name": "Temporary file folder names",
+		"uses": [
+			{
+				"algorithm": "SHA-256",
+				"classNames": [
+					"com.liferay.portal.service.impl.LayoutServiceImpl"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			}
+		]
+	},
+	{
+		"name": "Translated response ETags",
+		"uses": [
+			{
+				"algorithm": "SHA-1",
+				"classNames": [
+					"com.liferay.portal.servlet.filters.language.LanguageFilter"
+				],
+				"cryptoFunctions": [
+					"DIGEST"
+				],
+				"jcaClassNames": [
+					"MessageDigest"
+				],
+				"primitive": "HASH"
+			}
+		]
+	},
+	{
+		"name": "Tunnel authentication",
+		"uses": [
+			{
+				"classNames": [
+					"com.liferay.portal.encryptor.EncryptorImpl",
+					"com.liferay.portal.security.auth.tunnel.TunnelAuthenticationManagerImpl"
+				],
+				"configuredBy": [
+					"tunneling.servlet.encryption.algorithm"
+				],
+				"cryptoFunctions": [
+					"ENCRYPT"
+				],
+				"jcaClassNames": [
+					"Cipher",
+					"SecretKeySpec"
+				],
+				"primitive": "BLOCK_CIPHER"
+			}
+		]
+	}
+]
