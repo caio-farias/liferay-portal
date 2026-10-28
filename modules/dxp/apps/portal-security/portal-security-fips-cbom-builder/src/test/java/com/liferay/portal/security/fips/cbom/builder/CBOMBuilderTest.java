@@ -7,27 +7,42 @@ package com.liferay.portal.security.fips.cbom.builder;
 
 import com.liferay.portal.json.JSONFactoryImpl;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.PropsKeys;
+import com.liferay.portal.kernel.util.ReleaseInfo;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 
+import java.io.File;
+
 import java.lang.reflect.Field;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.cyclonedx.Version;
+import org.cyclonedx.exception.ParseException;
 import org.cyclonedx.model.component.crypto.enums.CryptoFunction;
+import org.cyclonedx.model.component.crypto.enums.Primitive;
+import org.cyclonedx.parsers.JsonParser;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * @author Manuele Castro
@@ -44,6 +59,64 @@ public class CBOMBuilderTest {
 		JSONFactoryUtil jsonFactoryUtil = new JSONFactoryUtil();
 
 		jsonFactoryUtil.setJSONFactory(new JSONFactoryImpl());
+	}
+
+	@Test
+	public void testBuild() throws Exception {
+		CryptoUse cryptoUse1 = new CryptoUse(
+			"SHA-256", Collections.singletonList("com.liferay.test.Class1"),
+			Collections.emptyList(),
+			Collections.singletonList(CryptoFunction.DIGEST), "Feature A",
+			Collections.singletonList("MessageDigest"), Primitive.HASH);
+		CryptoUse cryptoUse2 = new CryptoUse(
+			null, Collections.singletonList("com.liferay.test.Class2"),
+			Collections.singletonList("test.algorithm"),
+			Collections.singletonList(CryptoFunction.ENCRYPT), "Feature B",
+			Collections.singletonList("Cipher"), Primitive.BLOCK_CIPHER);
+
+		List<CryptoUse> cryptoUses = Arrays.asList(cryptoUse1, cryptoUse2);
+
+		Properties portalProperties = new Properties();
+
+		portalProperties.setProperty("test.algorithm", "AES");
+
+		String configurationName = RandomTestUtil.randomString();
+
+		String cbomJSON = CBOMBuilder.build(
+			configurationName, cryptoUses, portalProperties);
+
+		Assert.assertEquals(
+			cbomJSON,
+			CBOMBuilder.build(configurationName, cryptoUses, portalProperties));
+
+		JsonParser jsonParser = new JsonParser();
+
+		List<ParseException> parseExceptions = jsonParser.validate(
+			cbomJSON.getBytes(StandardCharsets.UTF_8), Version.VERSION_16);
+
+		Assert.assertEquals(
+			parseExceptions.toString(), 0, parseExceptions.size());
+
+		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(cbomJSON);
+
+		Assert.assertEquals(
+			Arrays.asList(
+				"crypto:Cipher:test.algorithm", "crypto:MessageDigest:SHA-256"),
+			JSONUtil.toStringList(
+				jsonObject.getJSONArray("components"), "bom-ref"));
+
+		JSONObject metadataJSONObject = jsonObject.getJSONObject("metadata");
+
+		JSONObject componentJSONObject = metadataJSONObject.getJSONObject(
+			"component");
+
+		Assert.assertEquals(
+			ReleaseInfo.getName(), componentJSONObject.getString("name"));
+		Assert.assertEquals(
+			ReleaseInfo.getVersionDisplayName(),
+			componentJSONObject.getString("version"));
+
+		Assert.assertFalse(metadataJSONObject.has("timestamp"));
 	}
 
 	@Test
@@ -117,5 +190,31 @@ public class CBOMBuilderTest {
 			).build(),
 			configuredByMap);
 	}
+
+	@Test
+	public void testMain() throws Exception {
+		File configurationDir = temporaryFolder.newFolder();
+
+		File portalExtPropertiesFile = new File(
+			configurationDir, "portal-ext.properties");
+
+		Files.write(
+			portalExtPropertiesFile.toPath(),
+			"fips.enabled=true".getBytes(StandardCharsets.UTF_8));
+
+		try {
+			CBOMBuilder.main(new String[] {configurationDir.getPath()});
+
+			Assert.fail();
+		}
+		catch (UnsupportedOperationException unsupportedOperationException) {
+			Assert.assertEquals(
+				"Unable to build the CBOM of a FIPS mode configuration",
+				unsupportedOperationException.getMessage());
+		}
+	}
+
+	@Rule
+	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 }
