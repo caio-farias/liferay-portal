@@ -8,8 +8,10 @@ package com.liferay.analytics.rest.internal.client;
 import com.liferay.analytics.settings.configuration.AnalyticsConfiguration;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
+import com.liferay.portal.kernel.settings.CompanyServiceSettingsLocator;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.Http;
+import com.liferay.portal.security.key.secret.SecretContext;
 import com.liferay.portal.security.key.secret.SecretResolverUtil;
 
 /**
@@ -27,6 +29,13 @@ public class AnalyticsCloudClient {
 
 		Http.Options options = new Http.Options();
 
+		long companyId = CompanyThreadLocal.getCompanyId();
+
+		SecretContext secretContext = SecretContext.createSettingsSecretContext(
+			"liferayAnalyticsFaroBackendSecuritySignature",
+			new CompanyServiceSettingsLocator(
+				companyId, AnalyticsConfiguration.class.getName()));
+
 		options.addHeader("Content-Type", ContentTypes.APPLICATION_JSON);
 		options.addHeader(
 			"OSB-Asah-Data-Source-ID",
@@ -34,7 +43,7 @@ public class AnalyticsCloudClient {
 		options.addHeader(
 			"OSB-Asah-Faro-Backend-Security-Signature",
 			SecretResolverUtil.resolve(
-				CompanyThreadLocal.getCompanyId(),
+				companyId, secretContext,
 				analyticsConfiguration.
 					liferayAnalyticsFaroBackendSecuritySignature()));
 		options.addHeader(
