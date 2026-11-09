@@ -137,6 +137,43 @@ public class SecretResolverUtilTest {
 		);
 	}
 
+	@Test
+	public void testResolveWithSecretContext() {
+		long companyId = RandomTestUtil.randomLong();
+		String keyReferenceString = _randomKeyReferenceString();
+		String resolvedValue = RandomTestUtil.randomString();
+
+		SecretContext secretContext = SecretContext.createCompanySecretContext(
+			companyId, RandomTestUtil.randomString());
+
+		SecretResolver secretResolver = Mockito.mock(SecretResolver.class);
+
+		Mockito.when(
+			secretResolver.resolve(companyId, secretContext, keyReferenceString)
+		).thenReturn(
+			resolvedValue
+		);
+
+		_setUpSecretResolverSnapshot(secretResolver);
+
+		Assert.assertSame(
+			resolvedValue,
+			SecretResolverUtil.resolve(
+				companyId, secretContext, keyReferenceString));
+
+		String plainValue = RandomTestUtil.randomString();
+
+		Assert.assertSame(
+			plainValue,
+			SecretResolverUtil.resolve(companyId, secretContext, plainValue));
+
+		Mockito.verify(
+			secretResolver, Mockito.never()
+		).resolve(
+			companyId, secretContext, plainValue
+		);
+	}
+
 	private String _randomKeyReferenceString() {
 		return KeyReferenceUtil.toKeyReferenceString(
 			new KeyReference(
