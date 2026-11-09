@@ -37,6 +37,9 @@ import com.liferay.portal.kernel.module.configuration.ConfigurationException;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.InlineSQLHelper;
+import com.liferay.portal.kernel.settings.CompanyServiceSettingsLocator;
+import com.liferay.portal.kernel.settings.GroupServiceSettingsLocator;
+import com.liferay.portal.kernel.settings.SettingsLocator;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.HttpComponentsUtil;
@@ -487,7 +490,8 @@ public class SalesforceObjectEntryManagerImpl
 					JSONObject jSONObject =
 						SalesforceAccessTokenWebCacheItem.get(
 							companyId,
-							_getSalesforceConfiguration(companyId, groupId));
+							_getSalesforceConfiguration(companyId, groupId),
+							_getSettingsLocator(companyId, groupId));
 
 					if (jSONObject != null) {
 						return jSONObject;
@@ -521,18 +525,27 @@ public class SalesforceObjectEntryManagerImpl
 				long companyId, long groupId) {
 
 				try {
-					if (groupId == 0) {
-						return _configurationProvider.getCompanyConfiguration(
-							SalesforceConfiguration.class, companyId);
-					}
-
-					return _configurationProvider.getGroupConfiguration(
-						SalesforceConfiguration.class, companyId, groupId);
+					return _configurationProvider.getConfiguration(
+						SalesforceConfiguration.class,
+						_getSettingsLocator(companyId, groupId));
 				}
 				catch (ConfigurationException configurationException) {
 					return ReflectionUtil.throwException(
 						configurationException);
 				}
+			}
+
+			private SettingsLocator _getSettingsLocator(
+				long companyId, long groupId) {
+
+				if (groupId == 0) {
+					return new CompanyServiceSettingsLocator(
+						companyId, SalesforceConfiguration.class.getName());
+				}
+
+				return new GroupServiceSettingsLocator(
+					companyId, groupId, SalesforceConfiguration.class.getName(),
+					SalesforceConfiguration.class.getName());
 			}
 
 		};
